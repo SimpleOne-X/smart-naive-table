@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>放大 / 还原 图标对比</title>
+<style>
+/* 自包含对比页:只为选图标,不是 SmartTable 的一部分。按钮尺寸、线宽、颜色与设计稿一致:
+   圆形 quaternary 按钮 28px、图标 16px、线宽 2、圆角端点;颜色取 textColor2,悬停底 buttonColor2Hover。 */
+:root {
+  --bg: #fafafc; --card: #fff; --text: rgb(51, 54, 57); --text-2: rgb(118, 124, 130); --line: rgb(239, 239, 245);
+  --btn-hover: rgba(46, 51, 56, .09); --primary: #18a058;
+}
+.dark {
+  --bg: rgb(16, 16, 20); --card: rgb(24, 24, 28); --text: rgba(255, 255, 255, .82); --text-2: rgba(255, 255, 255, .52);
+  --line: rgba(255, 255, 255, .09); --btn-hover: rgba(255, 255, 255, .12); --primary: #63e2b7;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px; background: #e9e9ee; font: 14px/1.6 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: #333; }
+h1 { font-size: 18px; margin: 0 0 4px; }
+p.sub { margin: 0 0 20px; color: #666; font-size: 13px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; }
+.opt { background: #fff; border-radius: 10px; padding: 16px; }
+.opt h2 { font-size: 15px; margin: 0 0 2px; }
+.opt .tag { font-size: 12px; color: #888; margin-bottom: 12px; }
+.opt .tag b { color: #18a058; font-weight: 600; }
+.theme { border-radius: 8px; background: var(--bg); color: var(--text); padding: 12px; margin-bottom: 10px; }
+.theme .row { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.theme .row + .row { margin-top: 8px; }
+.theme .lab { font-size: 12px; color: var(--text-2); width: 34px; flex: none; }
+.ic { display: inline-flex; gap: 4px; margin-left: auto; }
+.b {
+  width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text);
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background-color .15s;
+}
+.b:hover { background: var(--btn-hover); }
+.b svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.note { font-size: 12.5px; color: #555; margin: 0; line-height: 1.7; }
+</style>
+</head>
+<body>
+<h1>「放大 / 还原」图标对比</h1>
+<p class="sub"><b style="color:#18a058">已选定:B 四角括号</b>(2026-09-30,用户决定;C 曾被选中,但「还原」与复制图标冲突而弃用)。每个方案都是「放大(左)· 刷新 · 列设置」与「还原(左)· 刷新 · 列设置」两行,上面浅色、下面深色。悬停可以看按钮的悬停底色。图标是按设计稿同样的线性风格自己画的(库「零图标库依赖」,内置图标都是内联 SVG)。</p>
+
+<div class="grid" id="grid"></div>
+
+<script>
+const REFRESH = '<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v5h-5"/>';
+const COLS = '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M18 18h2"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="16" cy="18" r="2"/>';
+const OPTS = [
+  { k: 'A', name: '对角箭头(现在用的)', tag: '两个小箭头沿对角线向外 / 向内。<b>你说不好看</b>。',
+    on: '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>', off: '<path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>',
+    note: '最直白,但两个箭头加四条线,在 16px 下偏「忙」;和「刷新」的弧形箭头放在一起,箭头感太重。' },
+  { k: 'B', name: '四角括号', tag: '<b>推荐</b>。四个圆角折线在角上,放大时向外展开,还原时向内收拢。',
+    on: '<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>', off: '<path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/>',
+    note: '只有折线、没有箭头,最干净;「画框向外 / 向内」一眼看懂是放大 / 收回。全屏类按钮里很常见(这是我的使用经验,没有逐个产品核对)。' },
+  { k: 'C', name: '窗口方框(Windows 最大化 / 还原)', tag: '放大是一个方框,还原是两个错开的方框。和「放大 / 还原」的叫法正好对应。',
+    on: '<rect x="4" y="4" width="16" height="16" rx="2"/>', off: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+    note: '叫法最贴切,但「两个错开的方框」和「复制」图标几乎一样,放在表格工具栏里容易被当成复制;放大状态只有一个空方框,辨识度也偏低。' },
+  { k: 'D', name: '括号 + 对角线(折中)', tag: '四角括号里加一条对角线,放大时线向外、还原时线向内。',
+    on: '<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3M9 15l6-6"/>', off: '<path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3M10 14l4-4"/>',
+    note: '比 B 多一点「方向感」,但「还原」态括号向内收、中间一条短线,看起来像一个闪光符号,辨识度反而差;16px 下线条也容易糊。不推荐。' },
+];
+const btn = (p) => `<button class="b" type="button" aria-label="图标"><svg viewBox="0 0 24 24" aria-hidden="true">${p}</svg></button>`;
+const theme = (dark, o) => ['放大', '还原'].map((lab, i) => `<div class="row"><span class="lab">${lab}</span><span class="ic">${btn(i ? o.off : o.on)}${btn(REFRESH)}${btn(COLS)}</span></div>`).join('');
+document.getElementById('grid').innerHTML = OPTS.map(o => `<section class="opt">
+  <h2>${o.k} · ${o.name}</h2><div class="tag">${o.tag}</div>
+  <div class="theme">${theme(false, o)}</div>
+  <div class="theme dark">${theme(true, o)}</div>
+  <p class="note">${o.note}</p></section>`).join('');
+</script>
+</body>
+</html>

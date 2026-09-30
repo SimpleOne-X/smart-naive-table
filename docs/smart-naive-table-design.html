@@ -1,0 +1,2994 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SmartTable 设计方案</title>
+<style>
+/* ============================================================
+   SmartTable 整体设计方案 —— 可交互原型
+   静态复刻 naive-ui 默认主题,仅用于定方案,不代表实现代码。
+   本文件是**视觉规格,不随包发布**:截图基线见 docs/baseline/,真实 naive-ui 上的验证见 docs/spike/ 与设计文档第 9 节。
+   控件是真的:下拉能点开、值能输入、搜索真的按条件筛数据。
+
+   已按官方源码校准(tusen-ai/naive-ui main):
+   - NCard padding:官方 medium = 19px 24px 20px、small = 12px 16px 12px(src/card/styles/_common.ts);本稿按设计文档 5.4 取四边相等的 16px(官方 small 的左右值,上下也取 16)
+   - NCard borderRadius = 3px,borderColor = dividerColor
+   视觉取向:macOS 简洁 —— 克制留白、轻分隔、次级操作降级、一屏一个主色按钮。
+   ============================================================ */
+/* ------------------------------------------------------------
+   设计 token —— 对齐 naive-ui 2.45.3 官方主题(D:\Andy\smart-naive-table\node_modules\naive-ui\es)
+   记号:CL = _styles/common/light.mjs,CD = _styles/common/dark.mjs;(实算)= 官方 composite/scaleColor 表达式,
+   用 import 官方 .mjs 并调用 self(commonVars) 得到,不是手算。
+   命名沿用旧名(JS 里有 var(--n-text-3) 内联引用,不能改名),语义如下:
+     --n-text   = textColor2(正文)     --n-text-1 = textColor1(标题/表头)
+     --n-text-2 = textColor3(次要文字) --n-text-3 = placeholder / disabled / icon 色(官方最浅一档)
+   自有(官方无对应)的变量逐个标了「自有」。
+   ------------------------------------------------------------ */
+:root {
+  /* —— 主色 —— */
+  --n-primary: #18a058;                  /* CL:71 primaryColor(base.primaryDefault CL:36) */
+  --n-primary-hover: #36ad6a;            /* CL:72 primaryColorHover(CL:35) */
+  --n-on-primary: #ffffff;               /* button/styles/light.mjs:100 textColorPrimary = baseColor(CL:70 "#FFF") */
+  /* —— 面 —— */
+  --n-body-bg: rgb(250, 250, 252);      /* 宿主页面底 = NLayout embedded 的 colorEmbedded = actionColor(layout/styles/light.mjs:22;_styles/common/light.mjs:143)。灰底衬白卡:官方 embedded 模式,也是 macOS 分组列表的结构;纯白 bodyColor #fff 是官方默认,但页面与卡片同白只剩 1px 边框(1.15:1)区分 */
+  --n-card-bg: #ffffff;                  /* CL:134 cardColor(CL:9) */
+  --n-modal-bg: #ffffff;                 /* CL:135 modalColor(NDrawer/NModal 底色) */
+  --n-popover-bg: #ffffff;               /* CL:132 popoverColor(NPopover/NDropdown/NSelect 菜单/NMessage 底色) */
+  --n-fill: rgb(250, 250, 252);          /* 自有取值:CL:143 actionColor(=card/styles/light.mjs:32 colorEmbedded);窄档卡片列表底 */
+  --n-th-bg: rgb(250, 250, 252);         /* data-table/styles/light.mjs:49 thColor = composite(cardColor, tableHeaderColor(CL:144))(实算) */
+  --n-row-hover: rgb(247, 247, 250);     /* data-table/styles/light.mjs:46 tdColorHover = composite(cardColor, tableColorHover(CL:146 rgba(0,0,100,.03)))(实算) */
+  --n-th-hover: rgb(243, 243, 247);      /* data-table/styles/light.mjs:50 thColorHover = composite(thColor, tableColorHover rgba(0,0,100,.03))(实算);可排序表头悬停 / 排序中 / 漏斗面板打开(thColorSorting 同值,:51) */
+  --n-th-btn-hover: rgba(0, 0, 100, 0.03); /* data-table/styles/light.mjs:56 thButtonColorHover = tableColorHover(CL:146) */
+  --n-code-bg: rgb(244, 244, 248);       /* CL:141 codeColor(仅外壳里的行内 code) */
+  --n-tag-plain: #eee;                   /* CL:137 tagColor(NTag 默认、非 bordered 底;仅外壳里的序号/状态徽标) */
+  /* —— 线 —— */
+  --n-border: rgb(239, 239, 245);        /* CL:111 dividerColor(卡片边框 card/styles/light.mjs:37、表格线、抽屉分隔线) */
+  --n-border-strong: rgb(224, 224, 230); /* CL:112 borderColor(Button light.mjs:89 / Tag light.mjs:61 / Checkbox light.mjs:39 / Pagination 按钮 light.mjs:30) */
+  --n-input-border: rgb(224, 224, 230);  /* input/styles/light.mjs:73、_internal/selection/styles/light.mjs:57 = borderColor */
+  /* —— 文字 —— */
+  --n-text-1: rgb(31, 34, 37);           /* CL:92 textColor1(表头 data-table thTextColor、卡片/抽屉标题) */
+  --n-text: rgb(51, 54, 57);             /* CL:93 textColor2(正文、按钮、输入框文字) */
+  --n-text-2: rgb(118, 124, 130);        /* CL:94 textColor3(次要文字) */
+  --n-text-3: rgb(194, 194, 194);        /* CL:95-98 placeholder/textColorDisabled/iconColor = neutral(alpha4 .24)(实算 rgba(194,194,194,1));empty/styles/light.mjs:22 空态文字也是它 */
+  /* —— 输入框 / 下拉触发器 —— */
+  --n-input-bg: #ffffff;                 /* CL:140 inputColor = neutral(alphaInput 0)(实算 白);input light.mjs:68 */
+  --n-input-bg-focus: #ffffff;           /* input light.mjs:71 colorFocus = inputColor */
+  --n-select-bg-active: #ffffff;         /* selection light.mjs:56 colorActive = inputColor */
+  --n-input-bg-disabled: rgb(250, 250, 252); /* CL:150 inputColorDisabled(用于「不需要填值」的无值态) */
+  --n-ring-input: 0 0 0 2px color-mix(in srgb, var(--n-primary) 20%, transparent);   /* input light.mjs:77-79 boxShadowFocus = primary alpha .2 */
+  --n-ring-select: 0 0 0 2px color-mix(in srgb, var(--n-primary) 20%, transparent);  /* selection light.mjs:62-67 boxShadowActive/Focus = primary alpha .2 */
+  /* —— 悬停 / 按下(原 --n-hover 按场景拆开) —— */
+  --n-item-hover: rgb(243, 243, 245);    /* CL:145 hoverColor(NSelect/NDropdown 选项 hover:select-menu light.mjs:52、dropdown light.mjs:46) */
+  --n-btn-hover: rgba(46, 51, 56, .09);  /* CL:152 buttonColor2Hover(Button quaternary hover:button/styles/light.mjs:66) */
+  /* —— 语义色 —— */
+  --n-error: #d03050;                    /* CL:87 errorColor(base.errorDefault CL:44) */
+  --n-error-hover: #de576d;              /* CL:88 errorColorHover(CL:43) */
+  /* —— 阴影 —— */
+  --n-shadow-pop: 0 3px 6px -4px rgba(0,0,0,.12), 0 6px 16px 0 rgba(0,0,0,.08), 0 9px 28px 8px rgba(0,0,0,.05); /* CL:155 boxShadow2(Popover/Dropdown/Select 菜单/Message) */
+  --sheet-shadow: 0 6px 16px -9px rgba(0,0,0,.08), 0 9px 28px 0 rgba(0,0,0,.05), 0 12px 48px 16px rgba(0,0,0,.03); /* CL:156 boxShadow3(NDrawer) */
+  /* —— 下拉选中底(NDropdown 才有;NSelect 菜单无底色,当前规则未引用,留作 NDropdown 参照) —— */
+  --dd-on-a: 10%;                        /* dropdown/styles/light.mjs:47-49 optionColorActive = primary alpha .1 */
+  /* —— 复选框 —— */
+  --chk-border: rgb(224, 224, 230);      /* checkbox/styles/light.mjs:39 border = borderColor(CL:112) */
+  --chk-bg: #ffffff;                     /* checkbox/styles/light.mjs:29 color = baseColor */
+  --chk-mark: #ffffff;                   /* checkbox/styles/light.mjs:36 checkMarkColor = baseColor */
+  /* —— NTag —— */
+  --tag-a: 10%;                          /* tag/styles/light.mjs:77-79 colorBorderedPrimary alpha .1(NTag 默认 bordered) */
+  --tag-bd-a: 30%;                       /* tag/styles/light.mjs:70-72 borderPrimary alpha .3 */
+  --tag-hover-a: 12%;                    /* tag/styles/light.mjs:83-85 closeColorHoverPrimary alpha .12 */
+  --tag-a-press: 18%;                    /* tag/styles/light.mjs:86-88 closeColorPressedPrimary alpha .18 */
+  --tag-close: var(--n-primary);         /* tag/styles/light.mjs:80 closeIconColorPrimary = primaryColor */
+  --tag-bg: rgb(250, 250, 252);          /* tag/styles/light.mjs:64 colorBordered(默认类型、bordered 的底) */
+  /* —— NPagination —— */
+  --pg-active-bd: var(--n-primary);      /* pagination/styles/light.mjs:50 itemBorderActive = 1px solid primaryColor */
+  /* —— 设计稿外壳(侧栏/主区/待议占位页):自有,官方无对应物 —— */
+  --shell-bg: #ececee;                   /* 自有 */
+  --panel-bg: #ffffff;                   /* 自有 */
+  --accent: #2563eb;                     /* 自有(原用于 pre.code / 条形图,现无规则引用,保留) */
+  --warn: #d97706;                       /* 自有:「进行中」徽标。刻意不取官方 warningColor #f0a020(CL:83),它在白底上对比度仅约 2.2:1 */
+  --ok: #18a058;                         /* 自有:「已完成」徽标。数值恰与官方 successColor 相同(CL:79) */
+}
+html[data-theme="dark"] {
+  /* —— 主色 —— */
+  --n-primary: #63e2b7;                  /* CD:72 primaryColor(base.primaryDefault CD:37) */
+  --n-primary-hover: #7fe7c4;            /* CD:73 primaryColorHover(CD:36) */
+  --n-on-primary: #000000;               /* button light.mjs:100 textColorPrimary = baseColor;CD:71 baseColor = "#000"(旧值 rgba(0,0,0,.85) 无官方依据) */
+  /* —— 面 —— */
+  --n-body-bg: rgb(16, 16, 20);          /* CD:133 bodyColor(CD:11);暗色 NLayout embedded 的 colorEmbedded 也等于 bodyColor(layout/styles/dark.mjs:25),明暗两套分层逻辑一致 */
+  --n-card-bg: rgb(24, 24, 28);          /* CD:131 cardColor(CD:9) */
+  --n-modal-bg: rgb(44, 44, 50);         /* CD:132 modalColor(CD:10) */
+  --n-popover-bg: rgb(72, 72, 78);       /* CD:129 popoverColor(CD:8) */
+  --n-fill: rgba(255, 255, 255, 0.06);   /* 自有取值:CD:140 actionColor = overlay(alphaAction .06)。官方暗色 card colorEmbedded=cardColor(card/styles/dark.mjs:14),与卡片同色、卡片里看不出层次,故不取它 */
+  --n-th-bg: rgb(38, 38, 42);            /* data-table/styles/light.mjs:49(dark 复用)thColor = composite(cardColor, tableHeaderColor(CD:141 .06))(实算 rgba(38,38,42,1)) */
+  --n-row-hover: rgb(38, 38, 42);        /* data-table/styles/light.mjs:46 tdColorHover = composite(cardColor, tableColorHover(CD:143 .06))(实算 rgba(38,38,42,1)) */
+  --n-th-hover: rgb(51, 51, 55);         /* thColorHover = composite(thColor rgb(38,38,42), tableColorHover overlay .06)(实算) */
+  --n-th-btn-hover: rgba(255, 255, 255, 0.06); /* thButtonColorHover = tableColorHover(CD:143) */
+  --n-code-bg: rgba(255, 255, 255, 0.12); /* CD:138 codeColor = overlay(alphaCode .12) */
+  --n-tag-plain: rgb(51, 51, 51);        /* CD:134 tagColor = neutral(alphaTag .2)(实算 rgba(51,51,51,1)) */
+  /* —— 线 —— */
+  --n-border: rgba(255, 255, 255, 0.09); /* CD:108 dividerColor(alphaDivider .09 CD:28) */
+  --n-border-strong: rgba(255, 255, 255, 0.24); /* CD:109 borderColor(alphaBorder .24 CD:27):Button/Tag/Checkbox/Pagination 按钮 */
+  --n-input-border: transparent;         /* input/styles/dark.mjs:73、selection/styles/dark.mjs:63 border = "1px solid #0000":暗色输入框无边框,靠底色区分(旧值 .14 无官方依据) */
+  /* —— 文字 —— */
+  --n-text-1: rgba(255, 255, 255, 0.9);  /* CD:93 textColor1(alpha1 .9 CD:12) */
+  --n-text: rgba(255, 255, 255, 0.82);   /* CD:94 textColor2 */
+  --n-text-2: rgba(255, 255, 255, 0.52); /* CD:95 textColor3 */
+  --n-text-3: rgba(255, 255, 255, 0.38); /* CD:96-99 placeholder/textColorDisabled/iconColor = overlay(alpha4 .38) */
+  /* —— 输入框 / 下拉触发器 —— */
+  --n-input-bg: rgba(255, 255, 255, 0.1); /* CD:137 inputColor = overlay(alphaInput .1)(旧值 .04) */
+  --n-input-bg-focus: color-mix(in srgb, var(--n-primary) 10%, transparent);   /* input/styles/dark.mjs:69-71 colorFocus = primary alpha .1 */
+  --n-select-bg-active: color-mix(in srgb, var(--n-primary) 10%, transparent); /* selection/styles/dark.mjs:60-62 colorActive = primary alpha .1 */
+  --n-input-bg-disabled: rgba(255, 255, 255, 0.06); /* CD:147 inputColorDisabled */
+  --n-ring-input: 0 0 8px 0 color-mix(in srgb, var(--n-primary) 30%, transparent);  /* input/styles/dark.mjs:77-79 boxShadowFocus = 0 0 8px 0 primary alpha .3 */
+  --n-ring-select: 0 0 8px 0 color-mix(in srgb, var(--n-primary) 40%, transparent); /* selection/styles/dark.mjs:68-73 = 0 0 8px 0 primary alpha .4(与 Input 的 .3 不同) */
+  /* —— 悬停 / 按下 —— */
+  --n-item-hover: rgba(255, 255, 255, 0.09); /* CD:142 hoverColor(alphaPending .09 CD:20) */
+  --n-btn-hover: rgba(255, 255, 255, .12);   /* CD:149 buttonColor2Hover */
+  /* —— 语义色 —— */
+  --n-error: #e88080;                    /* CD:88 errorColor(CD:45) */
+  --n-error-hover: #e98b8b;              /* CD:89 errorColorHover(CD:44) */
+  /* —— 阴影 —— */
+  --n-shadow-pop: 0 3px 6px -4px rgba(0,0,0,.24), 0 6px 12px 0 rgba(0,0,0,.16), 0 9px 18px 8px rgba(0,0,0,.10); /* CD:152 boxShadow2 */
+  --sheet-shadow: 0 6px 16px -9px rgba(0,0,0,.08), 0 9px 28px 0 rgba(0,0,0,.05), 0 12px 48px 16px rgba(0,0,0,.03); /* CD:153 boxShadow3(与亮色相同) */
+  --dd-on-a: 15%;                        /* dropdown/styles/dark.mjs:20-22 optionColorActive = primary alpha .15 */
+  /* —— 复选框 —— */
+  --chk-border: rgba(255, 255, 255, 0.24); /* checkbox/styles/light.mjs:39(dark 复用)border = borderColor(CD:109) */
+  --chk-bg: transparent;                 /* checkbox/styles/dark.mjs:12 color = "#0000" */
+  --chk-mark: rgb(24, 24, 28);           /* checkbox/styles/dark.mjs:13 checkMarkColor = cardColor */
+  /* —— NTag —— */
+  --tag-a: 0%;                           /* tag/styles/dark.mjs:80 colorBorderedPrimary = "#0000" */
+  --tag-bd-a: 30%;                       /* tag/styles/dark.mjs:73-75 borderPrimary alpha .3 */
+  --tag-hover-a: 16%;                    /* tag/styles/dark.mjs:90-92 closeColorHoverPrimary alpha .16 */
+  --tag-a-press: 12%;                    /* tag/styles/dark.mjs:93-95 closeColorPressedPrimary alpha .12 */
+  --tag-close: rgb(69, 158, 128);        /* tag/styles/dark.mjs:81-83 closeIconColorPrimary = scaleColor(primary, lightness .7)(实算 rgba(69,158,128,1)) */
+  --tag-bg: transparent;                 /* tag/styles/dark.mjs:67 colorBordered = "#0000" */
+  /* —— NPagination —— */
+  --pg-active-bd: color-mix(in srgb, var(--n-primary) 52%, transparent); /* pagination/styles/dark.mjs:21-25 itemBorderActive = primary alpha opacity3(.52) */
+  /* —— 设计稿外壳:自有 —— */
+  --shell-bg: #0b0b0e;                   /* 自有 */
+  --panel-bg: rgb(24, 24, 28);           /* 自有(数值恰同 cardColor) */
+  --accent: #60a5fa;                     /* 自有 */
+  --warn: #fbbf24;                       /* 自有(官方暗色 warningColor #f2c97d,CD:84) */
+  --ok: #63e2b7;                         /* 自有(数值同官方暗色 successColor CD:80) */
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+/* 自有:naive 的主题不含 color-scheme;加它是为了让原生滚动条 / 表单控件跟随明暗 */
+html { color-scheme: light; }
+html[data-theme="dark"] { color-scheme: dark; }   /* 原生滚动条 / 表单控件跟随主题 */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro SC", "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-size: 14px; color: var(--n-text); background: var(--shell-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 骨架 ---------- */
+.app { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
+.side {
+  background: var(--panel-bg); border-right: 1px solid var(--n-border);
+  padding: 22px 14px 40px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.side h1 { font-size: 15px; margin: 0 0 4px; letter-spacing: .2px; }
+.side .sub { font-size: 11.5px; color: var(--n-text-2); margin: 0 0 18px; line-height: 1.6; }
+.side .group-title {
+  font-size: 11px; font-weight: 600; letter-spacing: .08em;
+  color: var(--n-text-2); text-transform: uppercase; margin: 22px 0 8px;
+}
+
+.mod {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; cursor: pointer;
+  border: 1px solid transparent; background: transparent; color: inherit;
+  border-radius: 7px; padding: 9px 10px; margin-bottom: 3px; font-family: inherit; font-size: 13px;
+  transition: background-color .15s;
+}
+.mod:hover { background: var(--n-item-hover); }
+.mod.on { background: color-mix(in srgb, var(--n-primary) 10%, transparent); border-color: color-mix(in srgb, var(--n-primary) 35%, transparent); font-weight: 600; }
+.mod .no {
+  width: 20px; height: 20px; border-radius: 5px; flex: none; font-size: 11px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--n-tag-plain); color: var(--n-text-2); font-weight: 600;
+}
+.mod.on .no { background: var(--n-primary); color: var(--n-on-primary); }
+.mod .nm { flex: 1 1 auto; min-width: 0; }
+.mod .st { font-size: 10px; padding: 1px 5px; border-radius: 3px; flex: none; font-weight: 500; }
+.st.done { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+.st.doing { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+.st.todo { background: var(--n-tag-plain); color: var(--n-text-2); }
+
+.mini { display: flex; gap: 6px; }
+.mini button {
+  flex: 1; cursor: pointer; font-family: inherit; font-size: 12px;
+  border: 1px solid var(--n-border-strong); background: transparent; color: var(--n-text-2);
+  border-radius: 5px; padding: 5px 8px; transition: background-color .15s, border-color .15s, color .15s;
+}
+.mini button:hover { border-color: var(--n-primary); }
+.mini button.on { border-color: var(--n-primary); color: var(--n-primary); background: color-mix(in srgb, var(--n-primary) 10%, transparent); }
+
+/* ---------- 主区 ---------- */
+.main { padding: 26px 32px 64px; min-width: 0; }
+.crumb { font-size: 12px; color: var(--n-text-2); margin-bottom: 6px; }
+.stage-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+.stage-head h2 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+.stage-desc { color: var(--n-text-2); font-size: 13px; margin: 0 0 18px; max-width: 860px; line-height: 1.75; }
+.stage-desc:empty { display: none; }
+
+.viewport {
+  background: var(--n-body-bg); border: 0; border-radius: 10px;   /* 视口只当宿主页面区域,不再画描边:里面的卡片已有官方 1px 描边,两层就成了「双框」 */
+  padding: 22px; position: relative;
+}
+
+/* ---------- naive-ui 复刻 ---------- */
+.n-card { background: var(--n-card-bg); border: 1px solid var(--n-border); border-radius: 3px; padding: 16px; }   /* 四边相等(5.4):工具栏上缘 / 表格左右缘 / 分页条下缘到卡片边都是 16px + 1px 描边 */
+.smart-table { display: flex; flex-direction: column; gap: 16px; container-type: inline-size; }   /* 三档布局的查询容器:宽度 = 卡片外宽 */
+
+.n-form-item { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.n-form-item > label { font-size: 14px; color: var(--n-text); white-space: nowrap; flex: none; }
+
+/* 真输入框 NInput(medium):高 34px、字号 14px、内边距 0 12px、圆角 3px(input/styles/_common.mjs paddingMedium、_styles/common/_common.mjs)
+   边框 borderColor(暗色透明,靠底色 .1 区分)、hover / focus 边框 primaryColorHover(input/styles/light|dark.mjs:73-76)
+   focus:亮色 0 0 0 2px primary .2;暗色 0 0 8px 0 primary .3 且底色变 primary .1(input/styles/light.mjs:71,77-79、dark.mjs:69-79)—— 见 --n-ring-input / --n-input-bg-focus */
+.n-input {
+  height: 34px; border: 1px solid var(--n-input-border); border-radius: 3px;
+  background: var(--n-input-bg); display: flex; align-items: center; padding: 0 12px;
+  font-size: 14px; color: var(--n-text); min-width: 0; flex: 1 1 auto;
+  transition: border-color .15s, box-shadow .15s, background-color .15s; cursor: text;
+}
+.n-input:hover { border-color: var(--n-primary-hover); }
+.n-input:focus-within { border-color: var(--n-primary-hover); background: var(--n-input-bg-focus); box-shadow: var(--n-ring-input); }
+.n-input input {
+  border: 0; outline: 0; background: transparent; font: inherit; color: inherit;
+  width: 100%; min-width: 0; padding: 0;
+}
+.n-input input::placeholder { color: var(--n-text-3); }
+/* 下拉触发器 NSelect(InternalSelection):内边距 0 26px 0 12px,不随 size 变,右侧 26px 留给箭头(selection/styles/_common.mjs:3)
+   箭头 16px、距右 10px(selection/src/styles/index.cssr.mjs base-suffix right:10px;_common.mjs arrowSize)
+   hover 边框 primaryColorHover、展开边框 primaryColor(selection/styles/light.mjs:58-59)
+   展开:亮色 0 0 0 2px primary .2;暗色 0 0 8px 0 primary .4 且底色 primary .1(selection/styles/light.mjs:62-67、dark.mjs:60-73)—— 见 --n-ring-select / --n-select-bg-active */
+.n-select {
+  position: relative;
+  height: 34px; border: 1px solid var(--n-input-border); border-radius: 3px;
+  background: var(--n-input-bg); display: flex; align-items: center;
+  padding: 0 26px 0 12px; font-size: 14px; color: var(--n-text); min-width: 0; cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, background-color .15s; user-select: none;
+}
+.n-select:hover { border-color: var(--n-primary-hover); }
+.n-select.open { border-color: var(--n-primary); background: var(--n-select-bg-active); box-shadow: var(--n-ring-select); }
+.n-select .val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.n-select .val.ph { color: var(--n-text-3); }
+.n-select .caret {
+  position: absolute; top: 0; bottom: 0; right: 10px; width: 16px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--n-text-3); font-size: 14px;   /* arrowColor = iconColor(selection/styles/light.mjs:69);官方箭头是 16px 图标,▾ 字符 10px 时几乎看不见,取 14px 近似 */
+}
+.n-select.open .caret { transform: rotate(180deg); }
+.n-select.sm { height: 28px; font-size: 12.5px; }
+.n-input.sm { height: 28px; font-size: 12.5px; padding: 0 10px; }   /* 与 .n-select.sm 同高(heightSmall 28px),面板行对齐;padding 0 10px = input/styles/_common.mjs paddingSmall */
+
+/* NButton(medium,default):边框 borderColor(暗 .24)、字 textColor2;hover 边框与字 primaryColorHover(button/styles/light.mjs:73,75,89,90)
+   quaternary(.quiet / .icon):无边框、字 textColor2 且 hover 不变、hover 底 buttonColor2Hover(button/src/Button.mjs:275-297、light.mjs:66) */
+.n-btn {
+  height: 34px; padding: 0 14px; border-radius: 3px; font-size: 14px; cursor: pointer;
+  border: 1px solid var(--n-border-strong); background: transparent; color: var(--n-text);
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-family: inherit;
+  transition: background-color .15s, border-color .15s, color .15s;
+}
+.n-btn:hover { border-color: var(--n-primary-hover); color: var(--n-primary-hover); }
+.n-btn.primary { background: var(--n-primary); border-color: var(--n-primary); color: var(--n-on-primary); }
+.n-btn.primary:hover { background: var(--n-primary-hover); border-color: var(--n-primary-hover); color: var(--n-on-primary); }
+.n-btn.quiet { border-color: transparent; color: var(--n-text); padding: 0 8px; }
+.n-btn.quiet:hover { background: var(--n-btn-hover); color: var(--n-text); border-color: transparent; }
+.n-btn.icon {
+  width: 28px; height: 28px; padding: 0; border-radius: 50%; border-color: transparent;
+  justify-content: center; color: var(--n-text);
+}
+.n-btn.icon:hover { background: var(--n-btn-hover); color: var(--n-text); border-color: transparent; }
+.n-btn.icon.on { background: var(--n-btn-hover); color: var(--n-text); }
+.n-btn.sm { height: 28px; padding: 0 10px; font-size: 13px; }
+/* 焦点环:全部 .n-btn 统一(原先没有,用的是浏览器默认的黑色圆环,只有个别按钮被脚本聚焦后才冒出来,看着不一致);
+   只在键盘聚焦(:focus-visible)时出现,鼠标点击不出现;克制的主色细环,外扩 2px,圆形图标按钮的环自动跟着圆角走 */
+.n-btn:focus-visible { outline: 2px solid color-mix(in srgb, var(--n-primary) 55%, transparent); outline-offset: 2px; }
+/* 文字按钮:NButton text —— 无边框无底,字色 textColor2,悬停 primaryColorHover(button/styles/light.mjs textColorText / textColorTextHover) */
+.n-btn.text { border-color: transparent; padding: 0 8px; }
+.n-btn.text:hover { border-color: transparent; color: var(--n-primary-hover); }
+/* 危险:字色 errorColor / 悬停 errorColorHover(_styles/common/light|dark.mjs);描边仍是低对比的 borderColor(有意偏离官方 type=error 的红描边:macOS 取向,少一处强色) */
+.n-btn.danger { color: var(--n-error); }
+.n-btn.danger:hover { color: var(--n-error-hover); border-color: var(--n-error-hover); }
+.n-btn.text.danger:hover { border-color: transparent; }
+
+.st-title { margin: 0; font-size: 16px; font-weight: 500; color: var(--n-text-1); }   /* 卡片标题:small 16px / fontWeightStrong 500 / textColor1(card/styles/_common.mjs titleFontSizeSmall、card/styles/light.mjs:36,39) */
+
+table.n-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.n-table th, table.n-table td { border: 1px solid var(--n-border); padding: 11px 12px; text-align: left; white-space: nowrap; }
+table.n-table th { background: var(--n-th-bg); font-weight: 500; color: var(--n-text-1); }   /* data-table/styles/light.mjs:54-55 thTextColor = textColor1、thFontWeight = 500 */
+table.n-table td { color: var(--n-text); }
+table.n-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.n-table tr.hit td { background: color-mix(in srgb, var(--n-primary) 8%, transparent); }
+table.n-table tr.empty-row td { text-align: center; color: var(--n-text-3); padding: 34px 12px; }   /* 权重要高于 table.n-table td,否则居中/浅灰/大内边距全被盖掉 */
+/* 状态徽标 = NTag size small(默认 bordered、非 round):高 22px、字号 12px、行高 1、内边距 0 7px、圆角 2px(tag/styles/light.mjs:22,41,47、_common.mjs:11、tag/src/styles/index.cssr.mjs:22)
+   primary 型:底 --tag-a、边 --tag-bd-a、字 primaryColor(tag light.mjs:70-79、dark.mjs:73-80);默认型(.off):底 colorBordered、边 borderColor、字 textColor2(light.mjs:61-64、dark.mjs:64-67)
+   边框用 inset box-shadow 画(官方是绝对定位的 __border 层,不占布局) */
+.pill {
+  display: inline-flex; align-items: center; vertical-align: middle; height: 22px; padding: 0 7px; border-radius: 2px;
+  font-size: 12px; line-height: 1; white-space: nowrap;
+  background: color-mix(in srgb, var(--n-primary) var(--tag-a), transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--n-primary) var(--tag-bd-a), transparent);
+  color: var(--n-primary);
+}
+.pill.off { background: var(--tag-bg); box-shadow: inset 0 0 0 1px var(--n-border-strong); color: var(--n-text); }
+/* NPagination:文字 textColor2;上一页/下一页按钮边 borderColor;当前页边 primary(暗 primary .52)(pagination/styles/light.mjs:30,36,39,50、dark.mjs:21-25) */
+
+.search-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 16px; }
+.search-grid .n-form-item > label { width: 62px; text-align: right; justify-content: flex-end; }
+.search-grid > .search-actions { grid-column: -2 / -1; }
+.search-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
+
+/* ============================================================
+   条件构造器 / 工具栏(模式 2)
+   三档由 .smart-table 的容器宽度决定(卡片外宽):
+     宽 >= 960 · 中 600-959 · 窄 < 600  —— 与 JS 的 T_NARROW / T_WIDE 一致
+   ============================================================ */
+.f-field, .f-op, .f-val { position: relative; min-width: 0; }
+.f-val .n-input { padding-right: 30px; }
+.f-val .ic { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); color: var(--n-text-3); pointer-events: none; display: flex; }
+.f-val.novalue .n-input { background: var(--n-input-bg-disabled); border-style: dashed; }   /* 无值态 ≈ NInput disabled:底 inputColorDisabled(CL:150 / CD:147) */
+:where(.f-val.novalue) .n-input { border-color: var(--n-border-strong); }   /* 暗色输入框边是透明的,虚线要看得见就取 borderColor;:where 让 hover/focus 的 primary 边仍能盖过 */
+
+.cond { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cond .f-field { width: 136px; flex: none; }
+.cond .f-op    { width: 112px; flex: none; }
+.cond .f-val   { flex: 1 1 100px; min-width: 100px; }   /* 宽档 1:1 的最窄点(整行 1280)左半区 609px,值输入框只剩约 114px,最小宽度取 100 才放得下 */
+.cond > .n-btn, .cond > .pop-wrap { flex: none; }
+
+/* 下拉菜单:NDropdown 底色 = popoverColor(暗 rgb(72,72,78)),无描边、靠 boxShadow2,圆角 3px(dropdown/styles/light.mjs、_styles/common/light|dark.mjs)
+   选项:高 34px、字号 14px(dropdown/styles/light.mjs optionHeightMedium / optionFontSizeMedium);
+   文字距菜单边 12px = 菜单 padding 4px + 选项 padding 8px,hover 块两侧各缩进 4px、圆角 3px(dropdown/src/styles/index.cssr.mjs ::before inset 4px);
+   hover = hoverColor,选中 = 字色 primary(NSelect 无底色,NDropdown 才有 primary 10%/15% 底;本页三个控件都是 NSelect,取 NSelect 的) */
+.dd {
+  position: absolute; z-index: 40; top: calc(100% + 4px); left: 0; min-width: 100%;
+  max-height: 258px; overflow-y: auto;   /* NSelect 菜单 height = 选项高 34px × 7.6(_internal/select-menu/styles/_common.mjs) */
+  background: var(--n-popover-bg); border-radius: 3px;
+  box-shadow: var(--n-shadow-pop); padding: 4px;
+}
+.dd .it, .col-pop .it {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  height: 34px; line-height: 34px; font-size: 14px; padding: 0 8px; border-radius: 3px; color: var(--n-text);
+  cursor: pointer; white-space: nowrap;
+  transition: background-color .15s;
+}
+.dd .it:hover, .col-pop .it:hover { background: var(--n-item-hover); }
+.dd .it.on { color: var(--n-primary); }   /* NSelect 菜单:选中项无底色、仅字色 primary(_internal/select-menu/styles/light.mjs optionColorActive = rgba(0,0,0,0)、optionTextColorActive = primaryColor) */
+
+/* 图标按钮 / 角标的定位锚 */
+.pop-wrap { position: relative; display: inline-flex; }
+.n-btn.icon { position: relative; }
+.badge {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px;
+  padding: 0 4px; border-radius: 8px; font-size: 11px; background: var(--n-primary); color: var(--n-on-primary);
+  position: absolute; top: -3px; right: -3px; pointer-events: none;
+}
+
+/* —— 工具栏骨架:grid,默认 = 宽档单行 —— */
+/* 宽档(整行 ≥ 1280):两个等宽的列 1:1 —— 左半 = 搜索区域(标题 + 条件构造器 + 搜索/重置),右半 = 按钮区域(业务按钮 + 图标,靠右)。
+   中档 / 窄档下两个包装 .tb-left / .tb-right 用 display: contents 退场,里面的元素回到下面各自的 grid-area(见容器查询)。 */
+.tb {
+  display: grid; align-items: center; column-gap: 12px; row-gap: 10px; margin-bottom: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.tb-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.tb-left .tb-title { flex: none; }
+.tb-left .tb-cond { flex: 1 1 0; min-width: 0; }
+.tb-right { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
+.tb-title { grid-area: title; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-cond { grid-area: cond; position: relative; min-width: 0; }
+.tb-actions { grid-area: actions; display: flex; align-items: center; gap: 8px; }
+.tb-icons { grid-area: icons; display: flex; align-items: center; gap: 4px; }
+.tb-search { grid-area: search; display: none; align-items: center; gap: 8px; min-width: 0; }
+.tb .ops-toggle { grid-area: ops; display: none; }
+.tb.ops-open .ops-toggle { background: var(--n-btn-hover); color: var(--n-text); }
+.tb-search .f-val { flex: 1 1 auto; min-width: 0; }
+.tb-search .pop-wrap { flex: none; }
+.tb-search .badge { top: -6px; right: -6px; }
+
+/* 多条件气泡:NPopover = popoverColor(暗 rgb(72,72,78))+ boxShadow2 + 圆角 3px(popover/styles/light.mjs);show-arrow=false,无描边。
+   官方内边距 8px 14px(popover/styles/_common.mjs),此处内容是表单面板,取 14px 均匀内边距 */
+.cond-panel {
+  position: absolute; z-index: 30; top: calc(100% + 8px); left: 0; width: min(660px, 100%);
+  background: var(--n-popover-bg); border-radius: 3px;
+  box-shadow: var(--n-shadow-pop); padding: 14px;
+}
+.cond-panel .row {
+  display: grid; align-items: center; gap: 8px; margin-bottom: 10px;
+  grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.5fr) 28px;
+}
+.cond-panel .logic { position: relative; min-width: 0; }
+.cond-panel .logic-ghost {
+  height: 28px; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--n-text-2);
+}
+.cond-panel .panel-foot { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--n-border); padding-top: 12px; margin-top: 2px; }
+
+/* 列设置气泡:锚在按钮下方、右对齐 */
+.col-pop {
+  position: absolute; z-index: 30; top: calc(100% + 8px); right: 0; min-width: 168px;
+  background: var(--n-popover-bg); border-radius: 3px;
+  box-shadow: var(--n-shadow-pop); padding: 4px;
+}
+.col-pop .it { justify-content: flex-start; gap: 8px; }
+
+/* 「更多」菜单(设计文档 7.3):官方 NDropdown 的外观——选项 34px、hover 块、分隔线 = dividerColor(dropdown/styles/light.mjs)。
+   锚在按钮下方、左对齐(按钮在业务按钮组末尾,右侧还有内置图标,不靠右贴边) */
+.more-pop { left: 0; right: auto; min-width: 148px; }
+.more-pop .sep { height: 1px; margin: 4px 0; background: var(--n-border); }
+.n-btn .chev { display: inline-flex; margin-right: -2px; color: var(--n-text-3); transition: transform .15s; }
+.n-btn.on .chev { transform: rotate(180deg); }
+
+/* 批量栏:原地替换工具栏那一行,min-height 由 JS 内联 */
+.tb-batch { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }   /* 内容贴第 1 行,min-height 占位 */
+.tb-batch .bt-info { display: inline-flex; align-items: center; gap: 8px; height: 34px; font-weight: 500; white-space: nowrap; }
+.tb-batch .bt-acts { display: flex; align-items: center; gap: 8px; }
+.tb-batch .tb-icons { margin-left: auto; height: 34px; }
+
+/* 已生效条件:NTag(round / size small / type primary / closable / 默认 bordered)
+   高 22px、字号 12px:tag/styles/light.mjs:41,47(heightSmall<-heightTiny、fontSizeSmall<-fontSizeTiny)+ _styles/common/_common.mjs
+   圆角 = 高/2 = 11px,内边距 0 h/4 0 h/3 = 0 5.5px 0 7.33px:tag/src/styles/index.cssr.mjs:51-59(--round + --closable)
+   关闭钮 16px、图标 12px、margin-left 4px:tag/styles/_common.mjs:4,8,12
+   底色 primary 10%(暗色透明)+ 1px 边框 primary 30%:tag/styles/light.mjs:70-79、dark.mjs:73-80
+     边框用 inset box-shadow 画(官方是绝对定位的 __border 层),不占布局
+   标签间距取 NSpace medium = 8px 12px:space/styles/_common.mjs */
+.chips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 12px; }
+.chips[data-n="1"] { display: none; }
+.chip {
+  display: inline-flex; align-items: center; flex: none; height: 22px; padding: 0 5.5px 0 7.33px;
+  border-radius: 11px; font-size: 12px; line-height: 1; white-space: nowrap; cursor: default;
+  background: color-mix(in srgb, var(--n-primary) var(--tag-a), transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--n-primary) var(--tag-bd-a), transparent);
+  color: var(--n-primary);
+}
+.chip button {
+  flex: none; width: 16px; height: 16px; margin: 0 0 0 4px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--tag-close); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background-color .15s;
+}
+.chip button svg { width: 12px; height: 12px; }
+.chip button:hover { background: color-mix(in srgb, var(--n-primary) var(--tag-hover-a), transparent); }
+.chip button:active { background: color-mix(in srgb, var(--n-primary) var(--tag-a-press), transparent); }
+.chips .clear {
+  height: 22px; padding: 0 4px; border: 0; background: transparent; cursor: pointer;
+  font: inherit; font-size: 12px; color: var(--n-text); transition: color .15s;   /* NButton text:字 textColor2、hover primaryColorHover(button/styles/light.mjs:79-80) */
+}
+.chips .clear:hover { color: var(--n-primary-hover); }
+
+/* ============================================================
+   复选框 .n-check:NCheckbox
+   尺寸 16px(medium):checkbox/styles/_common.mjs sizeMedium
+   圆角 2px:checkbox/styles/light.mjs borderRadius = borderRadiusSmall(_styles/common/_common.mjs)
+   未选中:1px borderColor(暗 .24)、底 baseColor(暗透明);选中/悬停边 = primaryColor;勾 = baseColor(暗 cardColor):checkbox/styles/light|dark.mjs
+   ============================================================ */
+.n-check {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 16px; height: 16px; border-radius: 2px; cursor: pointer; vertical-align: middle;
+  border: 1px solid var(--chk-border); background: var(--chk-bg); color: var(--chk-mark);
+  transition: background-color .15s, border-color .15s;
+}
+.n-check::before { content: ""; position: absolute; inset: -6px; }  /* 扩大点击热区,不改视觉 */
+.n-check:hover { border-color: var(--n-primary); }
+.n-check.on, .n-check.half { background: var(--n-primary); border-color: var(--n-primary); }
+.n-check svg { display: block; width: 100%; height: 100%; }
+.n-check.half:empty::after { content: ""; width: 8px; height: 2px; border-radius: 1px; background: var(--chk-mark); }
+
+/* ============================================================
+   表格(模式 2):复选列 / 操作列 / 横向滚动 / 密度
+   数据表格内边距:normal = 12px、small = 8px(data-table/styles/_common.mjs tdPaddingMedium / tdPaddingSmall);
+   本文件单元格另有 1px 边框,故上下取 11px / 7px,视觉高度一致。
+   ============================================================ */
+.tbl-scroll { overflow-x: auto; }
+.tbl-scroll table.n-table { min-width: 760px; }   /* naive scroll-x 的等价物:中档出现横向滚动而不是压扁 */
+table.n-table th.ck, table.n-table td.ck { width: 40px; min-width: 40px; padding-left: 0; padding-right: 0; text-align: center; }
+table.n-table tbody tr:hover td { background: var(--n-row-hover); }   /* tdColorHover(data-table/styles/light.mjs:46) */
+table.n-table tbody tr.hit:hover td { background: color-mix(in srgb, var(--n-primary) 8%, transparent); }
+table.n-table td.acts { white-space: nowrap; }
+table.n-table td.acts .n-btn.text { height: auto; padding: 0 6px; line-height: inherit; }
+.smart-table[data-density="compact"] table.n-table th,
+.smart-table[data-density="compact"] table.n-table td { padding-top: 7px; padding-bottom: 7px; }
+/* 窄档卡片固定用舒适间距、不响应密度(用户决定 2026-09-30,设计文档 5.3):触屏上紧凑只省 16px / 张、一屏多 0.2 张,收益可忽略,
+   而间距要留给 44px 触控目标。密度只作用于表格。 */
+.smart-table[data-density="compact"] table.n-table th.ck,
+.smart-table[data-density="compact"] table.n-table td.ck { padding-top: 7px; padding-bottom: 7px; }
+
+/* ============================================================
+   窄档卡片列表(每行一张卡片)
+   每张 = NCard size small + embedded:内边距 12px 16px(card/styles/_common.mjs paddingSmall)、
+   底色 actionColor(card/styles/light.mjs colorEmbedded)、圆角 3px、无描边;
+   标题 16px / 500(card/styles/_common.mjs titleFontSizeSmall、_styles/common/_common.mjs fontWeightStrong);
+   标签:值 = NDescriptions size small,行距 8px(descriptions/styles/_common.mjs tdPaddingSmall = 0 0 8px 0),
+   标签与值间距 14px 在两列窄卡里过挤,取 8px;标签用次要色 + 常规字重(macOS 取向,官方为 500),值用主色。
+   卡片间距 8px。
+   ============================================================ */
+.tbl-cards { display: none; flex-direction: column; gap: 8px; }
+.rc {
+  background: var(--n-fill); border-radius: 3px; padding: 12px 16px;
+  transition: background-color .15s;
+}
+.rc.sel { background: color-mix(in srgb, var(--n-primary) 8%, transparent); }
+.rc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.rc-title { min-width: 0; flex: 1 1 auto; font-size: 16px; font-weight: 500; line-height: 1.6; color: var(--n-text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-head .n-check { width: 18px; height: 18px; margin-top: 3px; }   /* checkbox/styles/_common.mjs sizeLarge = 18px */
+.rc-head .n-check::before { inset: -14px; }                         /* 热区 44×44(inset 相对内边距框,勾选框有 1px 边框:16 + 14×2 = 44;实测 inset -13px 只有 42px):Apple 44pt / Material 48dp 推荐值;只加不可见热区,外观不变;卡片右上角内边距 16 / 上 15,44px 热区不伸出卡片外 */
+.rc-desc { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 8px 0 0; font-size: 13px; line-height: 1.6; }   /* 有意偏离官方 NDescriptions small(14px):13px = macOS 正文字号;卡片套卡片后每对标签:值只有约 137px,14px 时「单据日期 2026-09-21」需要 142px 会折行 */
+.rc-desc > div { display: flex; flex-wrap: wrap; column-gap: 8px; min-width: 0; }
+.rc-desc dt { margin: 0; flex: none; font-weight: 400; color: var(--n-text-2); }
+.rc-desc dd { margin: 0; min-width: 0; color: var(--n-text); overflow-wrap: anywhere; }
+.rc-act { display: flex; align-items: center; gap: 4px; margin-top: 8px; padding-top: 4px; border-top: 1px solid var(--n-border); }
+.rc-act .n-btn.text { height: 44px; padding: 0 12px 0 0; font-size: 15px; }   /* 44px 高:与勾选框热区统一(用户要求「统一一样」),Apple 44pt 推荐值 */
+.rc-act .n-btn.text + .n-btn.text { padding: 0 0 0 12px; }   /* 「编辑」「删除」同为 44×44(左 / 右各留 12px 与邻居隔开,不再给第二个多加右内边距) */
+
+/* ============================================================
+   窄档筛选抽屉:NDrawer placement=bottom
+   遮罩 rgba(0,0,0,.3),淡入 0.2s:drawer/src/styles/index.cssr.mjs(drawer-mask)
+   顶部圆角 = borderRadius 3px:drawer/src/styles/index.cssr.mjs(bottom-placement)、_styles/common/_common.mjs
+   底色 modalColor、阴影 boxShadow3、标题 18px / 500:drawer/styles/light.mjs
+   header / body / footer 内边距 16px 24px、header/footer 1px dividerColor 分隔线:drawer/styles/light.mjs
+   滑入 translateY(100%)->0,0.3s cubic-bezier(0,0,.2,1)(ease-out):_styles/transitions/slide-in-from-bottom.mjs
+   ============================================================ */
+.mask { position: fixed; inset: 0; z-index: 2000; background: rgba(0, 0, 0, .3); }
+#overlay:has(.sheet.enter) .mask { animation: mask-in .2s cubic-bezier(.4, 0, 1, 1);   /* drawer/src/styles/index.cssr.mjs:145-149 enter = --n-bezier-in */ }
+@keyframes mask-in { from { opacity: 0; } to { opacity: 1; } }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 2001;
+  background: var(--n-modal-bg); color: var(--n-text); box-shadow: var(--sheet-shadow);
+  border-radius: 3px 3px 0 0; overflow: visible; font-size: 15px; line-height: 1.6;
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex; flex-direction: column; max-height: 85vh;     /* 条件再多也不顶出视口:中间 .sheet-body 滚动 */
+}
+.sheet.enter { animation: sheet-in .3s cubic-bezier(0, 0, .2, 1); }
+@keyframes sheet-in { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.sheet-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 24px; line-height: 1; font-size: 18px; font-weight: 500; color: var(--n-text-1);   /* drawer/styles/light.mjs:29 titleTextColor = textColor1 */
+  border-bottom: 1px solid var(--n-border);
+}
+.sheet-head, .sheet-foot { flex: none; }
+.sheet-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-bottom: 8px; }
+.sb { margin: 0 24px; padding: 16px 0 0; }
+.sb + .sb { margin-top: 16px; border-top: 1px solid var(--n-border); }
+.sb-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 14px; color: var(--n-text-2); }
+.sb-head .logic { margin-left: auto; width: 88px; flex: none; position: relative; }
+.sb-head > .n-btn.icon { margin-left: auto; }
+.sb-head .logic + .n-btn.icon { margin-left: 0; }
+.sb-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 8px; }
+.sb-row .f-val { grid-column: 1 / -1; }
+.sheet-foot {
+  display: flex; align-items: center; gap: 8px; margin-top: 16px; padding: 16px 24px;
+  border-top: 1px solid var(--n-border);
+}
+.sheet-foot > .n-btn.quiet:first-child { margin-right: auto; }
+.sheet-foot > div { display: flex; align-items: center; gap: 8px; }
+/* 抽屉内控件按 size="large":40px / 15px(_styles/common/_common.mjs) */
+.sheet .n-btn, .sheet .n-input, .sheet .n-select { height: 40px; font-size: 15px; }
+.sheet .n-btn { padding: 0 18px; }
+.sheet .n-btn.quiet { padding: 0 12px; }
+.sheet .n-btn.icon { width: 40px; height: 40px; padding: 0; }
+.sheet .n-input { padding: 0 14px; }
+.sheet .n-input input { font-size: inherit; }
+.sheet .f-val .n-input { padding-right: 34px; }
+/* 抽屉里的下拉挂在抽屉自己(.sheet 是 fixed,即定位包含块)上,而不是各控件上:
+   条件多时 .sheet-body 会滚动,挂在控件上会被滚动区裁掉;挂在 .sheet 上不受裁切,
+   在底部按钮栏上方向上展开、占满抽屉宽度,类似 iOS 的选项列表。73px = 按钮栏高(16+40+16)+ 1px 分隔线 */
+.sheet .f-field, .sheet .f-op, .sheet .f-val, .sheet .logic { position: static; }
+.sheet .f-val:has(> .ic) { position: relative; }   /* 含文本输入框的 .f-val 要给里面的放大镜(absolute)当定位祖先;它没有 .dd,不影响上面的挂载 */
+.sheet .dd { top: auto; left: 24px; right: 24px; bottom: calc(73px + env(safe-area-inset-bottom) + 8px); min-width: 0; }
+.sheet .dd .it { height: 40px; line-height: 40px; font-size: 15px; }        /* 触控有意放大到 heightLarge 40px;官方 NSelect 菜单选项恒为 34px(select-menu 不随控件 size 变),此处是有意偏离 */
+
+/* ============================================================
+   Toast:NMessage 风格,顶部居中
+   位置 top 12px:message/src/styles/index.cssr.mjs(message-container--top)
+   内边距 10px 20px、maxWidth 720:message/styles/_common.mjs(minWidth 420 主题变量存在但渲染 CSS 未使用,故不设;手机上 max-width 收进视口)
+   底色 popoverColor(暗 rgb(72,72,78))、阴影 boxShadow2、圆角 3px、无边框、字号 14px、行高 1.6:message/styles/light.mjs
+   transform 只用于水平居中,不做动画
+   ============================================================ */
+.toast {
+  position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 2003;
+  box-sizing: border-box; max-width: min(720px, calc(100vw - 24px));
+  padding: 10px 20px; border-radius: 3px; font-size: 14px; line-height: 1.6;
+  background: var(--n-popover-bg); color: var(--n-text); box-shadow: var(--n-shadow-pop);
+  pointer-events: none;
+}
+
+/* ============================================================
+   容器查询:中档 / 窄档(窄档写在后面,覆盖中档)
+   ============================================================ */
+@container (max-width: 1279px) {
+  .tb-left, .tb-right { display: contents; }
+  .tb {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: "title actions icons" "cond cond cond";
+  }
+}
+
+@container (max-width: 599px) {
+  .chips[data-n="1"] { display: flex; }
+
+  .tb {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: "title ops icons" "search search search";
+  }
+  /* 展开后多出一整行;默认态不声明 actions 行(空行也会产生 row-gap) */
+  .tb.ops-open {
+    grid-template-areas: "title ops icons" "actions actions actions" "search search search";
+  }
+  .tb-cond { display: none; }
+  .tb-search { display: flex; }
+  .tb .ops-toggle { display: inline-flex; }
+  .tb-actions { display: none; }
+  .tb.ops-open .tb-actions { display: flex; }
+  .tb-actions .n-btn { flex: 1 1 0; justify-content: center; }
+  .tb-actions .pop-wrap { flex: 1 1 0; }                                   /* 「更多」包了一层定位锚,等分宽度要落在锚上 */
+  .tb-actions .pop-wrap > .n-btn { width: 100%; }
+  .more-pop { right: 0; min-width: 0; }                                    /* 窄档菜单与按钮同宽,不越出屏幕 */
+
+  /* size="large":高 40px / 字号 15px(_styles/common/_common.mjs heightLarge、fontSizeLarge);
+     按钮内边距 0 18px(button/styles/_common.mjs paddingLarge)、输入框内边距 0 14px(input/styles/_common.mjs paddingLarge) */
+  .tb .n-btn, .tb .n-input, .tb .n-select, .tb-batch .n-btn { height: 40px; font-size: 15px; }
+  .tb .n-btn, .tb-batch .n-btn { padding: 0 18px; }
+  .tb .n-btn.quiet, .tb-batch .n-btn.quiet { padding: 0 12px; }
+  .tb-actions > .n-btn, .tb-actions .pop-wrap > .n-btn { padding-left: 0; padding-right: 0; }   /* 等分宽度:padding 会计入 flex 基准,「更多」外层锚没有 padding,不清零就 181 / 143 不等宽 */
+  .tb .n-btn.icon { width: 40px; height: 40px; padding: 0; }
+  .tb .n-input { padding: 0 14px; }
+  .tb .n-input input { font-size: inherit; }
+  .tb .f-val .n-input { padding-right: 34px; }
+  .tb-icons { gap: 0; }
+  /* 触控:下拉 / 列设置选项高度有意放大到 heightLarge 40px(官方 NSelect 菜单恒为 34px,属有意偏离) */
+  .dd .it, .col-pop .it { height: 40px; line-height: 40px; font-size: 15px; }
+  .more-pop .it { height: 44px; line-height: 44px; }                       /* 触控目标 44px(5.3) */
+
+  /* 批量栏:第 1 行 info | clear,第 2 行按钮;隐藏右侧图标 */
+  .tb-batch {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 12px;
+    grid-template-areas: "info clear" "acts acts";
+  }
+  .tb-batch .bt-info { grid-area: info; min-width: 0; height: 40px; }
+  .tb-batch .bt-clear { grid-area: clear; }
+  .tb-batch .bt-acts { grid-area: acts; }
+  .tb-batch .bt-acts .n-btn { flex: 1 1 0; justify-content: center; }
+  .tb-batch .tb-icons { display: none; }
+
+  /* 表格 -> 卡片列表 */
+  .tbl-table { display: none; }
+  .tbl-cards { display: flex; }
+
+  /* 分页项有意放大到 40px 便于触控(官方 NPagination large 项为 heightMedium 34px,属有意偏离) */
+
+  /* 模式 1 搜索表单单列 */
+  .search-grid { grid-template-columns: minmax(0, 1fr); }
+  .search-grid > .search-actions { grid-column: 1 / -1; }
+}
+
+/* ---------- 说明区 ---------- */
+.notes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 22px; }
+@media (max-width: 1240px) { .notes { grid-template-columns: 1fr; } }
+.note { background: var(--panel-bg); border: 1px solid var(--n-border); border-radius: 10px; padding: 16px 18px; }
+.note.full { grid-column: 1 / -1; }
+.note h3 { margin: 0 0 10px; font-size: 13px; letter-spacing: .02em; }
+.note ul { margin: 0; padding-left: 18px; }
+.note li { font-size: 13px; line-height: 1.85; color: var(--n-text-2); }
+.note li b { color: var(--n-text); font-weight: 600; }
+.note code { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 12px; background: var(--n-code-bg); padding: 1px 5px; border-radius: 3px; color: var(--n-text); }
+
+/* 待议模块 */
+.todo-hero { border: 1px dashed var(--n-border); border-radius: 10px; padding: 26px 24px; background: var(--panel-bg); text-align: center; color: var(--n-text-2); }
+.todo-hero b { display: block; color: var(--n-text); font-size: 15px; margin-bottom: 6px; }
+.todo-hero p { margin: 0 auto; font-size: 13px; line-height: 1.7; max-width: 580px; }
+.agenda li { margin-bottom: 4px; }
+.cur-state { font-size: 12.5px; line-height: 1.8; color: var(--n-text-2); background: var(--n-fill); border-radius: 7px; padding: 12px 14px; }
+.cur-state b { color: var(--n-text); }
+.cur-state code { background: var(--n-card-bg); }
+/* ============================================================
+   设计稿自身外壳的移动端适配(与被演示的组件无关)
+   ============================================================ */
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .side {
+    position: sticky; top: 0; z-index: 20; height: auto; overflow: visible;
+    border-right: 0; border-bottom: 1px solid var(--n-border); padding: 10px 12px;
+  }
+  .side h1, .side .sub, .side .group-title, #modPanel { display: none; }
+  #modList { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  #modList::-webkit-scrollbar { display: none; }
+  .mod { width: auto; flex: none; margin-bottom: 0; white-space: nowrap; }
+  .main { padding: 0; background: var(--n-body-bg); }
+  .crumb, .stage-head, .stage-desc { display: none; }
+  .viewport { padding: 12px; border: 0; border-radius: 0; }
+}
+
+/* ============================================================
+   模式 1 · 搜索独立卡片(mode1.css 追加)
+   ============================================================ */
+/* ============================================================
+   模式 1 · 搜索独立卡片(模块 1 宿主页面)—— 追加到样式表末尾
+   本片段写在基底规则之后,选择器特意多带一层 .search-card,用特异性而非顺序压过基底里旧的 .search-grid 规则
+   (基底的 4 列固定 / 容器窄档 1 列 / .search-actions 靠右,在模块 1 里由本片段接管)。
+   只用 CSS 变量,明暗两套由 :root / html[data-theme="dark"] 的 token 决定;无新增 transition / animation / transform。
+
+   官方来源(均在 D:\Andy\smart-naive-table\node_modules\naive-ui\es 下):
+   - 列数 '1 s:2 m:3 l:4' 与 responsive="screen":SmartTable 默认 searchCols = src/config.ts:81;
+     SearchForm.vue 把它传给 <n-grid :cols responsive="screen">。
+     断点:config-provider/src/config.mjs defaultBreakpoints = { xs:0, s:640, m:1024, l:1280, xl:1536, xxl:1920 };
+     判定 = vooks useBreakpoints(lib/use-breakpoints.js) 的 matchMedia(`(min-width: Npx)`) —— 视口宽度,不是容器宽度。
+     所以:<640 → 1 列;640–1023 → 2 列;1024–1279 → 3 列;≥1280 → 4 列。
+   - x-gap 16 / y-gap 12:SearchForm.vue 的 :x-gap="16" :y-gap="12"(基底 .search-grid 已是 gap:12px 16px,此处不重复)。
+   - n-grid 的 collapsed 判定:grid/src/Grid.mjs(childSpan + spanCounter + suffixSpan > collapsedRows * cols 则整格 display:none);
+     suffix 格 privateColStart = cols + 1 - suffixSpan,即恒落在行末最后一列 → 这里的 grid-column:-2 / -1。
+     折叠时隐藏哪些字段由 JS(sfVisibleCount)按同一判定给 [hidden]。
+   - 操作区 = <n-space>(搜索 primary / 重置 / 展开·收起 text primary):NSpace 默认 flex 起点对齐,所以按钮从该格左边起排,不是靠右。
+     NSpace 默认间距 8px 12px(space/styles/_common.mjs);NButton text 无边框无底,字色 primary(button/styles/light.mjs textColorTextPrimary)。
+   - 窄档控件 size="large":高 40px / 字号 15px(_styles/common/_common.mjs heightLarge / fontSizeLarge);
+     按钮内边距 0 18px(button/styles/_common.mjs paddingLarge)、输入框 0 14px(input/styles/_common.mjs paddingLarge)。
+   - NSelect clearable:清除图标悬停时替换箭头(select/src/Select.mjs suffix),此处用 .clr 同样处理。
+
+   依赖基底 token(不可改名):--n-primary --n-text-2 --n-text-3。
+   ============================================================ */
+
+/* ---------- 搜索表单网格:视口断点决定列数 ---------- */
+.search-card .search-grid { grid-template-columns: minmax(0, 1fr); }                           /* xs  <640  */
+@media (min-width: 640px)  { .search-card .search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }   /* s   */
+@media (min-width: 1024px) { .search-card .search-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }   /* m   */
+@media (min-width: 1280px) { .search-card .search-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }   /* l   */
+
+/* 折叠隐藏的字段整格不占位(.n-form-item 自带 display:flex 会压过 UA 的 [hidden],故显式写) */
+.search-card .search-grid > [hidden] { display: none; }
+
+/* 操作区永远是最后一格(suffix);从格左边起排,不靠右 */
+.search-card .search-grid > .search-actions { grid-column: -2 / -1; justify-content: flex-start; flex-wrap: wrap; gap: 8px 12px; }
+.search-card .search-actions .n-btn.text.link { color: var(--n-primary); padding: 0 4px; }
+.search-card .search-actions .n-btn.text.link:hover { color: var(--n-primary-hover); }   /* button/styles/light.mjs textColorTextHover = primaryColorHover */
+
+/* 控件占满 label 之外的整格;下拉菜单以它为定位锚 */
+.search-card .sf-ctl { position: relative; flex: 1 1 auto; min-width: 0; }
+.search-card .sf-ctl > .n-input,
+.search-card .sf-ctl > .n-select { width: 100%; }
+
+/* 下拉框的清除 ×:有值且悬停时替换箭头 */
+.search-card .n-select .clr { display: none; flex: none; align-items: center; justify-content: center; color: var(--n-text-3); }
+.search-card .n-select .clr:hover { color: var(--n-text-2); }
+.search-card .n-select:hover .clr { display: inline-flex; }
+.search-card .n-select:hover .clr ~ .caret { display: none; }
+.search-card .n-select .clr { position: absolute; right: 10px; top: 0; bottom: 0; width: 16px; }   /* 与 .caret 同位(right:10px、16px 宽),悬停时替换它 */
+
+/* ---------- 表格卡片工具栏 .tb.no-cond:没有条件构造器 / 窄档搜索框 ----------
+   注意:空行也会产生 row-gap,所以中 / 窄档不声明空的 cond / search 行 */
+.tb.no-cond {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);   /* 宽档:标题在左半、按钮区在右半(与模式 2 同一骨架) */
+}
+@container (max-width: 1279px) {
+  .tb.no-cond {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: "title actions icons";
+  }
+}
+@container (max-width: 599px) {
+  .tb.no-cond {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: "title ops icons";
+  }
+  .tb.no-cond.ops-open {
+    grid-template-areas: "title ops icons" "actions actions actions";
+  }
+  /* 模块 3 / 4:窄档第 2 行 = 筛选 / 排序两个按钮(卡片列表没有表头) */
+  .tb.no-cond.hdr-tb { grid-template-areas: "title ops icons" "search search search"; }
+  .tb.no-cond.hdr-tb.ops-open { grid-template-areas: "title ops icons" "actions actions actions" "search search search"; }
+
+  /* 搜索卡片的表单控件:窄档同样 size="large"(与 .tb / .sheet 的窄档规则一致) */
+  .search-card .n-btn, .search-card .n-input, .search-card .n-select { height: 40px; font-size: 15px; }
+  .search-card .n-btn { padding: 0 18px; }
+  .search-card .n-btn.text.link { padding: 0 12px; }
+  .search-card .n-input { padding: 0 14px; }
+  .search-card .n-input input { font-size: inherit; }
+  .search-card .n-select { padding: 0 26px 0 14px; }   /* 右内边距保持官方 26px,给绝对定位的箭头留位(selection/styles/_common.mjs) */
+  .search-card .n-form-item > label { font-size: 15px; }
+}
+
+/* ============================================================
+   分页 NPagination(模块 1 / 模块 2 的表格卡片底部)—— 追加到样式表末尾
+   本片段写在基底规则之后,同特异性靠顺序压过基底里旧的 .n-pagination(gap / margin-top)与 .n-pagination i 规则;
+   建议合并时把基底里那三行旧规则(含窄档里的两行)删掉,本片段不依赖它们是否还在。
+   只用 CSS 变量,明暗两套由 :root / html[data-theme="dark"] 的 token 决定。
+
+   官方来源(均在 naive-ui es 目录下):
+   - 尺寸(默认 size=medium,DataTable 内的分页不传 size):项 28px(itemSizeMedium = heightSmall)、字号 14px(itemFontSizeMedium = fontSizeSmall)、
+     内边距 0 4px、圆角 3px、项间距 0 0 0 8px、上/下一页图标 16px(buttonIconSizeMedium):pagination/styles/light.mjs:53-61、pagination/styles/_common.mjs:5-16;
+     heightSmall 28px / fontSizeSmall 14px / borderRadius 3px:_styles/common/_common.mjs:10,15,22。
+   - 项 = 透明底 + 1px 透明边;悬停字色 primaryColorHover;当前页字色 primaryColor + 1px primary 描边(暗色 primary alpha .52,即 --pg-active-bd);
+     上/下一页按钮 1px borderColor 描边、字色 textColor2、悬停不变;禁用:字色 textColorDisabled,禁用的按钮 / 当前页底 inputColorDisabled、
+     边 borderColor(暗色透明):pagination/styles/light.mjs:30-51、dark.mjs:21-25、pagination/src/styles/index.cssr.mjs:40-92。
+     按下态(itemTextColorPressed = primaryColorPressed)设计稿没有对应变量,与悬停同色。
+   - 分页整体右对齐、与表格间距 12px:data-table/src/styles/index.cssr.mjs:270-274 + data-table/styles/_common.mjs:13 paginationMargin。
+     DataTable 的 paginateSinglePage 默认 true(data-table/src/interface.mjs:11-14),单页 / 0 条也显示分页。
+   - size picker = NSelect size small:高 28px、字号 14px、宽度 unset(随内容)、与前一项间距 8px:pagination/src/Pagination.mjs:175-180,
+     pagination/styles/_common.mjs:14-15;菜单选项恒为 34px(Pagination 没传 menuSize,SelectMenu 取默认 medium):select/src/Select.mjs:56-58,801。
+   - 页码省略号:悬停图标换成快进 / 快退(Pagination.mjs:541-588),同时弹 Popselect(trigger=hover,宽 60px,高 = 选项高 34px × 4.6,选项居中,
+     无勾选标记,与触发器间距 popover space 6px):Pagination.mjs:599-638、popover/styles/_common.mjs:3、select-menu/styles/_common.mjs:4,8 的 padding 4px 0 / 选项 0 12px。
+   - quick jumper(默认关,库没开):文字 + 60px 宽的 NInput small(高 28px、内边距 0 10px)、左间距 8px:pagination/styles/_common.mjs:13、input/styles/_common.mjs:4。
+   - 窄档(容器 < 600):项放大到 40px、字号 15px、图标 18px 便于触控(官方 large 项为 heightMedium 34px,属有意偏离,与窄档其它控件的 40px / 15px 一致);
+     居中、可换行;项在 36–40px 间可收缩,保证 360 宽手机 5 个页码槽位 + 上下页一行放下。
+
+   依赖基底 token(不可改名):--n-text --n-text-3 --n-primary --n-primary-hover --n-border-strong --n-input-border --n-input-bg-disabled --pg-active-bd --n-item-hover
+   依赖基底类:.n-select(.val .caret .open)、.n-input、.dd、.dd .it(size picker 的下拉与页码菜单直接复用)。
+   动效:仅 color / border-color / background-color 0.15s,无 transform 动画、无 keyframes。
+   ============================================================ */
+.n-pagination {
+  --pg-size: 28px;
+  --pg-fs: 14px;
+  --pg-ico: 16px;
+  display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end;
+  gap: 0 8px; margin-top: 12px;
+  font-size: var(--pg-fs); color: var(--n-text);
+}
+.n-pagination-prefix { display: flex; align-items: center; margin-right: 8px; }
+
+/* 项:页码 / 省略号 / 上一页 / 下一页 */
+.n-pagination-item {
+  position: relative; display: flex; align-items: center; justify-content: center; flex: none;
+  min-width: var(--pg-size); height: var(--pg-size); padding: 0 4px;
+  border: 1px solid transparent; border-radius: 3px; background-color: transparent;
+  color: var(--n-text); cursor: pointer; user-select: none; -webkit-user-select: none;
+  transition: color .15s, border-color .15s, background-color .15s;
+}
+.n-pagination-item--button { padding: 0; border-color: var(--n-border-strong); }
+.n-pagination-item .ico { display: inline-flex; width: 1em; height: 1em; line-height: 1em; }
+.n-pagination-item .ico svg { display: block; width: 100%; height: 100%; }
+.n-pagination-item--button .ico { font-size: var(--pg-ico); }
+
+/* 悬停 / 当前页 / 禁用(顺序即优先级:禁用 > 当前页 > 按钮 > 悬停) */
+.n-pagination-item:not(.n-pagination-item--disabled):hover { color: var(--n-primary-hover); }
+.n-pagination-item--button:not(.n-pagination-item--disabled):hover { color: var(--n-text); }
+.n-pagination-item--disabled { cursor: not-allowed; color: var(--n-text-3); }
+.n-pagination-item--disabled.n-pagination-item--button { background-color: var(--n-input-bg-disabled); border-color: var(--n-input-border); }
+
+/* size picker:NSelect small,宽度随内容 */
+.n-pagination .pg-size { position: relative; display: flex; flex: none; }
+.n-pagination .pg-size .n-select { width: auto; height: 28px; font-size: 14px; }
+.n-pagination .dd.up { top: auto; bottom: calc(100% + 4px); }
+
+/* quick jumper(默认不出现) */
+.n-pagination-quick-jumper { display: flex; align-items: center; flex: none; white-space: nowrap; font-size: var(--pg-fs); color: var(--n-text); }
+.n-pagination-quick-jumper .n-input { flex: none; width: 60px; height: var(--pg-size); margin-left: 8px; padding: 0 10px; font-size: var(--pg-fs); }
+
+/* simple 简洁模式:页码输入框宽 60px(官方 pagination/styles/_common.mjs inputWidth*)、与上一页 / 下一页同高;「/ 总页数」是纯文字 */
+.n-pagination.simple .n-pagination-quick-jumper .n-input { margin-left: 0; padding: 0 6px; }
+.n-pagination.simple .n-pagination-quick-jumper input { text-align: center; }
+.pg-total { flex: none; font-size: var(--pg-fs); color: var(--n-text); white-space: nowrap; }
+
+/* 窄档 */
+@container (max-width: 599px) {
+  .n-pagination { --pg-size: 40px; --pg-fs: 15px; --pg-ico: 18px; flex-wrap: wrap; justify-content: center; row-gap: 8px; }
+  .n-pagination-item { flex: 0 1 auto; width: var(--pg-size); min-width: 36px; padding: 0; }
+  .n-pagination.simple { flex-wrap: nowrap; justify-content: flex-end; }   /* 窄档:单行,总条数靠左、翻页控件靠右 */
+  .n-pagination.simple .n-pagination-prefix { margin-right: auto; font-size: var(--pg-fs); white-space: nowrap; }
+}
+
+/* ===== fill viewport + virtual scroll ===== */
+/* ============================================================
+   页面占满视口 + 表格纵向虚拟滚动 —— 追加到样式表末尾(在分页片段之后)
+   本片段写在基底规则之后,同特异性靠顺序压过基底;基底里的规则一律不删。
+   只用基底已有的 CSS 变量(--n-th-bg 等),明暗两套由 :root / html[data-theme="dark"] 的 token 决定;
+   无新增 transition / animation / transform,无硬编码色值。
+
+   目标行为
+   1. 页面(document)不出现纵向滚动条:.app 高度 = 视口高度(100dvh,不支持时回退 100vh),不写死分辨率。
+   2. 视口高度一路传到表格卡片:.app > .main > #stage > .viewport > #preview > .smart-table > .n-card 逐层 flex 列 + min-height:0。
+      设计稿自己的 .crumb / .stage-head 是外壳,自然高度,计入(剩余高度 = 视口高 - 外壳)。
+   3. 表格卡片内部自上而下:工具栏(或批量栏)· chips · 表格主体(flex:1,唯一滚动的地方)· 分页条(固定在卡片底部)。
+      模块 1 有两张卡:搜索卡片自然高度,表格卡片吃剩余高度;搜索表单展开 / 收起时表格卡片自动伸缩。
+   4. 表格主体 = 单一滚动容器(overflow:auto,同时承担横向滚动,表头与主体天然对齐);表头 th 用 position:sticky; top:0;
+      行由 JS 按窗口渲染(可见行 + 上下缓冲),上下两个 spacer 撑出总高度。
+      窄档(容器 < 600)= 卡片列表在卡片内部滚动,同样窗口化。
+
+   官方对应(naive-ui 2.45.3 es/data-table/src):虚拟滚动需要 flex-height 或 max-height 才有滚动容器(MainTable.mjs:90、TableParts/Body.mjs:436、
+   use-scroll.mjs:14);flex-height 的样式是「卡片撑满父容器、表格主体 flex-basis:0 + flex-grow:1」(styles/index.cssr.mjs:32-35);
+   三者任一开启都强制 table-layout:fixed(DataTable.mjs:139-141)。
+
+   依赖基底 token:--n-th-bg(表头底色,sticky 表头要不透明)· --n-border(表格线,沿用基底 border 声明,只改宽度)
+   依赖基底类:.app .side .main .stage-head .viewport .smart-table .n-card .search-card .tb .tb-batch .chips .n-pagination
+              .tbl-table .tbl-scroll table.n-table th.ck td.ck td.acts .tbl-cards .rc .rc-desc
+   JS 侧约定(work4-js.html):.tbl-scroll[data-vs="table"] / .tbl-cards[data-vs="cards"] 是滚动容器;tbody 首尾各一个 .vs-pad 行(卡片列表是首尾两个 div.vs-pad),
+              高度由 JS 写内联 style;行高常量 VS_ROW = { normal: 45, compact: 37 } 与下面的 --vs-row-h 一致(JS 渲染后还会实测校正)。
+   ============================================================ */
+
+/* ---------- 1. 页面壳:占满视口,document 不滚动 ---------- */
+html, body { overflow: hidden; }
+.app { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
+.main {
+  display: flex; flex-direction: column; min-height: 0;
+  overflow-y: auto;                        /* 仅当视口小到放不下最小表格区(--vs-min-h)、或待议模块的长文档时,在主区内部滚动;document 永不滚动 */
+}
+.main > * { flex: none; }
+#stage { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+#stage > * { flex: none; }
+#stage > .viewport { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }   /* 视口 padding 就是表格卡片到视口底边的留白(桌面 22px,窄屏壳 12px) */
+#preview { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.smart-table { flex: 1 1 0; min-height: 0; }                                              /* 基底已是 flex 列 + gap 16px */
+.smart-table > .search-card { flex: none; }                                                /* 模块 1:搜索卡片自然高度 */
+.smart-table > .n-card:not(.search-card) {                                                  /* 放表格的那张卡片:吃剩余高度 */
+  flex: 1 1 0; min-height: 0; display: flex; flex-direction: column;
+}
+.smart-table > .n-card:not(.search-card) > * { flex: none; }                               /* 工具栏 / 批量栏 / chips / 分页条:自然高度 */
+
+@media (min-width: 861px) {
+  .app { grid-template-rows: minmax(0, 1fr); }
+  .side { height: 100%; }                                                                   /* 基底是 100vh;跟随 .app 的 100dvh */
+  .main { padding-bottom: 26px; }                                                           /* 与顶部内边距对称;基底的 64px 是给整页滚动留的 */
+}
+@media (max-width: 860px) {
+  .app { grid-template-rows: auto minmax(0, 1fr); }                                         /* 顶部模块条自然高度,其余给 .main */
+}
+
+/* ---------- 2. 表格主体:唯一滚动的地方 ---------- */
+.smart-table {
+  --vs-row-h: 45px;        /* 行高 = td 上下内边距 11 + 11 + 行高 --vs-line 22 + 下边框 1;JS 常量 VS_ROW.normal */
+  --vs-line: 22px;         /* 行内文字行高,盖住 22px 高的状态徽标,行高不随字体回退变化 */
+  --vs-card-gap: 8px;      /* 窄档卡片间距(基底 .tbl-cards 的 gap 8px) */
+  --vs-min-h: 160px;       /* 表格区最小高度:表头 + 约 3 行;视口再矮就让 .main 出滚动条,而不是把表格压没 */
+}
+.smart-table[data-density="compact"] {
+  --vs-row-h: 37px;        /* 7 + 7 + 22 + 1;JS 常量 VS_ROW.compact(卡片不响应密度,没有 --vs-card-gap 的紧凑值) */
+}
+
+.smart-table > .n-card:not(.search-card) > .tbl-table {
+  flex: 1 1 0; min-height: var(--vs-min-h); position: relative;
+}
+/* 滚动容器绝对定位铺满 .tbl-table:高度不依赖内容,行数再少表格区也撑满、分页条始终贴卡片底部 */
+.tbl-scroll {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  overflow: auto; overscroll-behavior: contain; overflow-anchor: none;                       /* 窗口换行时不让浏览器的滚动锚定去动 scrollTop */
+}
+
+/* 固定布局 + <colgroup>(JS 输出):窗口换行时列宽不抖;容器不够宽时靠内联 min-width 走横向滚动,不压扁列。
+   border-collapse:separate + 单元格只画右 / 下边框(首列补左边、表头补上边):视觉与原来的 collapse 一致,
+   但 collapse 下 sticky 表头的边框会跟着滚走,分开模型下边框属于单元格本身,sticky 时一起固定 */
+.tbl-scroll table.n-table { table-layout: fixed; width: 100%; border-collapse: separate; border-spacing: 0; }
+.tbl-scroll table.n-table th,
+.tbl-scroll table.n-table td {
+  border-width: 0 1px 1px 0; height: var(--vs-row-h); line-height: var(--vs-line);
+  vertical-align: middle; overflow: hidden; text-overflow: ellipsis;
+}
+.tbl-scroll table.n-table th:first-child,
+.tbl-scroll table.n-table td:first-child { border-left-width: 1px; }
+.tbl-scroll table.n-table thead th {
+  border-top-width: 1px; position: sticky; top: 0; z-index: 2;                               /* 底色沿用基底 th 的 --n-th-bg(不透明),行从底下滚过不会透出 */
+}
+
+/* 行高确定性:单元格里两种比 22px 行高更高的行内块(状态徽标 22px、带 1px 透明边的文字按钮 24px)会把行盒撑到 23~26px,
+   这里把它们压到 --vs-line 并顶对齐,行高只由 padding + --vs-line + 下边框决定(与字体回退无关) */
+.tbl-scroll table.n-table td .pill { vertical-align: top; }
+.tbl-scroll table.n-table td.acts .n-btn.text { height: var(--vs-line); vertical-align: top; }
+
+/* spacer 行:只占高度(高度由 JS 写在 tr 的内联 style 上),不画线、不响应悬停 */
+.tbl-scroll table.n-table tr.vs-pad { pointer-events: none; }
+.tbl-scroll table.n-table tr.vs-pad td { height: 0; padding: 0; border-width: 0; line-height: 0; }
+
+/* ---------- 3. 窄档:卡片列表在卡片内部滚动 ---------- */
+@container (max-width: 599px) {
+  .smart-table > .n-card:not(.search-card) > .tbl-cards {
+    display: block; flex: 1 1 0; min-height: var(--vs-min-h);                                /* 基底这里是 flex 列 + gap;窗口化用 spacer,改成块级 + 卡片下外边距(等价于 gap) */
+    overflow-y: auto; overscroll-behavior: contain; overflow-anchor: none;
+  }
+  .tbl-cards .rc { margin: 0 0 var(--vs-card-gap); }
+  .tbl-cards .vs-pad { margin: 0; }
+  /* 虚拟滚动要求每张卡片等高(spacer = 张数 × 间距):字段值单行显示、过长省略,不再折行 */
+  .tbl-cards .rc-desc > div { flex-wrap: nowrap; }
+  .tbl-cards .rc-desc dd { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+
+/* ============================================================
+   模块 3 / 4 · 表头排序 + 列头过滤(官方承载)
+   官方依据(naive-ui 2.45.3 es/data-table):
+   - 表头结构 Header.mjs:222-225:标题 + 排序箭头在 title-wrapper 里(title flex:1,箭头落在右端),漏斗 FilterButton 是 th 右缘的独立热区。
+   - styles/index.cssr.mjs:121-123:th--filterable padding-right 36px;--sortable 叠加 th-padding(12px)+ 36px。
+   - :155-170 排序箭头 = 单个 ArrowDown 图标(15px,margin-left 4px):desc 0°、asc 旋转 -180°、未激活 thIconColor、asc/desc 用 thIconColorActive;
+     :196-215 漏斗 = 绝对定位 right:0 宽 36px 整列高、居中、15px,hover / 面板打开底 thButtonColorHover。
+   - 筛选菜单 FilterMenu.mjs + cssr:332-352:选项组 padding 12px 12px 0、复选框间距 12px、最高 240px 可滚动;
+     底部 action padding 8px 12px、上边 1px 分隔线,「重置」(默认)+「确认」(primary),均为 size="tiny"(高 22px、字 12px、内边距 0 6px)。
+   有意偏离官方(已写入设计文档):
+   - 图标悬停表头才显示(官方常驻):透明度过渡 .15s;已排序 / 已筛选 / 面板打开的列常驻,否则看不出哪列在起作用。
+   - 排序箭头旋转取 .2s(官方 .3s),对齐本库「动效 ≤ .2s」的约束。
+   ============================================================ */
+table.n-table th.h-th { user-select: none; transition: background-color .15s; }
+.tbl-scroll table.n-table th.h-th { padding-right: 16px; }                                   /* 右缘留给列宽拖拽把手(8px)+ 8px 缓冲,图标簇不会贴到把手上 */
+.tbl-scroll table.n-table th.h-th.sortable { cursor: pointer; }                              /* 图标簇拥在标题后面,不再给右缘预留官方的 36px 热区 */
+.tbl-scroll table.n-table th.h-th.sortable:hover,
+.tbl-scroll table.n-table th.h-th.sorting,
+.tbl-scroll table.n-table th.h-th.f-open { background: var(--n-th-hover); }
+.th-wrap { display: flex; align-items: center; flex-wrap: nowrap; max-width: 100%; }
+.th-title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }   /* 官方是 flex:1(箭头被推到最右);这里不撑开,漏斗与箭头紧跟标题 */
+.th-sorter {
+  flex: none; width: 15px; height: 15px; margin-left: 4px; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--n-text-3);                                                                    /* thIconColor = iconColor */
+  transition: opacity .15s, color .15s;
+}
+.th-sorter svg { width: 100%; height: 100%; fill: currentColor; transition: transform .2s; transform: rotate(0deg); }
+.th-sorter.asc svg { transform: rotate(-180deg); }
+.th-sorter.on { color: var(--n-primary); }                                                   /* thIconColorActive = primaryColor */
+.th-filter {
+  position: relative; flex: none; width: 22px; height: 22px; margin-left: 8px; padding: 0; border: 0; border-radius: 3px; background: transparent;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 15px;
+  color: var(--n-text-3); transition: opacity .15s, color .15s, background-color .15s;
+}
+.th-filter + .th-sorter { margin-left: 6px; }                                               /* 顺序:标题 → 漏斗 → 排序箭头;间距:标题-漏斗 8px、漏斗-箭头 6px(漏斗按钮 22px 内图标 15px,两侧各再 3.5px,视觉间距约 11.5 / 9.5px) */
+.th-filter svg { width: 1em; height: 1em; fill: currentColor; }
+.th-filter:hover, .th-filter.show { background: var(--n-th-btn-hover); }
+.th-filter.on { color: var(--n-primary); }
+.hf-n {
+  position: absolute; top: -3px; right: -5px; min-width: 12px; height: 12px; padding: 0 3px; border-radius: 6px;
+  font-size: 10px; line-height: 12px; font-weight: 500; font-style: normal; text-align: center; background: var(--n-primary); color: var(--n-on-primary); pointer-events: none;
+}
+/* 悬停才显示:未激活的箭头 / 漏斗平时透明(仍占位,不引起回流);悬停表头、键盘聚焦到表头内、面板打开时显现 */
+.h-th .th-sorter:not(.on), .h-th .th-filter:not(.on):not(.show) { opacity: 0; }
+.h-th:hover .th-sorter,
+.h-th:hover .th-filter:not(.on):not(.show),
+.h-th:focus-within .th-filter:not(.on):not(.show),
+.h-th .th-filter:focus-visible:not(.on):not(.show) { opacity: 1; }   /* 选择器带 :not() 是为了优先级不低于上面的隐藏规则 */
+/* 触屏(没有悬停,如平板):未激活的箭头 / 漏斗改为淡显常驻,否则永远点不到(见 3.9) */
+@media (hover: none) {
+  .h-th .th-sorter:not(.on), .h-th .th-filter:not(.on):not(.show) { opacity: .5; }
+}
+
+/* 列头过滤面板:官方 NPopover(popoverColor + boxShadow2 + 圆角 3px,padding 0),经 overlay 定位到漏斗下方 */
+.hpop {
+  position: fixed; z-index: 2002; top: 0; left: 0; width: min(400px, calc(100vw - 16px));
+  background: var(--n-popover-bg); color: var(--n-text); border-radius: 3px; box-shadow: var(--n-shadow-pop);
+  font-size: 14px; line-height: 1.6;
+}
+.hpop.opt { width: auto; min-width: 168px; max-width: min(400px, calc(100vw - 16px)); }       /* 官方勾选菜单宽度由内容决定 */
+.hp-body { padding: 12px 12px 0; }
+.hp-group { display: flex; flex-direction: column; max-height: 240px; overflow-y: auto; }    /* cssr:332-337 */
+.hp-opt { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; cursor: pointer; white-space: nowrap; }
+.hp-row { display: grid; align-items: center; gap: 8px; margin-bottom: 12px; grid-template-columns: 56px 112px minmax(0, 1fr) 28px; }
+.hp-row .f-op, .hp-row .f-val, .hp-row .logic { position: relative; min-width: 0; }
+.hp-lead { font-size: 12px; color: var(--n-text-2); text-align: center; min-width: 0; }
+.hp-row .n-input, .hp-row .n-select { width: 100%; }
+.hp-tools { display: flex; align-items: center; margin: -4px 0 8px; }
+.hp-tools .n-btn.text { padding: 0 4px; font-size: 13px; height: 24px; }
+.hp-tools .n-btn.text[disabled] { color: var(--n-text-3); cursor: not-allowed; }
+.hp-hint { font-size: 12px; color: var(--n-text-2); margin-left: 8px; }
+.hp-foot { display: flex; flex-wrap: nowrap; justify-content: space-evenly; padding: 8px 12px; border-top: 1px solid var(--n-border); }   /* actionPadding 8px 12px;actionDividerColor = dividerColor */
+.hp-foot .n-btn { margin-right: 8px; }
+.hp-foot .n-btn:last-child { margin-right: 0; }
+.n-btn.tiny { height: 22px; padding: 0 6px; font-size: 12px; }                                /* NButton size=tiny:button/styles/_common.mjs heightTiny / paddingTiny / fontSizeTiny */
+.chip.click { cursor: pointer; }
+.chip.click:hover { background: color-mix(in srgb, var(--n-primary) calc(var(--tag-a) + 4%), transparent); }
+
+/* 列宽拖拽把手:官方 data-table-resize-button(容器 8px、线宽 2px;官方线高 50% 且静止时画表格线色,悬停 / 拖动时 thIconColorActive)。
+   有意偏离:静止时不画线(暗色下每个列界都冒出一截灰条),悬停才显示主色条,高度取 70%(参考用户给的示意图,比官方的 50% 更醒目)。
+   位置:居中骑在列界(表格竖线)上 —— 热区 11px 宽、以 th 内边距右缘为中心向两侧各出 5~6px(th 边线 1px 正好落在正中),竖条 3px 宽、高度 = 表头整行,压在线上。
+   为了让它能伸到相邻列里,表头 th 改 overflow:visible(标题的省略号由 .th-title / .th-txt 自己负责),并给各列 th 依次递减的 z-index
+   (靠前的列更高),否则伸进下一列的那一半会被下一列的背景盖住、也点不到。
+   拖动时额外拉一条贯穿整张表的 1px 引导线(.rz-guide),提前看到列边会落在哪;松手即消失。 */
+.tbl-scroll table.n-table thead th { overflow: visible; }
+.th-txt { display: block; overflow: hidden; text-overflow: ellipsis; }
+.th-resize { position: absolute; top: 0; bottom: 0; right: -6px; width: 11px; z-index: 3; cursor: col-resize; user-select: none; touch-action: none; }
+.th-resize::after {
+  content: ""; position: absolute; top: -1px; bottom: -1px; left: 4px; width: 3px; border-radius: 0;   /* 高度 = 表头整行(用户标注「与行高一致」):th 上 / 下各有 1px 边框,定位基准是内边距框,所以各外扩 1px 才与整行严格等高 */
+  background: transparent; transition: background-color .15s, box-shadow .15s;   /* 静止时不画(官方静止时画一条表格线色的细线,暗色下会在每个列界上冒出一截灰条,用户要求悬停才显示) */
+}
+.th-resize:hover::after, .th-resize.active::after { background: var(--n-primary); }   /* 悬停 / 拖动:主色圆角竖条 + col-resize 光标 */
+.th-resize.active::after { box-shadow: 0 0 0 3px color-mix(in srgb, var(--n-primary) 18%, transparent); }   /* 拖动中:再加一圈柔和光晕 */
+@media (hover: none) { .th-resize { right: -12px; width: 24px; } .th-resize::after { left: 10px; } }   /* 触屏:热区加宽到 24px(手指够得着),竖条仍居中压在线上 */
+.rz-guide { position: absolute; top: 0; width: 1px; z-index: 1; pointer-events: none; background: color-mix(in srgb, var(--n-primary) 55%, transparent); }
+body.rz-ing, body.rz-ing * { cursor: col-resize !important; user-select: none !important; }
+
+/* 窄档:筛选 / 排序入口 + 抽屉内的排序分段 / 选项 */
+.hdr-tb .tb-search .pop-wrap { flex: 1 1 0; }
+.hdr-tb .tb-search .n-btn { width: 100%; justify-content: center; }
+.hdr-tb .tb-search .badge { top: -6px; right: -6px; }
+.seg { display: inline-flex; flex: none; }
+.seg button {
+  height: 40px; padding: 0 14px; margin-left: -1px; border: 1px solid var(--n-border-strong); background: transparent;
+  color: var(--n-text); font: inherit; font-size: 15px; cursor: pointer; transition: background-color .15s, border-color .15s, color .15s;
+}
+.seg button:first-child { margin-left: 0; border-radius: 3px 0 0 3px; }
+.seg button:last-child { border-radius: 0 3px 3px 0; }
+.seg button:hover { color: var(--n-primary-hover); }
+.seg button.on { position: relative; z-index: 1; color: var(--n-primary); border-color: var(--n-primary); }   /* NRadioButton 选中:字与边 primary */
+.sd-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 24px; padding: 12px 0; }
+.sd-row + .sd-row { border-top: 1px solid var(--n-border); }
+.sd-row .lab { font-size: 15px; color: var(--n-text-1); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet .hp-body { padding: 16px 24px 0; }
+.sheet .hp-opt { height: 40px; margin-bottom: 0; font-size: 15px; }
+.sheet .hp-group { max-height: none; }
+.sheet .hp-row { grid-template-columns: minmax(0, 1fr) auto; gap: 12px 8px; margin-bottom: 16px; }
+.sheet .hp-row .hp-lead { grid-column: 1; grid-row: 1; text-align: left; font-size: 14px; }
+.sheet .hp-row .hp-lead.logic { width: 88px; }
+.sheet .hp-row .f-op { grid-column: 1 / -1; grid-row: 2; }
+.sheet .hp-row .f-val { grid-column: 1 / -1; grid-row: 3; }
+.sheet .hp-row > .n-btn.icon, .sheet .hp-row > .hp-del-ph { grid-column: 2; grid-row: 1; }
+.hp-del-ph { width: 28px; }
+.sheet .hp-tools .n-btn.text { font-size: 15px; height: 40px; }
+.sheet .hp-head-pick { padding: 16px 24px 0; }
+.sheet .hp-head-pick .f-field { position: static; }
+.sheet .hp-head-pick .n-select { width: 100%; }
+.sheet .hp-foot { display: none; }
+
+/* ============================================================
+   放大(页面内最大化,设计文档 7)
+   表格组件 position:fixed 铺满视口,盖住宿主的侧栏 / 顶栏 / 标签页;不调用浏览器全屏 API(浏览器自己的地址栏、书签栏仍在)。
+   层级:放大层 z-index 1999,**刻意低于 2000**——naive 的 Popover / Drawer / Modal / Select 菜单等动态浮层从 2000 起递增
+   (vdirs zindexable/z-index-manager.js:nextZIndex = 2000),放大后表格自己弹出的筛选气泡、抽屉、提示才会显示在它上面。
+   背景取页面底色 --n-body-bg(与宿主页面的 NLayout embedded 灰底一致)。落地时库用 Teleport 到 body,避免宿主祖先的 transform / filter
+   把 fixed 的包含块变成那个祖先(原型没有这类祖先,直接 fixed)。
+   ============================================================ */
+.smart-table[data-max] {
+  position: fixed; inset: 0; z-index: 1999; box-sizing: border-box; padding: 16px;
+  background: var(--n-body-bg);
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <h1>SmartTable 设计方案</h1>
+    <p class="sub">v2.1.1 → 3.0.0 · 2026-09-30</p>
+    <div class="group-title">设计模块</div>
+    <div id="modList"></div>
+    <div id="modPanel"></div>
+  </aside>
+
+  <main class="main">
+    <div class="crumb" id="crumb"></div>
+    <div class="stage-head">
+      <h2 id="stageName"></h2>
+    </div>
+    <p class="stage-desc" id="stageDesc"></p>
+    <div id="stage"></div>
+  </main>
+</div>
+<div id="overlay"></div>
+
+<script>
+/* ============================================================
+   模块清单 —— 整体设计方案的目录,谈一块加一块
+   ============================================================ */
+const MODULES = {
+  search:  { no: 1, name: '搜索区布局',   status: 'done', statusTxt: '已定' },
+  toolbar: { no: 2, name: '按钮与工具栏', status: 'done', statusTxt: '已定' },
+  filter:  { no: 3, name: '过滤筛选',     status: 'done', statusTxt: '已定' },
+  sort:    { no: 4, name: '排序',         status: 'done', statusTxt: '已定' },
+};
+
+/* ============================================================
+   演示数据 —— 条件求值是真的,所以数据也要是真的
+   ============================================================ */
+const FIELD_DEFS = [
+  { key: 'no',      label: '物料编码', type: 'text' },
+  { key: 'name',    label: '物料名称', type: 'text' },
+  { key: 'owner',   label: '负责人',   type: 'text' },
+  { key: 'status',  label: '单据状态', type: 'select', options: ['已审核', '未审核', '已关闭'] },
+  { key: 'dept',    label: '部门',     type: 'select', options: ['采购部', '生产部', '仓储部'] },
+  { key: 'amount',  label: '金额',     type: 'number' },
+  { key: 'bizDate', label: '单据日期', type: 'date' },
+  { key: 'memo',    label: '备注',     type: 'text' },
+];
+
+/* 前 8 行是最初的演示数据,原样保留在最前面(筛选/勾选/删除等演示都以它们为锚) */
+const DATA_BASE = [
+  { no: 'M1000-A', name: '不锈钢法兰',   owner: '张伟', status: '已审核', dept: '采购部', amount: 12800, bizDate: '2026-09-21', memo: '加急' },
+  { no: 'M1000-B', name: '不锈钢弯头',   owner: '李娜', status: '已审核', dept: '采购部', amount: 3400,  bizDate: '2026-09-20', memo: '' },
+  { no: 'M1024',   name: '碳钢管件',     owner: '王强', status: '未审核', dept: '生产部', amount: 980,   bizDate: '2026-08-18', memo: '待核价' },
+  { no: 'M2011',   name: '密封垫片',     owner: '刘洋', status: '已关闭', dept: '仓储部', amount: 260,   bizDate: '2026-07-17', memo: '' },
+  { no: 'M1000-C', name: '不锈钢三通',   owner: '张伟', status: '已审核', dept: '生产部', amount: 25600, bizDate: '2026-09-12', memo: '样品' },
+  { no: 'M3050',   name: '高压球阀',     owner: '陈静', status: '未审核', dept: '采购部', amount: 47200, bizDate: '2026-06-30', memo: '' },
+  { no: 'M2087',   name: '测试专用件',   owner: '李娜', status: '已关闭', dept: '生产部', amount: 120,   bizDate: '2026-05-11', memo: '测试' },
+  { no: 'M1099',   name: '不锈钢螺栓',   owner: '赵磊', status: '已审核', dept: '仓储部', amount: 1560,  bizDate: '2026-09-02', memo: '' },
+];
+
+/* 2000 行确定性数据:前 8 行 = DATA_BASE,其余用固定种子的 mulberry32 生成,刷新页面数据不变。
+   物料编码 M{4 位数}(可带 -A~-F 后缀)整体唯一;数字部分不取 1000(留给「新增」的 M1000-D、-E…),也避开 DATA_BASE 已占用的编码。 */
+const DATA_TOTAL = 2000;
+function mulberry32(seed) {
+  return function () {
+    seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function genRows(base, total) {
+  const rnd = mulberry32(20260929);
+  const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
+  const wpick = (pairs) => { let x = rnd() * pairs.reduce((s, p) => s + p[1], 0); for (const [v, w] of pairs) { if ((x -= w) < 0) return v; } return pairs[0][0]; };
+  const MATERIALS = ['不锈钢', '碳钢', '合金钢', '铸钢', '镀锌', '黄铜', '铝合金'];
+  const PIPE = ['法兰', '弯头', '三通', '球阀', '闸阀', '截止阀', '管件', '大小头', '接头'];
+  const BOLT = ['螺栓', '螺母', '垫片'];
+  const DN = ['DN15', 'DN20', 'DN25', 'DN32', 'DN40', 'DN50', 'DN65', 'DN80', 'DN100', 'DN125', 'DN150', 'DN200'];
+  const BOLT_SPEC = ['M8', 'M10', 'M12', 'M16', 'M20', 'M24'];
+  const OWNERS = ['张伟', '李娜', '王强', '刘洋', '陈静', '赵磊', '周敏', '吴凡', '郑浩', '孙婷', '黄磊', '何欣'];
+  const MEMOS = ['加急', '待核价', '样品', '测试', '补货', '返工', '质检中', '已比价', '客户指定', '缺货'];
+  const DAY0 = Date.UTC(2026, 0, 1), DAYS = 272;   // 2026-01-01 ~ 2026-09-29 共 272 天
+  const used = new Set(base.map(r => r.no));
+  const rows = [];
+  while (rows.length < total - base.length) {
+    let no;
+    do { no = 'M' + (1001 + Math.floor(rnd() * 8999)) + (rnd() < 0.25 ? '-' + 'ABCDEF'[Math.floor(rnd() * 6)] : ''); } while (used.has(no));
+    used.add(no);
+    const isBolt = rnd() < 0.18;
+    const name = isBolt ? `${pick(MATERIALS)}${pick(BOLT)} ${pick(BOLT_SPEC)}` : `${pick(MATERIALS)}${pick(PIPE)} ${pick(DN)}`;
+    rows.push({
+      no, name, owner: pick(OWNERS),
+      status: wpick([['已审核', 55], ['未审核', 32], ['已关闭', 13]]),
+      dept: wpick([['采购部', 40], ['生产部', 35], ['仓储部', 25]]),
+      amount: Math.round(100 + Math.pow(rnd(), 2) * 59900),
+      bizDate: new Date(DAY0 + Math.floor(rnd() * DAYS) * 864e5).toISOString().slice(0, 10),
+      memo: rnd() < 0.2 ? pick(MEMOS) : '',
+    });
+  }
+  return rows.sort((a, b) => (a.bizDate < b.bizDate ? 1 : a.bizDate > b.bizDate ? -1 : (a.no < b.no ? -1 : 1)));   // 新单据在前
+}
+const DATA = [...DATA_BASE.map(r => ({ ...r })), ...genRows(DATA_BASE, DATA_TOTAL)];
+
+/* 分页默认值 —— 按库的(新)默认,不是宿主覆盖:每页 100 条、可选 [100, 500, 1000]、显示 size picker。
+   库现状(src 尚未改)= defaultPageSize 10(SmartTable.vue:62、useSmartTable.ts:32、types.ts:244/304 注释)、pageSizes [10, 20, 50](config.ts:75)、showSizePicker true(config.ts:76);
+   用户已决定把默认改为 100 与 [100, 500, 1000],原型先按新默认做。
+   分页统一用官方 simple 简洁模式(页码输入框 / 总页数,见 paginationHtml),自带页码跳转,所以不再有页码序列 / 省略号 / pageSlot / showQuickJumper。
+   库没有默认 prefix(总数文案只能由宿主经 #pagination-prefix 插槽给),prefix 在这里保留成宿主开启的形态;窄档不显示。 */
+const PAGER_CFG = {
+  defaultPageSize: 100,
+  pageSizes: [100, 500, 1000],
+  showSizePicker: true,
+  prefix: (info) => `共 ${info.itemCount} 条`,   // 宿主经 #pagination-prefix 插槽提供(库默认没有);原型宿主开启,与此前「共 N 条」一致
+};
+const PAGER_LOCALE = { goto: '跳至', selectionSuffix: '页' };   // naive-ui es/locales/common/zhCN.mjs:84-87
+
+
+/* 比较符。novalue=不需要值 */
+const ALL_OPS = [
+  { code: 'equal',       zh: '等于' },
+  { code: 'notEqual',    zh: '不等于' },
+  { code: 'gt',          zh: '大于' },
+  { code: 'gte',         zh: '大于等于' },
+  { code: 'lt',          zh: '小于' },
+  { code: 'lte',         zh: '小于等于' },
+  { code: 'contains',    zh: '包含' },
+  { code: 'notContains', zh: '不包含' },
+  { code: 'isNull',      zh: '为空',     novalue: 1 },
+  { code: 'isNotNull',   zh: '不为空',   novalue: 1 },
+  { code: 'like',        zh: '类似于' },
+  { code: 'startsWith',  zh: '左包含' },
+  { code: 'endsWith',    zh: '右包含' },
+  { code: 'in',          zh: 'IN' },
+  { code: 'notIn',       zh: 'NOT IN' },
+];
+const OP = Object.fromEntries(ALL_OPS.map(o => [o.code, o]));
+
+/* 按字段类型分发可用比较符 —— 对应设计文档 6.3 的 DEFAULT_ACTIONS 扩展 */
+const OPS_BY_TYPE = {
+  text:   ['contains','notContains','equal','notEqual','startsWith','endsWith','like','isNull','isNotNull','in','notIn'],
+  number: ['equal','notEqual','gt','gte','lt','lte','isNull','isNotNull','in','notIn'],
+  date:   ['equal','notEqual','gt','gte','lt','lte','isNull','isNotNull'],
+  select: ['equal','notEqual','in','notIn','isNull','isNotNull'],
+};
+
+/* ============================================================
+   条件求值 —— 与设计文档里 filter.ts 的目标行为一致
+   ============================================================ */
+function isBlank(v) {
+  if (v === null || v === undefined) return true;
+  if (typeof v === 'string') return v.trim() === '';
+  if (Array.isArray(v)) return v.length === 0;
+  return false;
+}
+/* 无值操作符:条件本身不带值,不能按「没填」丢掉(设计文档 6.2 的坑) */
+const VALUELESS = new Set(['isNull', 'isNotNull']);
+
+function isActive(c) {
+  return !!c.field && !!c.op && (VALUELESS.has(c.op) || !isBlank(c.value));
+}
+
+function cmp(a, b) {
+  const na = Number(a), nb = Number(b);
+  if (!Number.isNaN(na) && !Number.isNaN(nb) && a !== '' && b !== '') return na === nb ? 0 : (na > nb ? 1 : -1);
+  const sa = String(a), sb = String(b);
+  return sa === sb ? 0 : (sa > sb ? 1 : -1);
+}
+function toList(v) { return String(v).split(/[,，\s]+/).filter(Boolean); }
+function likeToRe(v) {
+  const esc = String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp('^' + esc.replace(/%/g, '.*').replace(/_/g, '.') + '$', 'i');
+}
+
+function matchOne(row, c) {
+  const raw = row[c.field];
+  const s = raw === null || raw === undefined ? '' : String(raw);
+  const v = c.value;
+  switch (c.op) {
+    case 'isNull':      return isBlank(raw);
+    case 'isNotNull':   return !isBlank(raw);
+    case 'equal':       return cmp(raw, v) === 0;
+    case 'notEqual':    return cmp(raw, v) !== 0;
+    case 'gt':          return cmp(raw, v) > 0;
+    case 'gte':         return cmp(raw, v) >= 0;
+    case 'lt':          return cmp(raw, v) < 0;
+    case 'lte':         return cmp(raw, v) <= 0;
+    case 'contains':    return s.toLowerCase().includes(String(v).toLowerCase());
+    case 'notContains': return !s.toLowerCase().includes(String(v).toLowerCase());
+    case 'startsWith':  return s.toLowerCase().startsWith(String(v).toLowerCase());
+    case 'endsWith':    return s.toLowerCase().endsWith(String(v).toLowerCase());
+    case 'like':        return likeToRe(v).test(s);
+    case 'in':          return toList(v).some(x => cmp(raw, x) === 0);
+    case 'notIn':       return !toList(v).some(x => cmp(raw, x) === 0);
+    default:            return true;
+  }
+}
+
+
+/* 同字段多条件按其 logic 连接;跨字段一律 AND(现有 FilterState 的结构决定,见设计文档 7.4)。
+   同字段的「且/或」选择器只出现在该字段的第 2 条及之后,所以以后续条件的 logic 为准。 */
+function applyConditions(rows, conds) {
+  const active = conds.filter(isActive);
+  if (!active.length) return rows;
+  const byField = {};
+  active.forEach(c => { (byField[c.field] ||= []).push(c); });
+  return rows.filter(row =>
+    Object.values(byField).every(group =>
+      group.slice(1).some(c => c.logic === 'or')
+        ? group.some(c => matchOne(row, c))
+        : group.every(c => matchOne(row, c)),
+    ),
+  );
+}
+
+/* ============================================================
+   布局档位 —— 按表格卡片外宽(#preview 宽度)划分,阈值见设计文档 2.6
+   窄 < 600、中 < 960、宽 >= 960。三档的排布由 CSS 容器查询完成,
+   JS 只用它决定「筛选」是弹气泡还是弹底部抽屉。
+   ============================================================ */
+// 单行 1:1 需要左半区(标题 + 条件构造器,最小约 615px)放得下,整行 ≥ 约 1280;更窄落到两行。与 CSS 的 @container 阈值保持一致
+const T_NARROW = 600, T_WIDE = 1280;
+const tierOf = (w) => (w < T_NARROW ? 'narrow' : w < T_WIDE ? 'mid' : 'wide');
+
+/* ============================================================
+   状态
+   ============================================================ */
+const defaultMain = () => ({ field: 'no', op: 'contains', value: '', logic: 'and' });
+/* 模式 1 搜索表单:对齐 src/SearchForm.vue + config.ts 默认值
+   cols = '1 s:2 m:3 l:4'(n-grid responsive="screen",按视口宽度);collapsible + collapsedRows = 1;x-gap 16 / y-gap 12 由 CSS 给。
+   断点数值取自 naive-ui es/config-provider/src/config.mjs defaultBreakpoints:xs 0 / s 640 / m 1024 / l 1280 / xl 1536 / xxl 1920,
+   判定方式同 vooks useBreakpoints:matchMedia(`(min-width: Npx)`)。 */
+const BREAKPOINTS = { xs: 0, s: 640, m: 1024, l: 1280, xl: 1536, xxl: 1920 };
+const SEARCH_COLS = '1 s:2 m:3 l:4';
+const SEARCH_COLLAPSED_ROWS = 1;
+const sfDefault = () => Object.fromEntries(FIELD_DEFS.map(f => [f.key, '']));
+
+const state = {
+  mod: 'toolbar',
+  theme: 'light',
+  // 模式 1(模块 1)搜索表单:草稿 sf 随输入即改;点搜索才把快照写进 sfApplied(null = 没有搜索条件)
+  sf: sfDefault(),
+  sfApplied: null,
+  sfCollapsed: true,  // 搜索卡片折叠到首行(collapsible 的初始态)
+  sfCols: 0,          // 上次渲染时的列数;视口跨过断点才重绘
+  // 条件构造器(主条)
+  main: { field: 'no', op: 'contains', value: '', logic: 'and' },
+  // 多条件面板里的附加条件
+  more: [],
+  applied: null,      // 点了搜索之后生效的条件快照
+  open: null,         // 当前展开的下拉/面板 id
+  panelOpen: false,   // 多条件面板(宽/中档是气泡,窄档是底部抽屉)
+  checked: [],        // 勾选行的 no(跨页保留;表头全选只针对当前页)
+  pager: {            // 各模块各自独立的页码状态
+    search:  { page: 1, size: PAGER_CFG.defaultPageSize },
+    toolbar: { page: 1, size: PAGER_CFG.defaultPageSize },
+    filter:  { page: 1, size: PAGER_CFG.defaultPageSize },
+    sort:    { page: 1, size: PAGER_CFG.defaultPageSize },
+  },
+  // 模块 3 / 4(列头过滤 + 排序):各一份独立的 { fv: FilterState, sorts: [{ key, order }] },见 H_CFG
+  h: { filter: { fv: {}, sorts: [] }, sort: { fv: {}, sorts: [{ key: 'bizDate', order: 'descend' }] } },
+  max: false,         // 放大:表格组件在页面内最大化,盖住宿主的侧栏 / 顶栏 / 标签页(设计文档 7);Esc 或再点一次还原
+  colW: {},           // 列宽拖拽:被「钉住」的列宽(px)。空 = 没拖过,名称列弹性;一旦拖过,全部列冻结成当前渲染宽度,最后一个数据列不钉宽、吸收剩余宽度(见 fillColKey;不再补占位列)
+  hp: null,           // 列头过滤面板 { key, d:{ adv, checked, logic, conds } }(宽/中档是气泡,窄档是底部抽屉)
+  sd: null,           // 窄档排序抽屉 { sorts }
+  opsOpen: false,     // 窄档「操作」是否展开
+  colsOpen: false,    // 列设置气泡
+  moreOpen: false,    // 「更多」菜单(设计文档 7.3)
+  compact: true,      // 密度:宿主经 defaultDensity / 个人设置给定,表格内不提供切换;默认紧凑(用户决定 2026-09-30;库 2.1.1 的默认是 comfortable,改默认属于对已发布用户的行为变更)
+  hidden: [],         // 列设置里隐藏的列 key
+  tier: 'wide',       // 'narrow' | 'mid' | 'wide',renderPreview 渲染前按容器宽度刷新
+  tbH: 0,             // 勾选前工具栏高度,批量栏用它占位避免表格跳动
+  tbW: 0,             // tbH 是在多宽的容器下量的
+  toast: null,        // { id, msg }
+};
+
+/* ============================================================
+   图标
+   ============================================================ */
+const I_SEARCH  = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14" stroke-linecap="round"/></svg>`;
+const I_REFRESH = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v5h-5"/></svg>`;
+const I_EXPAND   = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>`;   // 放大 = 四角括号向外展开,用户选定方案 B(docs/icons-maximize.html;C 窗口方框的「还原」与复制图标混淆,弃用)
+const I_COMPRESS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>`;   // 还原 = 四角括号向内收拢
+const I_SETTING = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M18 18h2"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>`;
+const I_MORE    = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 7 5 5-5 5M14 7l5 5-5 5"/></svg>`;
+const I_CHEV    = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>`;
+const I_X       = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>`;
+const I_PLUS    = `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>`;
+const I_CHECK   = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5l3 3 6-7"/></svg>`;
+const I_DASH    = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h8"/></svg>`;
+/* 表头图标:path 逐字取自 naive-ui es/_internal/icons/ArrowDown.mjs(排序箭头)与 Filter.mjs(漏斗),viewBox 均为 0 0 28 28 */
+const I_ARROW   = `<svg viewBox="0 0 28 28" aria-hidden="true"><path d="M23.7916,15.2664 C24.0788,14.9679 24.0696,14.4931 23.7711,14.206 C23.4726,13.9188 22.9978,13.928 22.7106,14.2265 L14.7511,22.5007 L14.7511,3.74792 C14.7511,3.33371 14.4153,2.99792 14.0011,2.99792 C13.5869,2.99792 13.2511,3.33371 13.2511,3.74793 L13.2511,22.4998 L5.29259,14.2265 C5.00543,13.928 4.53064,13.9188 4.23213,14.206 C3.93361,14.4931 3.9244,14.9679 4.21157,15.2664 L13.2809,24.6944 C13.6743,25.1034 14.3289,25.1034 14.7223,24.6944 L23.7916,15.2664 Z"/></svg>`;
+const I_FUNNEL  = `<svg viewBox="0 0 28 28" aria-hidden="true"><path d="M17,19 C17.5522847,19 18,19.4477153 18,20 C18,20.5522847 17.5522847,21 17,21 L11,21 C10.4477153,21 10,20.5522847 10,20 C10,19.4477153 10.4477153,19 11,19 L17,19 Z M21,13 C21.5522847,13 22,13.4477153 22,14 C22,14.5522847 21.5522847,15 21,15 L7,15 C6.44771525,15 6,14.5522847 6,14 C6,13.4477153 6.44771525,13 7,13 L21,13 Z M24,7 C24.5522847,7 25,7.44771525 25,8 C25,8.55228475 24.5522847,9 24,9 L4,9 C3.44771525,9 3,8.55228475 3,8 C3,7.44771525 3.44771525,7 4,7 L24,7 Z"/></svg>`;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
+const fieldOf = (k) => FIELD_DEFS.find(f => f.key === k);
+
+/* ============================================================
+   列定义 —— 表格与卡片共用,列设置里隐藏的列两边同步隐藏
+   ============================================================ */
+/* w = 表格列宽(px);flex = 弹性列(不给宽度、吃掉剩余空间,w 只当它的最小宽度)。表格是 table-layout: fixed + <colgroup>,窗口换行时列宽不会抖。
+   取值:单元格左右内边距各 12px + 内容宽 —— 物料编码 M1000-A 约 62px;名称最长约「合金钢截止阀 DN125」129px;
+   状态徽标约 50px;金额右对齐 59,900 约 48px;日期 2026-09-21 约 80px;操作列两个文字按钮(各 40px)+ 间隔约 84px。均留有余量 */
+const COLS = [
+  { key: 'no', label: '物料编码', w: 112 }, { key: 'name', label: '物料名称', w: 176, flex: 1 },
+  { key: 'owner', label: '负责人', w: 88 }, { key: 'status', label: '单据状态', w: 96 },
+  { key: 'dept', label: '部门', w: 88 }, { key: 'amount', label: '金额', num: 1, w: 104 },
+  { key: 'bizDate', label: '单据日期', w: 112 },
+];
+const CK_W = 40, ACTS_W = 112;   // 复选列(同 th.ck 的 40px)、操作列
+const visibleCols = () => COLS.filter(c => !state.hidden.includes(c.key));
+
+/* 模块 2(条件构造器)的已生效条件 */
+const activeConds = () => (state.applied ?? []).filter(isActive);
+
+/* 模块 1(搜索卡片)的已生效条件:草稿快照 sfApplied 逐字段翻成条件,跨字段 AND;
+   text → contains,select / number / date → equal(与 SmartTable 的搜索项默认比较符一致) */
+function sfConds() {
+  const a = state.sfApplied;
+  if (!a) return [];
+  return FIELD_DEFS.filter(f => !isBlank(a[f.key])).map(f => ({
+    field: f.key, op: f.type === 'text' ? 'contains' : 'equal', value: String(a[f.key]).trim(), logic: 'and',
+  }));
+}
+
+/* 当前模块的筛选结果:两个模块各有一份筛选状态(sf* vs main/more/applied),互不串 */
+const currentConds = () => condsOfKey(state.mod);
+/* 各模块的条件来源:模块 1 = 搜索表单快照;模块 2 = 条件构造器;模块 3 / 4 = 列头过滤态(每列一个 FilterValue,摊平成带字段的条件,同列 logic 取该列的 logic) */
+function condsOfKey(k) {
+  if (k === 'search') return sfConds();
+  if (k === 'filter' || k === 'sort') {
+    const out = [];
+    for (const [field, fv] of Object.entries(state.h[k].fv)) fv.conditions.forEach(c => out.push({ field, op: c.op, value: c.value, logic: fv.logic }));
+    return out;
+  }
+  return state.applied ?? [];
+}
+/* 全部筛选结果(不分页)。渲染期缓存:renderPreview 一次同步绘制里 state 不会变,重复取值直接复用;
+   绘制之外(勾选/删除/裁剪勾选等)每次现算,所以不存在过期缓存 */
+let frMemo = null;
+const filteredRows = () => frMemo ?? computeRows();
+const isM2 = () => state.mod === 'toolbar';
+const hdrMod = () => state.mod === 'filter' || state.mod === 'sort';   // 模块 3 / 4:列头过滤 + 排序的宿主页面
+const HS = () => state.h[state.mod];
+
+/* ============================================================
+   模块 3 / 4 · 列头排序与过滤(对齐官方 DataTable,见 .th-* 样式块的依据)
+   ============================================================ */
+/* 宿主的列声明(对应库的列配置):sorters 里有的列才可排序。
+   模块 3:sorter: true(官方单列互斥);模块 4:sorter: { multiple: n }(官方多列,n 大者优先,与点击顺序无关:use-sorter.mjs:48-52)+ 日期列 defaultSortOrder: 'descend'。
+   列头过滤:所有数据列都可过滤;有候选项的列(单据状态 / 部门)是 options 模式,其余是 condition 模式(useColumns.ts:154)。 */
+const H_CFG = {
+  filter: { multiple: false, sorters: { no: {}, amount: {}, bizDate: {} } },
+  sort:   { multiple: true,  sorters: { dept: { multiple: 3 }, amount: { multiple: 2 }, bizDate: { multiple: 1 } } },
+};
+const defaultSorts = (mod) => (mod === 'sort' ? [{ key: 'bizDate', order: 'descend' }] : []);
+const sortable = (key) => key in H_CFG[state.mod].sorters;
+const sortOrderOf = (key) => HS().sorts.find(s => s.key === key)?.order ?? false;
+/* 官方点击循环:升序 → 降序 → 取消(data-table/src/utils.mjs getNextOrderOf) */
+const nextOrder = (o) => (o === false ? 'ascend' : o === 'ascend' ? 'descend' : false);
+/* 改某列排序:多列模式保留其它列;单列模式互斥(点别的列替换,取消只在该列正是当前排序时生效) */
+function applySort(list, key, order, multiple) {
+  if (multiple) return order ? [...list.filter(s => s.key !== key), { key, order }] : list.filter(s => s.key !== key);
+  return order ? [{ key, order }] : list.filter(s => s.key !== key);
+}
+/* 生效的排序,按声明的 multiple 大者优先 */
+function activeSorts() {
+  if (!hdrMod()) return [];
+  const sorters = H_CFG[state.mod].sorters;
+  return HS().sorts.filter(s => s.key in sorters).slice().sort((a, b) => (sorters[b.key].multiple ?? 0) - (sorters[a.key].multiple ?? 0));
+}
+function computeRows() {
+  let rows = applyConditions(DATA, currentConds());
+  const ss = activeSorts();
+  if (ss.length) {
+    rows = rows.slice().sort((a, b) => {
+      for (const s of ss) {
+        const x = a[s.key], y = b[s.key];
+        const c = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'zh');
+        if (c) return s.order === 'ascend' ? c : -c;
+      }
+      return 0;
+    });
+  }
+  return rows;
+}
+const fieldMode = (key) => (fieldOf(key)?.type === 'select' ? 'options' : 'condition');
+const blankCond = (key) => ({ op: OPS_BY_TYPE[fieldOf(key).type][0], value: '' });
+const MAX_CONDS = 5;   // 单列多条件上限(设计文档 3.6)
+/* options 列的当前过滤值能否被勾选无损表达:全是 equal 且「或」(或仅一条),或恰好一条 in(设计文档 3.7)。返回勾选集合,不能表达返回 null */
+function optionsRepr(fv) {
+  const act = fv.conditions.filter(c => isActive({ field: 'x', ...c }));
+  if (act.length === 1 && act[0].op === 'in') return toList(act[0].value);
+  if (act.length && act.every(c => c.op === 'equal') && (act.length === 1 || fv.logic === 'or')) return act.map(c => c.value);
+  return null;
+}
+/* 打开面板时从已提交的过滤值生成草稿;options 列表达不了就自动展开高级条件并原样显示(不丢信息) */
+function hpDraft(key) {
+  const fv = HS().fv[key];
+  if (fieldMode(key) === 'options') {
+    if (!fv) return { adv: false, checked: [], logic: 'and', conds: [blankCond(key)] };
+    const r = optionsRepr(fv);
+    if (r) return { adv: false, checked: r, logic: 'and', conds: [blankCond(key)] };
+    return { adv: true, checked: [], logic: fv.logic, conds: fv.conditions.map(c => ({ ...c })) };
+  }
+  return { adv: true, checked: [], logic: fv?.logic ?? 'and', conds: fv ? fv.conditions.map(c => ({ ...c })) : [blankCond(key)] };
+}
+const draftActive = (key, conds) => conds.filter(c => isActive({ field: key, ...c }));
+/* 草稿 → 过滤值(null = 清除该列) */
+function hpToFv() {
+  const { key, d } = state.hp;
+  if (fieldMode(key) === 'options' && !d.adv) {
+    return d.checked.length ? { logic: 'or', conditions: d.checked.map(v => ({ op: 'equal', value: v })) } : null;
+  }
+  const conds = draftActive(key, d.conds).map(c => ({ op: c.op, value: VALUELESS.has(c.op) ? '' : c.value }));
+  return conds.length ? { logic: conds.length > 1 ? d.logic : 'and', conditions: conds } : null;
+}
+/* 勾选形态展开高级条件时把勾选转写成条件(0 → 空白行、1 → equal、≥2 → 一条 in) */
+function checkedToConds(key, checked) {
+  if (!checked.length) return [blankCond(key)];
+  if (checked.length === 1) return [{ op: 'equal', value: checked[0] }];
+  return [{ op: 'in', value: checked.join(',') }];
+}
+/* 高级形态能否收起回勾选:草稿里没有有效条件,或有效条件能被勾选表达(设计文档 3.7) */
+function canCollapse() {
+  const { key, d } = state.hp;
+  const act = draftActive(key, d.conds);
+  return !act.length || !!optionsRepr({ logic: d.logic, conditions: act });
+}
+function hpClose() { state.hp = null; state.open = null; }
+function hpCommit() {
+  const fv = hpToFv(), key = state.hp.key;
+  if (fv) HS().fv[key] = fv; else delete HS().fv[key];
+  hpClose(); firstPage(state.mod); pruneChecked(true);
+}
+function dropHfCond(key, idx) {
+  const fv = HS().fv[key];
+  if (!fv) return;
+  fv.conditions.splice(idx, 1);
+  if (!fv.conditions.length) delete HS().fv[key]; else if (fv.conditions.length < 2) fv.logic = 'and';
+  firstPage(state.mod); pruneChecked(true);
+}
+const hfCount = (key) => HS().fv[key]?.conditions.length ?? 0;
+const hfColsActive = () => Object.keys(HS().fv).length;
+/* 列头面板 / 抽屉里的选项与值在窄档全部取 40px 触控尺寸(CSS 处理);popover 用 sm */
+/* ---- 列宽拖拽 ----
+   库已有能力(2.1.0):resizable 默认 false、下限 resizeMinWidth = 60(config.ts:82-84)、配合 storageKey 记住宽度、拖过后冻结各列宽度;原型里宿主开启 resizable。剩余宽度由最后一个数据列吸收(取代库 2.1.1 的占位列,见设计文档 3.11)。
+   官方把手:data-table-resize-button 容器宽 8px、居中线宽 2px 高 50%、悬停 / 拖动时线变 thIconColorActive(styles/_common.mjs:10-11、index.cssr.mjs:164-183)。 */
+const RESIZE_MIN = 60;
+const isFrozen = () => Object.keys(state.colW).length > 0;
+const cw = (c) => state.colW[c.key] ?? (hdrMod() ? hdrColW(c) : c.w);
+/* 拖拽下限:库默认 60;有排序 / 过滤图标的表头,还要放得下「标题两个字 + 图标簇」,否则图标会被标题盖住或被截断 */
+const colMin = (c) => (hdrMod() ? Math.max(RESIZE_MIN, 12 + 44 + 30 + (sortable(c.key) ? 21 : 0) + 16) : RESIZE_MIN);   // 标题留 44px = 两个字 + 省略号
+/* 拖过列宽后吸收剩余宽度的列 = 最后一个数据列(不钉宽度,col 不写 width)。「操作」代表右侧固定的操作列,不能当填充:
+   官方算固定列偏移时,没有数字宽度的固定列按 0 算(data-table/src/use-scroll.mjs:34-78),库也因此一直给固定列补最小宽度(useColumns.ts:286) */
+const fillColKey = (cols) => cols[cols.length - 1]?.key;
+const tableMinW = (cols) => CK_W + cols.reduce((s, c) => s + cw(c), 0) + ACTS_W;
+const hdrColW = (c) => {
+  const s = sortable(c.key);
+  return Math.max(c.w, 12 + Math.ceil(c.label.length * 14.5) + 30 + (s ? 21 : 0) + 16);   // th 左内边距 + 标题 + 漏斗(8+22)+ 箭头(6+15)+ 右内边距(16,含 8px 把手)
+};
+
+/* ============================================================
+   分页 —— 对齐 NPagination / NDataTable(本地模式):
+   页码 = 用户值夹进 [1, 总页数];总页数 = max(1, ceil(总数 / 每页条数));0 条时仍是「第 1 页 / 共 1 页」(pagination/src/Pagination.mjs:115-125、
+   data-table/src/use-table-data.mjs:138-141),DataTable 的 paginateSinglePage 默认 true(interface.mjs:11-14),0 条也显示分页。
+   ============================================================ */
+const pagerKey = () => (state.mod === 'search' || hdrMod() ? state.mod : 'toolbar');
+const pageCountOf = (total, size) => Math.max(1, Math.ceil(total / size));
+const clampPage = (p, count) => Math.max(1, Math.min(count, p));
+
+/* 当前模块的分页快照:全部筛选结果 rows、当前页的行 slice、总页数 count;顺带把越界的页码写回 state */
+function pageInfo() {
+  const rows = filteredRows();
+  const pg = state.pager[pagerKey()];
+  const count = pageCountOf(rows.length, pg.size);
+  pg.page = clampPage(pg.page, count);
+  const start = (pg.page - 1) * pg.size;
+  return { rows, total: rows.length, size: pg.size, count, page: pg.page,
+    startIndex: start, endIndex: Math.min(start + pg.size, rows.length) - 1, slice: rows.slice(start, start + pg.size) };
+}
+
+/* 数据变了(增/删)之后,两个模块的页码都夹回合法范围:当前页超出总页数时落到最后一页 */
+function clampPagers() {
+  for (const k of ['search', 'toolbar', 'filter', 'sort']) {
+    const pg = state.pager[k];
+    pg.page = clampPage(pg.page, pageCountOf(applyConditions(DATA, condsOfKey(k)).length, pg.size));
+  }
+}
+const firstPage = (k) => { state.pager[k].page = 1; };   // 筛选条件变了 -> 回第 1 页(对齐库远程模式 search()/reset() 的 page = 1,useSmartTable.ts:60-72)
+
+/* 翻页:返回页码是否真的变了(同页不触发,对齐 Pagination.mjs doUpdatePage) */
+function goPage(p) {
+  const pg = state.pager[pagerKey()], count = pageInfo().count;
+  const next = clampPage(Math.trunc(p), count);
+  if (!Number.isFinite(next) || next === pg.page) return false;
+  pg.page = next;
+  return true;
+}
+/* 改每页条数:保持当前页码,超出新总页数时落到最后一页(Pagination.mjs:225-237 doUpdatePageSize;DataTable 本地模式同样只夹不重置) */
+function setPageSize(n) {
+  const pg = state.pager[pagerKey()];
+  if (!PAGER_CFG.pageSizes.includes(n) || n === pg.size) return false;
+  pg.size = n;
+  pg.page = clampPage(pg.page, pageCountOf(filteredRows().length, n));
+  return true;
+}
+
+/* ============================================================
+   数据操作 —— 全部是真的改 DATA / state,渲染与 toast 由调用方负责
+   ============================================================ */
+/* 勾选态里只留还存在的行;visibleOnly=true 时只留当前筛选结果里的行 */
+function pruneChecked(visibleOnly) {
+  const keep = new Set((visibleOnly ? filteredRows() : DATA).map(r => r.no));
+  state.checked = state.checked.filter(no => keep.has(no));
+}
+
+function toggleRow(no) {
+  if (!DATA.some(r => r.no === no)) return;
+  const i = state.checked.indexOf(no);
+  if (i >= 0) state.checked.splice(i, 1); else state.checked.push(no);
+}
+
+/* 全选只针对当前页(NDataTable 表头复选框:use-check.mjs allRowsChecked / someRowsChecked 都按 paginatedData 算,doCheckAll 也只勾当前页):
+   当前页已全选 → 只取消这一页的行;否则(含半选)→ 选中这一页的行。其它页的勾选不动 */
+function toggleAll() {
+  const nos = pageInfo().slice.map(r => r.no);
+  if (!nos.length) return;
+  const cur = new Set(state.checked);
+  const all = nos.every(no => cur.has(no));
+  if (all) { const drop = new Set(nos); state.checked = state.checked.filter(no => !drop.has(no)); }
+  else state.checked = [...state.checked, ...nos.filter(no => !cur.has(no))];
+}
+
+const clearSel = () => { state.checked = []; };
+
+function nextNo() {
+  const used = new Set(DATA.map(r => r.no));
+  const seq = [...'DEFGHIJKLMNOPQRSTUVWXYZABC'];
+  for (const ch of seq) if (!used.has('M1000-' + ch)) return 'M1000-' + ch;
+  let n = 1;
+  while (used.has('M1000-' + n)) n++;
+  return 'M1000-' + n;
+}
+
+function addRow() {
+  const row = {
+    no: nextNo(), name: '新建物料', owner: '张伟', status: '未审核', dept: '采购部',
+    amount: 0, bizDate: '2026-09-29', memo: '',   // 演示数据锚在 2026-09,用固定日期,不随系统时钟漂移
+  };
+  DATA.unshift(row);
+  clampPagers();
+  return row.no;
+}
+
+function delRow(no) {
+  const i = DATA.findIndex(r => r.no === no);
+  if (i < 0) return false;
+  DATA.splice(i, 1);
+  pruneChecked(false);
+  clampPagers();
+  return true;
+}
+
+/* 批量审核:勾选行的状态改为「已审核」,返回真正发生变化的行数;完成后取消选择 */
+function batchApprove() {
+  let n = 0;
+  DATA.forEach(r => { if (state.checked.includes(r.no) && r.status === '未审核') { r.status = '已审核'; n++; } });
+  state.checked = [];
+  return n;
+}
+
+function batchDel() {
+  const nos = new Set(state.checked);
+  let n = 0;
+  for (let i = DATA.length - 1; i >= 0; i--) if (nos.has(DATA[i].no)) { DATA.splice(i, 1); n++; }   // 作用于全部已勾选行,含其它页的
+  pruneChecked(false);
+  clampPagers();
+  return n;
+}
+
+/* 应用条件:主条 + 面板里的附加条件一起生效;勾选态里只留仍在结果里的行 */
+function doSearch() {
+  state.applied = [{ ...state.main }, ...state.more.map(c => ({ ...c }))];
+  state.open = null; state.panelOpen = false;
+  firstPage('toolbar');
+  pruneChecked(true);
+}
+function doReset() {
+  state.main = defaultMain();
+  state.more = []; state.applied = null; state.open = null; state.panelOpen = false;
+  firstPage('toolbar');
+  pruneChecked(true);
+}
+/* 摘掉一个已生效条件,条件构造器里同步成剩下的条件,免得 chip 没了输入框里还留着 */
+function dropChip(i) {
+  const conds = activeConds();
+  conds.splice(i, 1);
+  state.applied = conds;
+  state.main = conds.length ? { ...conds[0] } : defaultMain();
+  state.more = conds.slice(1).map(c => ({ ...c }));
+  state.open = null;
+  firstPage('toolbar');
+  pruneChecked(true);
+}
+
+/* 模式 1:点「搜索」(或字段里回车)才把草稿写成生效快照;「重置」清空草稿并重查 */
+function doSfSearch() {
+  state.sfApplied = { ...state.sf };
+  state.open = null;
+  firstPage('search');
+  pruneChecked(true);
+}
+function doSfReset() {
+  state.sf = sfDefault();
+  state.sfApplied = null;
+  state.open = null;
+  firstPage('search');
+  pruneChecked(true);
+}
+
+/* 当前视口下的搜索列数:按 SEARCH_COLS('1 s:2 m:3 l:4')解析,取「最大的已命中断点」的值 —— 同 seemly parseResponsivePropValue */
+function sfColsNow() {
+  const parts = SEARCH_COLS.split(/\s+/);
+  let cols = Number(parts.find(p => !p.includes(':')) ?? 1);
+  parts.filter(p => p.includes(':'))
+    .map(p => p.split(':'))
+    .filter(([k]) => k in BREAKPOINTS)
+    .sort((a, b) => BREAKPOINTS[a[0]] - BREAKPOINTS[b[0]])
+    .forEach(([k, v]) => { if (matchMedia(`(min-width: ${BREAKPOINTS[k]}px)`).matches) cols = Number(v); });
+  return cols;
+}
+/* 折叠时可见的字段数。n-grid 原判定是 childSpan + spanCounter + suffixSpan > collapsedRows * cols 即隐藏(Grid.mjs:198),
+   字段 span 都是 1、suffix(操作区)span 1,故原值 = collapsedRows * cols - 1;1 列(视口 < 640)时为 0,折叠态一个字段都看不到。
+   有意偏离:至少露出 1 个字段(1 列时操作区落到它下面的下一行),窄档折叠态 = 首个字段 + 一行「搜索 / 重置 / 展开」。
+   这是对库 SearchForm 的改动(3.0.0),不是 naive-ui 官方行为。 */
+const sfVisibleCount = (cols) => Math.max(1, SEARCH_COLLAPSED_ROWS * cols - 1);
+
+/* ============================================================
+   通用小件
+   ============================================================ */
+function checkHtml(on, half, act, v) {
+  const cls = 'n-check' + (on ? ' on' : '') + (half ? ' half' : '');
+  const attr = act
+    ? ` data-act="${act}"${v != null ? ` data-v="${esc(v)}"` : ''} role="checkbox" aria-checked="${half ? 'mixed' : on}"`
+    : '';
+  return `<span class="${cls}"${attr}>${on ? I_CHECK : half ? I_DASH : ''}</span>`;
+}
+const badgeHtml = (n) => `<span class="badge">${n}</span>`;
+
+function cellHtml(c, r) {
+  if (c.key === 'status') return `<span class="pill ${r.status === '已关闭' ? 'off' : ''}">${esc(r.status)}</span>`;
+  if (c.num) return Number(r[c.key]).toLocaleString();
+  return esc(r[c.key]);
+}
+
+/* ============================================================
+   条件行(真可交互)
+   ============================================================ */
+/* 值控件:按字段类型分发。ph 覆盖文本输入框的占位符(窄档输入框用「搜索 <字段名>」) */
+function valCtrlHtml(c, id, sm, ph) {
+  const fd = fieldOf(c.field);
+  const smc = sm ? ' sm' : '';
+  if (VALUELESS.has(c.op)) {
+    return `<div class="n-input${smc}" style="pointer-events:none"><span style="color:var(--n-text-3)">不需要填值</span></div>`;
+  }
+  if (fd?.type === 'select' && !['in', 'notIn'].includes(c.op)) {
+    const vDD = state.open === `val:${id}` ? `<div class="dd">${fd.options.map(o =>
+      `<div class="it ${o === c.value ? 'on' : ''}" data-pick="val:${id}:${o}">${o}</div>`).join('')}</div>` : '';
+    return `<div class="n-select${smc} ${state.open === `val:${id}` ? 'open' : ''}" data-open="val:${id}">
+      <span class="val ${c.value ? '' : 'ph'}">${esc(c.value || ph || '请选择')}</span><span class="caret">▾</span></div>${vDD}`;
+  }
+  const holder = ph ?? (fd?.type === 'date' ? 'yyyy-MM-dd'
+    : fd?.type === 'number' ? '请输入数字'
+    : ['in', 'notIn'].includes(c.op) ? '多个值用逗号隔开' : '请输入');
+  return `<div class="n-input${smc}"><input type="text" value="${esc(c.value ?? '')}" placeholder="${esc(holder)}" enterkeyhint="search" data-input="${id}" /></div>
+    <span class="ic">${I_SEARCH}</span>`;
+}
+
+function fValHtml(c, id, sm, ph) {
+  return `<div class="f-val ${VALUELESS.has(c.op) ? 'novalue' : ''}">${valCtrlHtml(c, id, sm, ph)}</div>`;
+}
+
+/* 同字段多条的「且/或」;不同字段固定为「且」(ghost=false 时不画占位) */
+function logicCtrl(c, id, ghost = true) {
+  const i = Number(id.slice(1));
+  const same = state.more.slice(0, i).some(x => x.field === c.field) || state.main.field === c.field;
+  if (!same) return ghost ? `<span class="logic-ghost">且</span>` : '';
+  const key = `logic:${id}`;
+  return `<div class="logic">
+    <div class="n-select sm ${state.open === key ? 'open' : ''}" data-open="${key}">
+      <span class="val">${c.logic === 'or' ? '或' : '且'}</span><span class="caret">▾</span>
+    </div>
+    ${state.open === key ? `<div class="dd">
+      <div class="it ${c.logic === 'and' ? 'on' : ''}" data-pick="${key}:and">且</div>
+      <div class="it ${c.logic === 'or' ? 'on' : ''}" data-pick="${key}:or">或</div>
+    </div>` : ''}
+  </div>`;
+}
+
+function condRowHtml(c, id, opts = {}) {
+  const fd = fieldOf(c.field);
+  const ops = OPS_BY_TYPE[fd?.type ?? 'text'];
+  const sm = opts.sm ? ' sm' : '';
+
+  const fieldDD = state.open === `field:${id}` ? `<div class="dd">${FIELD_DEFS.map(f =>
+    `<div class="it ${f.key === c.field ? 'on' : ''}" data-pick="field:${id}:${f.key}">${f.label}</div>`).join('')}</div>` : '';
+
+  const opDD = state.open === `op:${id}` ? `<div class="dd">${ops.map(o =>
+    `<div class="it ${o === c.op ? 'on' : ''}" data-pick="op:${id}:${o}">${OP[o].zh}</div>`).join('')}</div>` : '';
+
+  return `
+    <div class="f-field">
+      <div class="n-select${sm} ${state.open === `field:${id}` ? 'open' : ''}" data-open="field:${id}">
+        <span class="val">${esc(fd?.label ?? '选择字段')}</span><span class="caret">▾</span>
+      </div>${fieldDD}
+    </div>
+    <div class="f-op">
+      <div class="n-select${sm} ${state.open === `op:${id}` ? 'open' : ''}" data-open="op:${id}">
+        <span class="val">${esc(OP[c.op]?.zh ?? '比较符')}</span><span class="caret">▾</span>
+      </div>${opDD}
+    </div>
+    ${fValHtml(c, id, opts.sm, opts.ph)}`;
+}
+
+/* 多条件面板(宽/中档的气泡内容) */
+function condPanelHtml() {
+  const rows = state.more.map((c, i) => {
+    const id = `m${i}`;
+    return `<div class="row">${logicCtrl(c, id)}${condRowHtml(c, id, { sm: true })}
+      <button class="n-btn icon" data-act="delCond" data-v="${i}" title="删除这条">${I_X}</button></div>`;
+  }).join('');
+
+  return `<div class="cond-panel" data-stop>
+    <div class="row">
+      <span class="logic-ghost">条件</span>
+      ${condRowHtml(state.main, 'pmain', { sm: true })}
+      <span></span>
+    </div>
+    ${rows}
+    <div class="panel-foot">
+      <button class="n-btn quiet sm" data-act="addCond">${I_PLUS} 添加条件</button>
+      <div style="display:flex;gap:8px">
+        <button class="n-btn quiet sm" data-act="reset">重置</button>
+        <button class="n-btn sm" data-act="search">确认</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* 底部抽屉(窄档的「筛选」)—— 与气泡同一份条件,只换容器 */
+function sheetHtml(enter) {
+  const items = [
+    { c: state.main, id: 'pmain', n: 1, del: false },
+    ...state.more.map((c, i) => ({ c, id: `m${i}`, n: i + 2, del: i })),
+  ];
+  return `<div class="sheet${enter ? ' enter' : ''}" data-stop>
+    <div class="sheet-head"><b>筛选</b>
+      <button class="n-btn icon" data-act="closePanel" title="关闭">${I_X}</button></div>
+    <div class="sheet-body">${items.map(({ c, id, n, del }) => `<div class="sb">
+      <div class="sb-head"><span>条件 ${n}</span>${id === 'pmain' ? '' : logicCtrl(c, id, false)}${
+        del === false ? '' : `<button class="n-btn icon" data-act="delCond" data-v="${del}" title="删除这条">${I_X}</button>`}</div>
+      <div class="sb-row">${condRowHtml(c, id)}</div>
+    </div>`).join('')}</div>
+    <div class="sheet-foot">
+      <button class="n-btn quiet" data-act="addCond">${I_PLUS} 添加条件</button>
+      <button class="n-btn" data-act="reset">重置</button>
+      <button class="n-btn primary" data-act="search">确认</button>
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   表格 / 工具栏
+   ============================================================ */
+/* 分页组件图标:path 逐字取自 naive-ui es/_internal/icons/{Backward,Forward}.mjs */
+const PG_ICO = {
+  prev: '<svg viewBox="0 0 20 20" fill="none"><path d="M12.2674 15.793C11.9675 16.0787 11.4927 16.0672 11.2071 15.7673L6.20572 10.5168C5.9298 10.2271 5.9298 9.7719 6.20572 9.48223L11.2071 4.23177C11.4927 3.93184 11.9675 3.92031 12.2674 4.206C12.5673 4.49169 12.5789 4.96642 12.2932 5.26634L7.78458 9.99952L12.2932 14.7327C12.5789 15.0326 12.5673 15.5074 12.2674 15.793Z" fill="currentColor"/></svg>',
+  next: '<svg viewBox="0 0 20 20" fill="none"><path d="M7.73271 4.20694C8.03263 3.92125 8.50737 3.93279 8.79306 4.23271L13.7944 9.48318C14.0703 9.77285 14.0703 10.2281 13.7944 10.5178L8.79306 15.7682C8.50737 16.0681 8.03263 16.0797 7.73271 15.794C7.43279 15.5083 7.42125 15.0336 7.70694 14.7336L12.2155 10.0005L7.70694 5.26729C7.42125 4.96737 7.43279 4.49264 7.73271 4.20694Z" fill="currentColor"/></svg>',
+};
+
+/* 分页组件(独立于表格 / 卡片:只吃 pageInfo() 的快照)。**所有宽度统一用官方 NPagination 的 simple 简洁模式**(用户决定 2026-09-30):
+   [prefix] · 上一页 · 页码输入框 / 总页数 · 下一页 · size picker
+   官方 simple 结构:pagination/src/Pagination.mjs 的 simple 分支(Input 宽 60px + 「 / 」+ 总页数);输入页码回车 / 失焦跳转(handleQuickJumperChange),输入框始终显示当前页。
+   窄档(容器 < 600)去掉 size picker,保留总条数 prefix:「共 N 条(靠左)  ‹ [页码] / 总页数 ›(靠右)」单行(JS 按 state.tier,同一处决定,不再另设容器查询) */
+function paginationHtml(pi) {
+  const cfg = PAGER_CFG, narrow = state.tier === 'narrow';
+  const { page, count } = pi;
+  const prevOff = page <= 1, nextOff = page >= count;
+  const cls = (...c) => 'n-pagination-item ' + c.filter(Boolean).join(' ');
+  const btn = (off, act, ico) => `<div class="${cls('n-pagination-item--button', off && 'n-pagination-item--disabled')}"${off ? '' : ` data-act="${act}"`}><span class="ico">${ico}</span></div>`;
+
+  const prefix = cfg.prefix
+    ? `<div class="n-pagination-prefix">${esc(cfg.prefix({ page, pageSize: pi.size, pageCount: count, startIndex: pi.startIndex, endIndex: pi.endIndex, itemCount: pi.total }))}</div>` : '';
+
+  const suffix = PAGER_LOCALE.selectionSuffix;
+  const sizeOpen = state.open === 'pgsize';
+  const sizePicker = cfg.showSizePicker && !narrow
+    ? `<div class="pg-size"><div class="n-select${sizeOpen ? ' open' : ''}" data-open="pgsize" role="combobox" aria-expanded="${sizeOpen}"><span class="val">${pi.size} / ${suffix}</span><span class="caret">▾</span></div>${
+        sizeOpen ? `<div class="dd">${cfg.pageSizes.map(n =>
+          `<div class="it${n === pi.size ? ' on' : ''}" data-pick="pgsize:${n}">${n} / ${suffix}</div>`).join('')}</div>` : ''}</div>` : '';
+
+  return `<div class="n-pagination simple">${prefix}${btn(prevOff, 'pgPrev', PG_ICO.prev)}<div class="n-pagination-quick-jumper"><div class="n-input"><input type="text" inputmode="numeric" value="${page}" data-pgjump data-simple aria-label="当前页" /></div></div><span class="pg-total">/ ${count}</span>${btn(nextOff, 'pgNext', PG_ICO.next)}${sizePicker}</div>`;
+}
+
+/* 模式 2 用的表格 + 窄档卡片列表:两份都渲染,由 CSS 容器查询决定显示哪份 */
+function cardHtml(r, cols, ck, i) {
+  const sel = ck.has(r.no);
+  const [head, ...rest] = cols;
+  return `<div class="rc${sel ? ' sel' : ''}" data-i="${i}">
+    <div class="rc-head"><span class="rc-title">${cellHtml(head, r)}</span>${checkHtml(sel, false, 'toggleRow', r.no)}</div>
+    <dl class="rc-desc">${rest.map(c => `<div><dt>${c.label}</dt><dd>${cellHtml(c, r)}</dd></div>`).join('')}</dl>
+    <div class="rc-act">
+      <button class="n-btn text" data-act="edit" data-v="${esc(r.no)}">编辑</button>
+      <button class="n-btn text danger" data-act="del" data-v="${esc(r.no)}">删除</button>
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   纵向虚拟滚动 —— 表格主体 / 窄档卡片列表:DOM 里只有「可见行 + 上下各 VS_BUF 行缓冲」,其余用上下两个 spacer 撑出总高度。
+
+   官方依据(naive-ui 2.45.3,D:\Andy\smart-naive-table\node_modules\naive-ui\es\data-table\src):
+   - 虚拟滚动**要求**有受限的高度:官方 VirtualList 容器样式是 height:100%; overflow:auto(vueuc virtual-list/src/VirtualList.js:12-15),
+     所以外层必须给 max-height 或 flex-height。证据:MainTable.mjs:90 只有 maxHeight / flexHeight 二选一开启时表头才拆出来固定;
+     Body.mjs:436 滚动条 scrollable = explicitlyScrollable(use-scroll.mjs:14 = scrollX || maxHeight || flexHeight)|| xScrollable。
+     只开 virtual-scroll、不给高度,就没有任何滚动容器 —— 原型对应的是 flex-height(卡片撑满父容器,表格主体 flex:1)。
+   - 虚拟滚动 / flex-height / max-height 任一开启都强制 table-layout: fixed(DataTable.mjs:139-141)→ 这里也是 fixed + <colgroup>。
+   - 行高:VirtualList 的 itemSize = minRowHeight,默认 28(interface.mjs:67-70;Body.mjs:789),行可变高(itemResizable = !virtualScrollX,Body.mjs:801)。
+     原型的行高由密度决定并在 CSS 里固定(--vs-row-h),再渲染后量一次实际间距校正,保证 spacer 与真实行高一致。
+   - 官方窗口只多渲染约 1 行缓冲(vueuc VirtualList.js:157-166:startIndex = 起点 - 1、endIndex = start + ceil(视口高 / itemSize + 1));
+     原型取上下各 6 行:滚轮快速滚动时一帧内不露白(rAF 合并重绘)。
+   - 翻页回到顶部:use-scroll.mjs:207-209 watch(mergedCurrentPage) → scrollMainTableBodyToTop。原型:翻页 / 改页大小 / 筛选条件变化 → scrollTop 归 0。
+   ============================================================ */
+const VS_BUF = 6;                                   // 窗口上下缓冲行数
+const VS_ROW = { normal: 45, compact: 37 };         // 行高(px)= td 上下内边距 11+11 / 7+7 + 行高 22 + 下边框 1;与 fill.css 的 --vs-row-h 一致,渲染后会实测校正
+const VS_VIEW_FALLBACK = 600;                       // 拿不到容器高度时(未布局 / 隐藏)按此估算窗口
+const vt = {
+  sc: null, list: null, kind: '', n: 0, a: -1, b: -1, pitch: 0, head: 0,   // 滚动容器 / 行容器 / 表格|卡片 / 行数 / 当前窗口 [a,b) / 行间距 / 表头高
+  rows: [], cols: [], ck: new Set(), sig: '', density: 'normal',
+  raf: 0, ro: null, pending: null, kept: null, cache: {},                  // rAF 句柄 / ResizeObserver / tableEHtml 交给 vsMount 的数据 / 上次的滚动位置 / 实测间距缓存
+};
+
+/* 卡片间距的首次估算(实测后覆盖):内边距 12 ×2 + 标题 25.6 + 字段网格 + 操作行 57(8 + 4 + 44 + 1)+ 卡片间距 8。卡片固定舒适间距,不分密度 */
+function vsCardEst(nCols) {
+  const fields = Math.max(0, nCols - 1), rows = Math.ceil(fields / 2);
+  return 24 + 25.6 + (rows ? 8 + rows * 20.8 + (rows - 1) * 8 : 0) + 57 + 8;
+}
+
+function rowHtml(r, cols, on, i) {
+  return `<tr${on ? ' class="hit"' : ''} data-i="${i}" aria-rowindex="${i + 2}"><td class="ck">${checkHtml(on, false, 'toggleRow', r.no)}</td>${
+    cols.map(c => `<td${c.num ? ' class="num"' : ''}>${cellHtml(c, r)}</td>`).join('')
+  }<td class="acts">
+          <button class="n-btn text" data-act="edit" data-v="${esc(r.no)}">编辑</button>
+          <button class="n-btn text danger" data-act="del" data-v="${esc(r.no)}">删除</button></td></tr>`;
+}
+const padRowHtml = (n) => `<tr class="vs-pad" aria-hidden="true" style="height:0px"><td colspan="${n}"></td></tr>`;
+
+/* 表头单元格。模块 3 / 4:标题 + 排序箭头(th 整体可点排序)+ 右缘漏斗热区(独立点击目标);其余模块只有标题 */
+function thHtml(c, i = 0) {
+  const rz = `<span class="th-resize" data-act="noop" data-rz="${c.key}" title="拖动调整列宽"></span>`;   // 宿主开启 resizable;data-act=noop 让点把手既不触发排序也不收浮层
+  const z = `z-index:${20 + visibleCols().length - i}`;   // 靠前的列 z-index 更高:把手骑在列界上、伸进下一列的那一半才不会被下一列盖住
+  if (!hdrMod()) return `<th data-ck="${c.key}" style="${z}"><span class="th-txt">${c.label}</span>${rz}</th>`;
+  const s = sortable(c.key), order = sortOrderOf(c.key), n = hfCount(c.key);
+  const open = !!state.hp && state.hp.key === c.key && state.tier !== 'narrow';
+  const cls = ['h-th', s && 'sortable', order && 'sorting', open && 'f-open'].filter(Boolean).join(' ');
+  return `<th class="${cls}" data-ck="${c.key}" style="${z}"${s ?` data-act="sortClick" data-v="${c.key}" aria-sort="${order === 'ascend' ? 'ascending' : order === 'descend' ? 'descending' : 'none'}"` : ''}>
+    <div class="th-wrap"><span class="th-title">${c.label}</span><button class="th-filter${n ? ' on' : ''}${open ? ' show' : ''}" data-act="hfOpen" data-v="${c.key}" data-fk="${c.key}" aria-label="筛选 ${c.label}${n ? `(已筛选 ${n} 条)` : ''}" aria-haspopup="dialog" aria-expanded="${open}">${I_FUNNEL}${n > 1 ? `<i class="hf-n">${n}</i>` : ''}</button>${s
+      ? `<span class="th-sorter${order ? ` on ${order === 'ascend' ? 'asc' : 'desc'}` : ''}">${I_ARROW}</span>` : ''}</div>${rz}</th>`;
+}
+
+/* 表格 + 卡片:只输出当前档位要显示的那一份(窄档 = 卡片列表,其余 = 表格),行由 vsMount 按窗口填进去;
+   表头复选框的全选 / 半选按当前页全部行判断(NDataTable use-check.mjs:33-63),不是按可见行;勾选本身跨页保留 */
+function tableEHtml() {
+  const pi = pageInfo();
+  const rows = pi.slice;
+  const cols = visibleCols();
+  const ck = new Set(state.checked);
+  const sel = rows.filter(r => ck.has(r.no)).length;
+  const all = rows.length > 0 && sel === rows.length;
+  const half = sel > 0 && !all;
+  const emptyTxt = '没有符合条件的数据';
+  const narrow = state.tier === 'narrow';
+  /* 「页」的签名:页 / 页大小 / 生效条件任一变了,滚动位置回到顶部;其余重绘(勾选、删除、新增、列设置、密度……)保持位置 */
+  const sig = [state.mod, pi.page, pi.size, JSON.stringify(currentConds().filter(isActive)), JSON.stringify(activeSorts())].join('|');
+  const frozen = isFrozen();   // 拖过列宽:所有列冻结成固定宽度;最后一个数据列不钉宽,吸收剩余宽度(右侧不留白、也没有多出来的空列)
+  vt.pending = { kind: narrow ? 'cards' : 'table', rows, cols, ck, sig, density: state.compact ? 'compact' : 'normal' };
+
+  let main;
+  if (narrow) {
+    main = `<div class="tbl-cards" data-vs="cards">${rows.length
+      ? '<div class="vs-pad" aria-hidden="true"></div><div class="vs-pad" aria-hidden="true"></div>'
+      : `<p style="margin:0;padding:34px 12px;text-align:center;color:var(--n-text-3)">${emptyTxt}</p>`}</div>`;
+  } else {
+    const flexKey = frozen ? fillColKey(cols) : (cols.find(c => c.flex) ?? cols[0]).key;   // 没拖过:弹性列 = 名称(被隐藏时退到第一个可见列);拖过:弹性列 = 最后一个数据列
+    const minW = tableMinW(cols);
+    const nCol = cols.length + 2;
+    const colgroup = `<colgroup><col style="width:${CK_W}px">${
+      cols.map(c => c.key === flexKey ? '<col>' : `<col style="width:${cw(c)}px">`).join('')}<col style="width:${ACTS_W}px"></colgroup>`;
+    const body = rows.length ? padRowHtml(nCol) + padRowHtml(nCol)
+      : `<tr class="empty-row"><td colspan="${nCol}">${emptyTxt}</td></tr>`;
+    main = `<div class="tbl-table"><div class="tbl-scroll" data-vs="table"><table class="n-table" style="min-width:${minW}px" aria-rowcount="${rows.length + 1}">${colgroup}
+      <thead><tr aria-rowindex="1"><th class="ck">${checkHtml(all, half, 'toggleAll')}</th>${
+        cols.map(thHtml).join('')}<th class="acts">操作</th></tr></thead>
+      <tbody>${body}</tbody>
+    </table></div></div>`;
+  }
+  return `${main}
+    ${paginationHtml(pi)}`;
+}
+
+/* ---- 窗口计算与绘制 ---- */
+/* 给定 scrollTop,算可见行 [first, last](含部分可见)与窗口 [a, b)。
+   表格:表头 sticky 占住上方 head 高度,行 i 在内容坐标里的顶边 = head + i*pitch,所以 first = floor(scrollTop / pitch)(表头把 scrollTop 那一段盖住了) */
+function vsRange(top) {
+  const view = vt.sc.clientHeight || VS_VIEW_FALLBACK, n = vt.n, pitch = vt.pitch;
+  const first = Math.max(0, Math.min(Math.floor(top / pitch), n - 1));
+  const last = Math.max(first, Math.min(Math.ceil((top + view - vt.head) / pitch) - 1, n - 1));
+  return { first, last, a: Math.max(0, first - VS_BUF), b: Math.min(n, last + 1 + VS_BUF) };
+}
+
+function vsItemsHtml(i0, i1) {
+  let h = '';
+  for (let i = i0; i < i1; i++) {
+    const r = vt.rows[i], on = vt.ck.has(r.no);
+    h += vt.kind === 'table' ? rowHtml(r, vt.cols, on, i) : cardHtml(r, vt.cols, vt.ck, i);
+  }
+  return h;
+}
+
+/* 只动窗口边缘的行:滚出窗口的删掉,新进窗口的插进去,中间的行原样保留(不丢 hover / 焦点);两个 spacer 高度随窗口更新 */
+function vsPaint(a, b, force) {
+  const list = vt.list, top = list.firstElementChild, bot = list.lastElementChild;
+  const oa = vt.a, ob = vt.b;
+  if (force || oa < 0 || b <= oa || a >= ob) {
+    while (top.nextElementSibling !== bot) top.nextElementSibling.remove();
+    bot.insertAdjacentHTML('beforebegin', vsItemsHtml(a, b));
+  } else {
+    for (let i = oa; i < Math.min(a, ob); i++) top.nextElementSibling.remove();
+    for (let i = Math.max(b, oa); i < ob; i++) bot.previousElementSibling.remove();
+    if (a < oa) top.insertAdjacentHTML('afterend', vsItemsHtml(a, oa));
+    if (b > ob) bot.insertAdjacentHTML('beforebegin', vsItemsHtml(ob, b));
+  }
+  top.style.height = a * vt.pitch + 'px';
+  bot.style.height = (vt.n - b) * vt.pitch + 'px';
+  vt.a = a; vt.b = b;
+}
+
+function vsSync(force, topOverride) {
+  if (!vt.sc || !vt.n) return;
+  const { a, b } = vsRange(Math.max(0, topOverride ?? vt.sc.scrollTop));
+  if (!force && a === vt.a && b === vt.b) return;
+  vsPaint(a, b, force);
+}
+
+/* 量真实的行间距 / 表头高;与当前值差 > 0.05px 就采纳并写缓存(缩放 / 字体差异会让整数假设失真)。返回是否变了 */
+function vsMeasure() {
+  const items = [...vt.list.children].filter(x => !x.classList.contains('vs-pad'));
+  if (!items.length) return false;
+  const r0 = items[0].getBoundingClientRect();
+  let pitch;
+  if (items.length > 1) pitch = (items[items.length - 1].getBoundingClientRect().top - r0.top) / (items.length - 1);
+  else pitch = r0.height + (vt.kind === 'cards' ? (parseFloat(getComputedStyle(items[0]).marginBottom) || 0) : 0);
+  let changed = false;
+  if (pitch > 4 && Math.abs(pitch - vt.pitch) > 0.05) { vt.pitch = pitch; changed = true; }
+  if (vt.kind === 'table') {
+    const h = vt.sc.querySelector('thead')?.getBoundingClientRect().height ?? 0;
+    if (h > 4 && Math.abs(h - vt.head) > 0.05) { vt.head = h; changed = true; }
+  }
+  vt.cache[`${vt.kind}|${vt.kind === 'cards' ? '-' : vt.density}|${vt.cols.length}`] = { pitch: vt.pitch, head: vt.head };
+  return changed;
+}
+
+function vsSchedule() {
+  if (vt.raf) return;
+  vt.raf = requestAnimationFrame(() => { vt.raf = 0; vsSync(false); });
+}
+
+function vsOnScroll() {
+  const sc = vt.sc;
+  if (!sc) return;
+  vt.kept = { top: sc.scrollTop, kind: vt.kind, sig: vt.sig, pitch: vt.pitch };
+  if (state.hp) placeHpop();   // 列头过滤气泡跟着漏斗走(横向滚动时漏斗移动,滚出可视区就藏起来)
+  if (vt.n) {
+    const r = vsRange(sc.scrollTop);
+    if (r.first < vt.a || r.last >= vt.b) { vsSync(false); return; }   // 拖滚动条跳出了缓冲区:立刻补,不等下一帧
+  }
+  vsSchedule();
+}
+
+function vsUnmount() {
+  if (vt.raf) { cancelAnimationFrame(vt.raf); vt.raf = 0; }
+  if (vt.ro) { vt.ro.disconnect(); vt.ro = null; }
+  vt.sc = null; vt.list = null;
+}
+
+/* renderPreview 换完 DOM 后调用:接管新的滚动容器,画出第一屏窗口,恢复 / 归零滚动位置,挂 scroll 与尺寸监听 */
+function vsMount(root) {
+  vsUnmount();
+  const p = vt.pending;
+  vt.pending = null;
+  const sc = root.querySelector('[data-vs]');
+  if (!p || !sc) return;
+  Object.assign(vt, { sc, kind: p.kind, rows: p.rows, cols: p.cols, ck: p.ck, n: p.rows.length, sig: p.sig, density: p.density, a: -1, b: -1 });
+  vt.list = p.kind === 'table' ? sc.querySelector('tbody') : sc;
+  const keep = vt.kept && vt.kept.sig === p.sig && vt.kept.kind === p.kind ? vt.kept : null;   // 页 / 页大小 / 条件 / 档位变了 -> 不沿用,回顶部
+  let top = keep ? keep.top : 0;
+
+  if (vt.n) {
+    const cached = vt.cache[`${p.kind}|${p.kind === 'cards' ? '-' : p.density}|${p.cols.length}`];
+    vt.pitch = cached?.pitch ?? (p.kind === 'table' ? VS_ROW[p.density] : vsCardEst(p.cols.length));
+    vt.head = p.kind === 'table' ? (cached?.head ?? VS_ROW[p.density]) : 0;
+    vsSync(true, top);
+    const oldPitch = keep?.pitch;
+    if (vsMeasure() || (oldPitch && Math.abs(oldPitch - vt.pitch) > 0.05)) {
+      /* 行高变了(密度切换 / 首次实测):以「顶部那一行」为锚,滚动位置按新行高换算,窗口重画 */
+      if (oldPitch && Math.abs(oldPitch - vt.pitch) > 0.05) top = Math.floor(top / oldPitch) * vt.pitch;
+      vsSync(true, top);
+    }
+    sc.scrollTop = top;                                   // 先有 spacer 撑出总高度,再写 scrollTop
+    vsSync(false);                                        // 浏览器可能夹了 scrollTop(例如删除后内容变短),按真实值再对一次窗口
+  }
+  vt.kept = { top: sc.scrollTop, kind: p.kind, sig: p.sig, pitch: vt.pitch };
+  sc.addEventListener('scroll', vsOnScroll, { passive: true });
+  if (typeof ResizeObserver === 'function') { vt.ro = new ResizeObserver(vsSchedule); vt.ro.observe(sc); }   // 窗口 / 卡片高度变了,可见行数跟着变
+}
+
+/* 列设置气泡:每列一个复选项,勾掉的列在表格和卡片里同步隐藏 */
+function colsPanelHtml() {
+  return `<div class="col-pop" data-stop>${COLS.map(c => {
+    const on = !state.hidden.includes(c.key);
+    return `<div class="it" data-act="colToggle" data-v="${c.key}">${checkHtml(on, false)}<span>${c.label}</span></div>`;
+  }).join('')}</div>`;
+}
+
+/* 「更多」:业务按钮组末尾的一个菜单按钮(设计文档 7.3)。导出 / 导入 / 下载导入模板是宿主给的菜单项,库只出菜单外壳;
+   文字按钮 + 下箭头(不用「…」:模块 2 的条件行已有一个「»」图标叫「更多条件」,图标不重名)。
+   菜单项与分隔线对应官方 NDropdown 的 options(含 { type: 'divider' }) */
+const MORE_ITEMS = [
+  { act: 'export', label: '导出' },
+  { act: 'import', label: '导入' },
+  { sep: true },
+  { act: 'tpl', label: '下载导入模板' },
+];
+function moreHtml() {
+  return `<span class="pop-wrap"><button class="n-btn${state.moreOpen ? ' on' : ''}" data-act="more" aria-haspopup="menu" aria-expanded="${state.moreOpen}">更多<span class="chev">${I_CHEV}</span></button>${
+    state.moreOpen ? `<div class="col-pop more-pop" role="menu" data-stop>${MORE_ITEMS.map(it => it.sep
+      ? '<div class="sep" role="separator"></div>'
+      : `<div class="it" role="menuitem" tabindex="-1" data-act="${it.act}">${it.label}</div>`).join('')}</div>` : ''}</span>`;
+}
+
+/* 右侧内置图标:刷新 / 列设置。没有密度按钮:密度是个人偏好,由宿主的个人设置经 defaultDensity 决定(设计文档 5.2),原型宿主默认 compact */
+function iconsHtml() {
+  return `<div class="tb-icons">
+    <button class="n-btn icon${state.max ? ' on' : ''}" data-act="max" title="${state.max ? '还原' : '放大'}" aria-label="${state.max ? '还原' : '放大'}" aria-pressed="${state.max}">${state.max ? I_COMPRESS : I_EXPAND}</button>
+    <button class="n-btn icon" data-act="refresh" title="刷新">${I_REFRESH}</button>
+    <span class="pop-wrap"><button class="n-btn icon ${state.colsOpen ? 'on' : ''}" data-act="cols" title="列设置">${I_SETTING}</button>${
+      state.colsOpen ? colsPanelHtml() : ''}</span>
+  </div>`;
+}
+
+/* 普通工具栏:三档排布全由 CSS 决定,窄档才显示的与宽/中档才显示的元素都在 DOM 里。
+   模式 1(模块 1)的搜索在上方独立卡片里,这里没有条件构造器 / 窄档搜索框:.tb.no-cond = 标题 + 业务按钮 + 内置图标;
+   模式 1 一屏的主色实心按钮是搜索卡片里的「搜索」,所以这里的「新增」是默认描边 */
+function normalBarHtml() {
+  if (!isM2()) {
+    return `<div class="tb no-cond${state.opsOpen ? ' ops-open' : ''}">
+    <div class="tb-left"><h3 class="st-title tb-title">物料单据</h3></div>
+    <button class="n-btn quiet ops-toggle" data-act="toggleOps" aria-expanded="${state.opsOpen}">操作 <span class="caret">${state.opsOpen ? '▴' : '▾'}</span></button>
+    <div class="tb-right">
+      <div class="tb-actions">
+        <button class="n-btn" data-act="add">${I_PLUS} 新增</button>
+        ${moreHtml()}
+      </div>
+      ${iconsHtml()}
+    </div>
+  </div>`;
+  }
+  const n = activeConds().length;
+  const label = fieldOf(state.main.field)?.label ?? '';
+  return `<div class="tb${state.opsOpen ? ' ops-open' : ''}" id="searchZone">
+    <div class="tb-left">
+    <h3 class="st-title tb-title">物料单据</h3>
+    <div class="tb-cond">
+      <div class="cond">
+        ${condRowHtml(state.main, 'main')}
+        <span class="pop-wrap"><button class="n-btn icon ${state.panelOpen ? 'on' : ''}" data-act="togglePanel" title="更多条件">${I_MORE}${
+          n > 1 ? badgeHtml(n) : ''}</button></span>
+        <button class="n-btn" data-act="search">搜索</button>
+        <button class="n-btn quiet" data-act="reset">重置</button>
+      </div>
+      ${state.panelOpen && state.tier !== 'narrow' ? condPanelHtml() : ''}
+    </div>
+    </div>
+    <div class="tb-search">
+      ${fValHtml(state.main, 'main', false, `搜索 ${label}`)}
+      <span class="pop-wrap"><button class="n-btn" data-act="togglePanel">筛选</button>${n > 0 ? badgeHtml(n) : ''}</span>
+    </div>
+    <button class="n-btn quiet ops-toggle" data-act="toggleOps" aria-expanded="${state.opsOpen}">操作 <span class="caret">${state.opsOpen ? '▴' : '▾'}</span></button>
+    <div class="tb-right">
+      <div class="tb-actions">
+        <button class="n-btn primary" data-act="add">${I_PLUS} 新增</button>
+        ${moreHtml()}
+      </div>
+      ${iconsHtml()}
+    </div>
+  </div>`;
+}
+
+/* 批量栏:原地替换工具栏那一行,高度不小于勾选前的工具栏 */
+function batchBarHtml() {
+  const ck = new Set(state.checked), rows = pageInfo().slice;   // 复选框状态与表头一致(当前页);「已选 N 项」是跨页总数
+  const all = rows.length > 0 && rows.every(r => ck.has(r.no));
+  return `<div class="tb-batch"${state.tbH ? ` style="min-height:${state.tbH}px"` : ''}>
+    <span class="bt-info">${checkHtml(all, !all, 'toggleAll')}已选 ${state.checked.length} 项</span>
+    <div class="bt-acts">
+      <button class="n-btn" data-act="batchApprove">批量审核</button>
+      <button class="n-btn danger" data-act="batchDel">批量删除</button>
+    </div>
+    <button class="n-btn quiet bt-clear" data-act="clearSel">取消选择</button>
+    ${iconsHtml()}
+  </div>`;
+}
+
+/* 已应用条件的 chips —— 收起面板后仍看得见筛了什么。
+   ≥1 条就输出并带 data-n,宽/中档只在 ≥2 条时显示、窄档 ≥1 条显示,由 CSS 按 data-n 决定 */
+function chipsHtml() {
+  const conds = activeConds();
+  if (!conds.length) return '';
+  return `<div class="chips" data-n="${conds.length}">
+    ${conds.map((c, i) => `<span class="chip">${i > 0 && c.logic === 'or' && conds.slice(0, i).some(x => x.field === c.field) ? '或 ' : ''}${esc(fieldOf(c.field)?.label)} ${esc(OP[c.op].zh)}${
+      VALUELESS.has(c.op) ? '' : ' ' + esc(c.value)
+    }<button data-act="dropChip" data-v="${i}" title="移除">${I_X}</button></span>`).join('')}
+    ${conds.length > 1 ? '<button class="clear" data-act="reset">全部清除</button>' : ''}
+  </div>`;
+}
+
+/* 模块 3 / 4 的工具栏:标题 + 业务按钮 + 内置图标(没有条件构造器,筛选在列头)。
+   宿主的主操作「新增」是本屏唯一主色按钮。窄档没有表头(卡片列表),筛选 / 排序的入口是第 2 行的两个文字按钮(与模块 2 窄档的「输入框 + 筛选」同一行位,行数不变) */
+function hdrBarHtml() {
+  const nf = hfColsActive(), ns = HS().sorts.length;
+  return `<div class="tb no-cond hdr-tb${state.opsOpen ? ' ops-open' : ''}">
+    <div class="tb-left"><h3 class="st-title tb-title">物料单据</h3></div>
+    <button class="n-btn quiet ops-toggle" data-act="toggleOps" aria-expanded="${state.opsOpen}">操作 <span class="caret">${state.opsOpen ? '▴' : '▾'}</span></button>
+    <div class="tb-right">
+      <div class="tb-actions">
+        <button class="n-btn primary" data-act="add">${I_PLUS} 新增</button>
+        ${moreHtml()}
+      </div>
+      ${iconsHtml()}
+    </div>
+    <div class="tb-search">
+      <span class="pop-wrap"><button class="n-btn" data-act="openFilter">筛选</button>${nf ? badgeHtml(nf) : ''}</span>
+      <span class="pop-wrap"><button class="n-btn" data-act="openSort">排序</button>${ns ? badgeHtml(ns) : ''}</span>
+    </div>
+  </div>`;
+}
+
+/* 模块 3 / 4 的已生效条件 chips(设计文档 3.2):每条条件一个 NTag,点击重开该列面板,× 删这一条;行末「清除全部」。
+   同列第 2 条起若该列是「或」前缀「或 」(与 2.9 一致) */
+function hdrChipsHtml() {
+  const items = [];
+  for (const [key, fv] of Object.entries(HS().fv)) {
+    fv.conditions.forEach((c, i) => items.push({ key, i, c, or: i > 0 && fv.logic === 'or' }));
+  }
+  if (!items.length) return '';
+  return `<div class="chips">
+    ${items.map(({ key, i, c, or }) => `<span class="chip click" data-act="chipOpen" data-v="${key}">${or ? '或 ' : ''}${esc(fieldOf(key).label)} ${esc(OP[c.op].zh)}${
+      VALUELESS.has(c.op) ? '' : ' ' + esc(c.value)
+    }<button data-act="hfDrop" data-v="${key}:${i}" title="移除" aria-label="移除这条条件">${I_X}</button></span>`).join('')}
+    ${items.length > 1 ? '<button class="clear" data-act="hfClear">清除全部</button>' : ''}
+  </div>`;
+}
+
+/* ---- 列头过滤面板:气泡与抽屉共用同一份内容,只换容器(设计文档 3.1 / 3.6 / 3.7)---- */
+const FILTERABLE = COLS.map(c => c.key);
+const szCls = () => (state.tier === 'narrow' ? '' : ' sm');
+
+function hpValHtml(c, i, f) {
+  const sm = szCls();
+  if (VALUELESS.has(c.op)) return `<div class="f-val novalue"><div class="n-input${sm}" style="pointer-events:none"><span style="color:var(--n-text-3)">不需要填值</span></div></div>`;
+  if (f.type === 'select' && !['in', 'notIn'].includes(c.op)) {
+    const id = `hp:val:${i}`, open = state.open === id;
+    return `<div class="f-val"><div class="n-select${sm}${open ? ' open' : ''}" data-open="${id}"><span class="val${c.value ? '' : ' ph'}">${esc(c.value || '请选择')}</span><span class="caret">▾</span></div>${
+      open ? `<div class="dd">${f.options.map(o => `<div class="it${o === c.value ? ' on' : ''}" data-pick="hp:val:${i}:${esc(o)}">${esc(o)}</div>`).join('')}</div>` : ''}</div>`;
+  }
+  const ph = f.type === 'date' ? 'yyyy-MM-dd' : f.type === 'number' ? '请输入数字' : ['in', 'notIn'].includes(c.op) ? '多个值用逗号隔开' : '请输入';
+  return `<div class="f-val"><div class="n-input${sm}"><input type="text" value="${esc(c.value ?? '')}" placeholder="${ph}" enterkeyhint="done" data-hpi="${i}" /></div></div>`;
+}
+
+function hpRowHtml(c, i, f) {
+  const d = state.hp.d, sm = szCls(), ops = OPS_BY_TYPE[f.type];
+  const lid = `hp:logic:${i}`, lopen = state.open === lid;
+  const lead = i === 0 ? '<span class="hp-lead">条件</span>'
+    : `<div class="logic hp-lead"><div class="n-select${sm}${lopen ? ' open' : ''}" data-open="${lid}"><span class="val">${d.logic === 'or' ? '或' : '且'}</span><span class="caret">▾</span></div>${
+      lopen ? `<div class="dd"><div class="it${d.logic === 'and' ? ' on' : ''}" data-pick="hp:logic:${i}:and">且</div><div class="it${d.logic === 'or' ? ' on' : ''}" data-pick="hp:logic:${i}:or">或</div></div>` : ''}</div>`;
+  const oid = `hp:op:${i}`, oopen = state.open === oid;
+  const op = `<div class="f-op"><div class="n-select${sm}${oopen ? ' open' : ''}" data-open="${oid}"><span class="val">${esc(OP[c.op].zh)}</span><span class="caret">▾</span></div>${
+    oopen ? `<div class="dd">${ops.map(o => `<div class="it${o === c.op ? ' on' : ''}" data-pick="hp:op:${i}:${o}">${OP[o].zh}</div>`).join('')}</div>` : ''}</div>`;
+  const del = d.conds.length > 1
+    ? `<button class="n-btn icon" data-act="hpDel" data-v="${i}" title="删除这条" aria-label="删除这条条件">${I_X}</button>` : '<span class="hp-del-ph"></span>';
+  return `<div class="hp-row">${lead}${op}${hpValHtml(c, i, f)}${del}</div>`;
+}
+
+function hpBodyHtml() {
+  const { key, d } = state.hp, f = fieldOf(key), options = fieldMode(key) === 'options';
+  if (options && !d.adv) {
+    return `<div class="hp-group">${f.options.map(o => `<div class="hp-opt" data-act="hpCheck" data-v="${esc(o)}">${checkHtml(d.checked.includes(o))}<span>${esc(o)}</span></div>`).join('')}</div>
+      <div class="hp-tools"><button class="n-btn text" data-act="hpAdv">高级条件 ▾</button></div>`;
+  }
+  const add = d.conds.length < MAX_CONDS ? `<button class="n-btn text" data-act="hpAdd">${I_PLUS} 添加条件</button>` : '';
+  let tools = `<div class="hp-tools">${add}</div>`;
+  if (options) {
+    const ok = canCollapse();
+    tools = `<div class="hp-tools">${add}<span style="margin-left:auto"></span><button class="n-btn text" data-act="hpAdv"${ok ? '' : ' disabled'}>收起高级条件 ▴</button></div>${
+      ok ? '' : '<div class="hp-hint" style="margin:-4px 0 8px">含勾选无法表达的条件</div>'}`;
+  }
+  return d.conds.map((c, i) => hpRowHtml(c, i, f)).join('') + tools;
+}
+
+function hpopHtml() {
+  const { key, d } = state.hp, opt = fieldMode(key) === 'options' && !d.adv;
+  return `<div class="hpop${opt ? ' opt' : ''}" data-stop role="dialog" aria-label="筛选 ${esc(fieldOf(key).label)}">
+    <div class="hp-body">${hpBodyHtml()}</div>
+    <div class="hp-foot"><button class="n-btn tiny" data-act="hpReset">重置</button><button class="n-btn tiny primary" data-act="hpOk">确认</button></div>
+  </div>`;
+}
+
+/* 气泡定位:官方 placement="bottom"(以漏斗为中心、在其下方),夹进视口;下方放不下且上方放得下时翻到上方(follower 的 flip 等价);
+   漏斗随表格横向滚出可视区时整块藏起来。scroll / resize / 每次重绘后都重算 */
+function placeHpop() {
+  const pop = document.querySelector('#overlay .hpop');
+  if (!pop || !state.hp) return;
+  const btn = document.querySelector(`#preview [data-fk="${state.hp.key}"]`);
+  const sc = document.querySelector('#preview .tbl-scroll');
+  if (!btn || !sc) { pop.style.visibility = 'hidden'; return; }
+  const r = btn.getBoundingClientRect(), s = sc.getBoundingClientRect();
+  if (r.right < s.left + 1 || r.left > s.right - 1) { pop.style.visibility = 'hidden'; return; }
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  let left = r.left + r.width / 2 - w / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+  let top = r.bottom + 6;
+  if (top + h > window.innerHeight - 8 && r.top - h - 6 > 8) top = r.top - h - 6;
+  pop.style.left = left + 'px'; pop.style.top = top + 'px'; pop.style.visibility = 'visible';
+}
+
+/* 窄档抽屉:列头过滤(字段选择 + 同一份面板内容)/ 排序(可排序列各一行,无 / 升序 / 降序) */
+function hdrSheetHtml(enter) {
+  if (state.sd) return sdSheetHtml(enter);
+  const { key } = state.hp, pid = 'hp:field', open = state.open === pid;
+  const pick = `<div class="hp-head-pick"><div class="f-field"><div class="n-select${open ? ' open' : ''}" data-open="${pid}"><span class="val">${esc(fieldOf(key).label)}</span><span class="caret">▾</span></div>${
+    open ? `<div class="dd">${FILTERABLE.map(k => `<div class="it${k === key ? ' on' : ''}" data-pick="hp:field:${k}">${esc(fieldOf(k).label)}${hfCount(k) ? ` · ${hfCount(k)}` : ''}</div>`).join('')}</div>` : ''}</div></div>`;
+  return `<div class="sheet${enter ? ' enter' : ''}" data-stop>
+    <div class="sheet-head"><b>筛选</b><button class="n-btn icon" data-act="closePanel" title="关闭">${I_X}</button></div>
+    <div class="sheet-body">${pick}<div class="hp-body">${hpBodyHtml()}</div></div>
+    <div class="sheet-foot"><button class="n-btn quiet" data-act="hpReset">重置</button><div><button class="n-btn primary" data-act="hpOk">确认</button></div></div>
+  </div>`;
+}
+function sdSheetHtml(enter) {
+  const sorters = H_CFG[state.mod].sorters;
+  const keys = Object.keys(sorters).sort((a, b) => (sorters[b].multiple ?? 0) - (sorters[a].multiple ?? 0));   // 行序 = 优先级(声明的 multiple 大者在前),手机上只能启停各列
+  const cur = (k) => state.sd.sorts.find(s => s.key === k)?.order || 'none';
+  const seg = (k) => [['none', '无'], ['ascend', '升序'], ['descend', '降序']].map(([o, l]) =>
+    `<button class="${cur(k) === o ? 'on' : ''}" data-act="sdSet" data-v="${k}:${o}" aria-pressed="${cur(k) === o}">${l}</button>`).join('');
+  return `<div class="sheet${enter ? ' enter' : ''}" data-stop>
+    <div class="sheet-head"><b>排序</b><button class="n-btn icon" data-act="closePanel" title="关闭">${I_X}</button></div>
+    <div class="sheet-body">${keys.map(k => `<div class="sd-row"><span class="lab">${esc(fieldOf(k).label)}</span><div class="seg" role="group" aria-label="${esc(fieldOf(k).label)}排序">${seg(k)}</div></div>`).join('')}</div>
+    <div class="sheet-foot"><button class="n-btn quiet" data-act="sdReset">重置</button><div><button class="n-btn primary" data-act="sdOk">确认</button></div></div>
+  </div>`;
+}
+
+/* 模式 1:搜索独立卡片 —— 与 src/SearchForm.vue 的 grid 布局一致:
+   n-card > n-form(label 在左)> n-grid(cols '1 s:2 m:3 l:4' 按视口、x-gap 16 / y-gap 12、collapsed + collapsedRows 1)
+   字段格 n-form-item-gi × N + 最后一格 suffix(搜索 / 重置 / 展开·收起 三个按钮);折叠时超出首行的字段整格隐藏,suffix 恒占最后一格 */
+function sfPh(f) {
+  return f.type === 'date' ? 'yyyy-MM-dd' : f.type === 'number' ? '请输入数字' : '请输入';
+}
+function sfCtlHtml(f) {
+  const v = state.sf[f.key] ?? '';
+  if (f.type === 'select') {
+    const id = `sf:${f.key}`, open = state.open === id;
+    return `<div class="n-select${open ? ' open' : ''}" data-open="${id}" role="combobox" aria-expanded="${open}">
+        <span class="val${v ? '' : ' ph'}">${esc(v || '请选择')}</span>${
+          v ? `<span class="clr" data-clear="${f.key}" title="清除">${I_X}</span>` : ''}<span class="caret">▾</span></div>${
+      open ? `<div class="dd">${f.options.map(o =>
+        `<div class="it${o === v ? ' on' : ''}" data-pick="sf:${f.key}:${esc(o)}">${esc(o)}</div>`).join('')}</div>` : ''}`;
+  }
+  return `<div class="n-input"><input type="text" value="${esc(v)}" placeholder="${sfPh(f)}" enterkeyhint="search" data-input="sf:${f.key}" /></div>`;
+}
+function searchCardHtml() {
+  const cols = sfColsNow();
+  state.sfCols = cols;
+  const shown = state.sfCollapsed ? sfVisibleCount(cols) : FIELD_DEFS.length;
+  return `<div class="n-card search-card">
+    <div class="search-grid" data-cols="${cols}">
+      ${FIELD_DEFS.map((f, i) => `<div class="n-form-item" data-f="${f.key}"${i < shown ? '' : ' hidden'}>
+        <label>${f.label}</label><div class="sf-ctl">${sfCtlHtml(f)}</div></div>`).join('')}
+      <div class="n-form-item search-actions">
+        <button class="n-btn primary" data-act="sfSearch">搜索</button>
+        <button class="n-btn" data-act="sfReset">重置</button>
+        <button class="n-btn text link" data-act="sfToggle" aria-expanded="${!state.sfCollapsed}">${state.sfCollapsed ? '展开' : '收起'}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* 表格卡片:工具栏(有勾选则批量栏)+ 表格件。模块 1 无条件构造器、无 chips(搜索框里本来就看得见值);
+   o.table 仅供测工具栏高度时换成空串 */
+function tbCardHtml(o = {}) {
+  return `<div class="n-card">
+      ${state.checked.length ? batchBarHtml() : hdrMod() ? hdrBarHtml() : normalBarHtml()}
+      ${isM2() ? chipsHtml() : hdrMod() ? hdrChipsHtml() : ''}
+      ${o.table ?? tableEHtml()}
+    </div>`;
+}
+
+/* 模式 1 页面 = 搜索卡片 + 表格卡片(两卡片间距 = .smart-table 的 gap 16px) */
+function schemeAHtml() {
+  return `<div class="smart-table" data-density="${state.compact ? 'compact' : 'normal'}"${state.max ? ' data-max' : ''}>
+    ${searchCardHtml()}
+    ${tbCardHtml()}
+  </div>`;
+}
+
+/* 模式 2 页面 = 一张卡片:工具栏(含条件构造器)+ chips + 表格件 */
+function schemeEHtml(o = {}) {
+  return `<div class="smart-table" data-density="${state.compact ? 'compact' : 'normal'}"${state.max ? ' data-max' : ''}>
+    ${tbCardHtml(o)}
+  </div>`;
+}
+
+
+
+/* ============================================================
+   工具栏高度测量:批量栏出现后 DOM 里已没有 .tb,要占位就得在离屏容器里按当前宽度量一次
+   ============================================================ */
+const probe = document.createElement('div');
+probe.style.cssText = 'position:absolute;left:-99999px;top:0;visibility:hidden';
+document.body.appendChild(probe);
+
+/* 在「收起、无勾选」的中性状态下执行 fn(测量用),结束后还原 */
+function neutral(fn) {
+  const bak = { open: state.open, panelOpen: state.panelOpen, checked: state.checked, colsOpen: state.colsOpen, moreOpen: state.moreOpen, opsOpen: state.opsOpen, max: state.max };
+  Object.assign(state, { open: null, panelOpen: false, checked: [], colsOpen: false, moreOpen: false, opsOpen: false, max: false });
+  try { return fn(); } finally { Object.assign(state, bak); }
+}
+
+function measureTb(w) {
+  return neutral(() => {
+    probe.style.width = w + 'px';
+    probe.innerHTML = schemeEHtml({ table: '' });
+    const tb = probe.querySelector('.tb');
+    const h = tb ? Math.round(tb.getBoundingClientRect().height) : 0;
+    probe.innerHTML = '';
+    return h;
+  });
+}
+
+/* ============================================================
+   渲染
+   ============================================================ */
+function renderMods() {
+  $('modList').innerHTML = Object.entries(MODULES).map(([k, m]) => `
+    <button class="mod ${state.mod === k ? 'on' : ''}" data-act="mod" data-v="${k}">
+      <span class="no">${m.no}</span><span class="nm">${m.name}</span>
+      <span class="st ${m.status}">${m.statusTxt}</span>
+    </button>`).join('');
+}
+
+/* 侧栏下半:只有主题切换(外壳自身的控件) */
+function renderSidePanel() {
+  $('modPanel').innerHTML = `<div class="group-title">主题</div>
+    <div class="mini">
+      <button data-act="theme" data-v="light" class="${state.theme === 'light' ? 'on' : ''}">浅色</button>
+      <button data-act="theme" data-v="dark" class="${state.theme === 'dark' ? 'on' : ''}">深色</button>
+    </div>`;
+}
+
+function renderStage() {
+  const mod = MODULES[state.mod];
+  $('crumb').textContent = `SmartTable 设计方案 / ${mod.no}. ${mod.name}`;
+  $('stageName').textContent = mod.name;
+
+  /* 四个模块的舞台都只有一个真实的宿主页面区域,没有任何说明 */
+  $('stageDesc').textContent = '';
+  $('stage').innerHTML = `<div class="viewport"><div id="preview"></div></div>`;
+  renderPreview();
+}
+
+/* 只重绘预览区 —— 下拉开合、改条件都走这里,不动外层说明 */
+/* 且/或是按字段一个值(FilterValue.logic):字段下只剩一条时没有「或」可言,归位为「且」,免得删条件/换字段后残留 */
+function normalizeLogic() {
+  const all = [state.main, ...state.more];
+  all.forEach(c => { if (all.filter(x => x.field === c.field).length < 2) c.logic = 'and'; });
+}
+
+/* 分页里的弹出菜单(size picker 下拉)下方放不下、上方放得下时改向上展开 —— 与官方 follower 的自动翻转等价 */
+function flipPagerMenus(root) {
+  root.querySelectorAll('.n-pagination .dd').forEach((dd) => {
+    const r = dd.getBoundingClientRect(), host = dd.parentElement.getBoundingClientRect();
+    if (r.bottom > window.innerHeight && host.top > r.height + 8) dd.classList.add('up');
+  });
+}
+
+/* 组件的实际宽度:放大时是 position:fixed 铺满视口(左右内边距各 16),不再是 #preview 的宽度;档位(气泡 / 抽屉、布局三档)按它算 */
+const previewW = (el) => (state.max ? window.innerWidth - 32 : el.clientWidth);
+
+function renderPreview() {
+  normalizeLogic();
+  const el = $('preview');
+  if (!el) { renderOverlay(); return; }
+
+  /* 1. 渲染前先量:容器宽度定档位;换 DOM 之前记下工具栏高度给批量栏占位 */
+  const w = previewW(el);
+  if (w > 0) state.tier = tierOf(w);
+  if (state.tier !== 'narrow') state.sd = null;   // 排序抽屉只属于窄档
+  const tb = el.querySelector('.tb');
+  if (tb) { state.tbH = Math.round(tb.getBoundingClientRect().height); state.tbW = w; }
+  else if (state.checked.length && w > 0 && state.tbW !== w) { state.tbH = measureTb(w); state.tbW = w; }
+  const sc = el.querySelector('.tbl-scroll');
+  const left = sc ? sc.scrollLeft : 0;
+
+  /* 2. 重绘 */
+  frMemo = computeRows();   // 本次绘制内复用同一份「筛选 + 排序」结果,绘制完立即失效
+  try { el.innerHTML = state.mod === 'search' ? schemeAHtml() : schemeEHtml(); } finally { frMemo = null; }
+  flipPagerMenus(el);
+  vsMount(el);
+  if (left) { const n = el.querySelector('.tbl-scroll'); if (n) n.scrollLeft = left; }
+
+  renderOverlay();
+}
+
+/* ============================================================
+   覆盖层:底部抽屉(窄档筛选)+ toast。都 teleport 到 body,不放进 .smart-table。
+   逐个节点增量更新,避免每次重绘都重播遮罩淡入 / 抽屉滑入动画。
+   ============================================================ */
+const OV_ORDER = ['mask', 'sheet', 'hpop', 'toast'];
+function ovChild(ov, cls) { return Array.from(ov.children).find(c => c.classList.contains(cls)); }
+function ovSync(ov, cls, html, keep) {
+  const cur = ovChild(ov, cls);
+  if (!html) { if (cur) cur.remove(); return; }
+  if (cur && keep && keep(cur)) return;
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  const el = t.content.firstElementChild;
+  if (cur) {
+    const top = cur.querySelector('.sheet-body')?.scrollTop ?? 0;   // 抽屉整体被换掉,内部滚动位置要带过去
+    cur.replaceWith(el);
+    const body = el.querySelector('.sheet-body');
+    if (body && top) body.scrollTop = top;
+    return;
+  }
+  const idx = OV_ORDER.indexOf(cls);
+  const next = Array.from(ov.children).find(c => OV_ORDER.findIndex(k => c.classList.contains(k)) > idx);
+  ov.insertBefore(el, next || null);
+}
+
+function renderOverlay() {
+  const ov = $('overlay');
+  if (!ov) return;
+  const live = !!$('preview'), narrow = state.tier === 'narrow';
+  const hdrSheet = hdrMod() && narrow && live && !!(state.hp || state.sd);   // 模块 3 / 4:窄档的列头过滤 / 排序抽屉
+  const showSheet = (isM2() && narrow && state.panelOpen && live) || hdrSheet;
+  const showPop = hdrMod() && !narrow && live && !!state.hp;               // 宽 / 中档:列头过滤气泡(官方 NPopover 的等价物)
+  const had = !!ovChild(ov, 'sheet');
+  ovSync(ov, 'mask', showSheet ? '<div class="mask" data-act="closePanel"></div>' : '', () => true);
+  ovSync(ov, 'sheet', showSheet ? (hdrSheet ? hdrSheetHtml(!had) : sheetHtml(!had)) : '');
+  ovSync(ov, 'hpop', showPop ? hpopHtml() : '');
+  if (showPop) {
+    placeHpop();
+    if (state.hpFocus) { state.hpFocus = false; ov.querySelector('[data-hpi]')?.focus(); }   // 打开时聚焦第一个可编辑的值控件(窄档抽屉不聚焦,免得直接弹键盘)
+  }
+  ovSync(ov, 'toast', state.toast ? `<div class="toast" data-id="${state.toast.id}">${esc(state.toast.msg)}</div>` : '',
+    (cur) => !!state.toast && cur.dataset.id === String(state.toast.id));
+  document.body.style.overflow = showSheet ? 'hidden' : '';
+}
+
+let toastSeq = 0, toastTimer = 0;
+function toast(msg) {
+  state.toast = { id: ++toastSeq, msg };
+  renderOverlay();
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { state.toast = null; renderOverlay(); }, 1800);
+}
+
+/* ============================================================
+   交互
+   ============================================================ */
+function condById(id) {
+  if (id === 'main' || id === 'pmain') return state.main;   // pmain = 气泡/抽屉里的那份主条(与顶栏主条分开 key,否则两处下拉会一起弹)
+  const i = Number(id.slice(1));
+  return state.more[i];
+}
+
+/* 数据变了:重绘预览 */
+const redraw = () => renderPreview();
+
+const closeFloats = () => { state.open = null; state.panelOpen = false; state.colsOpen = false; state.moreOpen = false; state.hp = null; state.sd = null; };
+
+function runAct(act, v) {
+  switch (act) {
+    case 'mod':
+      state.mod = v; closeFloats();
+      state.tbW = 0;                                   // 两个模块的工具栏高度不同,占位高度要重新量
+      pruneChecked(true);   // 四个模块各有自己的筛选状态,勾选只留在新模块结果里的行
+      render(); return;
+    case 'theme':  state.theme = v; document.documentElement.dataset.theme = v; render(); return;
+
+    /* 筛选 */
+    case 'togglePanel': state.panelOpen = !state.panelOpen; state.open = null; renderPreview(); return;
+    case 'closePanel':  state.panelOpen = false; state.open = null; state.hp = null; state.sd = null; renderPreview(); return;
+
+    case 'max':
+      state.max = !state.max; closeFloats(); renderPreview();
+      if (kbdModality) document.querySelector('#preview [data-act="max"]')?.focus();   // 重绘会换掉按钮节点:键盘用户把焦点还给它(连续回车可反复切换);鼠标用户不还,否则会冒出焦点环
+      return;
+    case 'noop': return;   // 列宽把手:点一下什么都不做(也不冒泡成排序)
+
+    /* 模块 3 / 4:表头排序 */
+    case 'sortClick': {   // 官方循环 升序 → 降序 → 取消;多列模式保留其它列,单列模式互斥
+      HS().sorts = applySort(HS().sorts, v, nextOrder(sortOrderOf(v)), H_CFG[state.mod].multiple);
+      firstPage(state.mod); redraw(); return;
+    }
+    /* 模块 3 / 4:列头过滤面板 */
+    case 'hfOpen': {      // 点漏斗:开 / 关该列面板(同列再点 = 关)
+      if (state.hp?.key === v) hpClose(); else { state.hp = { key: v, d: hpDraft(v) }; state.hpFocus = true; }
+      state.open = null; renderPreview(); return;
+    }
+    case 'chipOpen':      // 点 chip:打开该列面板(窄档是抽屉)
+      state.hp = { key: v, d: hpDraft(v) }; state.hpFocus = true; state.open = null; renderPreview(); return;
+    case 'hpCheck': {
+      const c = state.hp.d.checked, i = c.indexOf(v);
+      if (i >= 0) c.splice(i, 1); else c.push(v);
+      renderPreview(); return;
+    }
+    case 'hpAdv': {       // options 列:勾选 ↔ 高级条件。展开时把勾选转写成条件,收起仅当条件能被勾选表达
+      const { key, d } = state.hp;
+      if (!d.adv) { d.conds = checkedToConds(key, d.checked); d.logic = 'and'; d.adv = true; }
+      else if (canCollapse()) { d.checked = optionsRepr({ logic: d.logic, conditions: draftActive(key, d.conds) }) ?? []; d.adv = false; }
+      state.open = null; renderPreview(); return;
+    }
+    case 'hpAdd': {
+      const { key, d } = state.hp;
+      if (d.conds.length < MAX_CONDS) d.conds.push(blankCond(key));
+      state.open = null; renderPreview(); return;
+    }
+    case 'hpDel': state.hp.d.conds.splice(Number(v), 1); state.open = null; renderPreview(); return;
+    case 'hpOk':    hpCommit(); redraw(); return;
+    case 'hpReset': delete HS().fv[state.hp.key]; hpClose(); firstPage(state.mod); pruneChecked(true); redraw(); return;   // 官方「重置」立即生效并关闭;本例无 defaultValue,即清除
+    case 'hfDrop': { const [k, i] = v.split(':'); dropHfCond(k, Number(i)); redraw(); return; }
+    case 'hfClear': HS().fv = {}; hpClose(); firstPage(state.mod); pruneChecked(true); redraw(); return;
+    /* 窄档入口 */
+    case 'openFilter': {
+      const k = Object.keys(HS().fv)[0] ?? FILTERABLE[0];
+      state.hp = { key: k, d: hpDraft(k) }; state.open = null; renderPreview(); return;
+    }
+    case 'openSort': state.sd = { sorts: HS().sorts.map(s => ({ ...s })) }; state.open = null; renderPreview(); return;
+    case 'sdSet': {
+      const [k, o] = v.split(':');
+      state.sd.sorts = applySort(state.sd.sorts, k, o === 'none' ? false : o, H_CFG[state.mod].multiple);
+      renderPreview(); return;
+    }
+    case 'sdOk':    HS().sorts = state.sd.sorts; state.sd = null; firstPage(state.mod); redraw(); return;
+    case 'sdReset': HS().sorts = defaultSorts(state.mod); state.sd = null; firstPage(state.mod); redraw(); return;
+    case 'addCond':
+      const grp = [state.main, ...state.more].filter(x => x.field === 'name');
+      state.more.push({ field: 'name', op: 'contains', value: '', logic: grp.some(x => x.logic === 'or') ? 'or' : 'and' });
+      state.open = null; renderPreview(); return;
+    case 'delCond':
+      state.more.splice(Number(v), 1); state.open = null; renderPreview(); return;
+    case 'search': doSearch(); redraw(); return;
+    case 'reset':  doReset(); redraw(); return;
+    case 'dropChip': dropChip(Number(v)); redraw(); return;
+
+    /* 模式 1 搜索卡片 */
+    case 'sfSearch': doSfSearch(); redraw(); return;
+    case 'sfReset':  doSfReset(); redraw(); return;
+    case 'sfToggle': state.sfCollapsed = !state.sfCollapsed; state.open = null; redraw(); return;
+
+    /* 工具栏 */
+    case 'toggleOps': state.opsOpen = !state.opsOpen; renderPreview(); return;
+    case 'cols':      state.colsOpen = !state.colsOpen; renderPreview(); return;
+    case 'colToggle': {
+      const i = state.hidden.indexOf(v);
+      if (i >= 0) state.hidden.splice(i, 1);
+      else if (state.hidden.length >= COLS.length - 1) { toast('至少保留一列'); return; }
+      else state.hidden.push(v);
+      redraw(); return;
+    }
+    case 'refresh': redraw(); toast('已刷新'); return;
+    case 'more':    state.moreOpen = !state.moreOpen; renderPreview(); return;
+    case 'export':  state.moreOpen = false; renderPreview(); toast(`已导出 ${filteredRows().length} 条`); return;   // 选中菜单项后收起(NDropdown 同)
+    case 'import':  state.moreOpen = false; renderPreview(); toast('请选择要导入的文件'); return;
+    case 'tpl':     state.moreOpen = false; renderPreview(); toast('已下载导入模板'); return;
+    case 'add': {
+      const no = addRow();
+      redraw(); toast(`已新增 ${no}`); return;
+    }
+
+    /* 分页 */
+    case 'pgPrev': if (goPage(pageInfo().page - 1)) redraw(); return;
+    case 'pgNext': if (goPage(pageInfo().page + 1)) redraw(); return;
+
+    /* 行与批量 */
+    case 'toggleRow': toggleRow(v); redraw(); return;
+    case 'toggleAll': toggleAll(); redraw(); return;
+    case 'clearSel':  clearSel(); redraw(); return;
+    case 'edit': toast(`正在编辑 ${v}`); return;
+    case 'del':
+      if (delRow(v)) { redraw(); toast(`已删除 ${v}`); }
+      return;
+    case 'batchApprove': {
+      const total = state.checked.length;
+      const n = batchApprove();
+      redraw(); toast(n ? `已审核 ${n} 项` : `所选 ${total} 项无需审核`); return;
+    }
+    case 'batchDel': {
+      const n = batchDel();
+      redraw(); toast(`已删除 ${n} 项`); return;
+    }
+  }
+}
+
+/* ---- 列宽拖拽 ----
+   第一次按下把手:把所有可见列冻结成「当前渲染宽度」(库的 freezeWidths),最后一个数据列的 col 不写宽度、吸收剩余宽度,重绘一次后列宽视觉不变;
+   之后只直接改 <col> 宽度与表格 min-width(不重绘,拖动不掉帧)。用 document 级 pointer 事件,所以中途重绘换掉把手节点也不影响手势。
+   下限 colMin;拖动时收起过滤气泡(气泡锚在漏斗上,列宽一变就对不上);刚拖完的一小段时间内吞掉 click,免得松手落在表头上连带触发排序。 */
+/* 最近一次输入方式:键盘 / 指针。只有键盘操作时,重绘后才需要主动把焦点还给按钮 */
+let kbdModality = false;
+document.addEventListener('keydown', () => { kbdModality = true; }, true);
+document.addEventListener('pointerdown', () => { kbdModality = false; }, true);
+
+let rz = null, rzBlockUntil = 0;
+function rzStart(e, key) {
+  const cols = visibleCols();
+  if (!isFrozen()) {
+    cols.forEach(c => {
+      const th = document.querySelector(`#preview thead th[data-ck="${c.key}"]`);
+      if (th) state.colW[c.key] = Math.round(th.getBoundingClientRect().width);
+    });
+  }
+  const col = cols.find(c => c.key === key);
+  if (!col || state.colW[key] == null) return;
+  state.hp = null; state.open = null;
+  /* 起点取「此刻实际渲染宽度」而不是钉住的宽度:吸收余量的最后一列实际宽度可能比它钉住的宽度大,
+     用钉住的宽度当起点,向右拖半天也超不过它当前宽度,看起来像拖不动 */
+  const th0 = document.querySelector(`#preview thead th[data-ck="${key}"]`);
+  const w0 = th0 ? Math.round(th0.getBoundingClientRect().width) : state.colW[key];
+  state.colW[key] = w0;
+  rz = { key, x0: e.clientX, w0, min: colMin(col), moved: false };
+  renderPreview();
+  document.querySelector(`#preview .th-resize[data-rz="${key}"]`)?.classList.add('active');
+  document.body.classList.add('rz-ing');
+  const sc = document.querySelector('#preview .tbl-scroll');
+  if (sc) { rz.sc = sc; rz.guide = document.createElement('div'); rz.guide.className = 'rz-guide'; sc.appendChild(rz.guide); rzGuide(); }
+  document.addEventListener('pointermove', rzMove);
+  document.addEventListener('pointerup', rzEnd);
+  document.addEventListener('pointercancel', rzEnd);
+  window.addEventListener('blur', rzEnd);
+}
+function rzMove(e) {
+  if (!rz) return;
+  const w = Math.max(rz.min, Math.round(rz.w0 + e.clientX - rz.x0));
+  if (w === state.colW[rz.key]) return;
+  rz.moved = true; state.colW[rz.key] = w;
+  const cols = visibleCols(), tbl = document.querySelector('#preview table.n-table');
+  if (!tbl) return;
+  if (rz.key !== fillColKey(cols)) tbl.querySelectorAll('colgroup col')[cols.findIndex(c => c.key === rz.key) + 1].style.width = w + 'px';   // 填充列的 col 不写宽度,它的「钉住宽度」只作为最小宽度进 min-width(拖宽超出容器才有效,拖窄不低于填满容器)
+  tbl.style.minWidth = tableMinW(cols) + 'px';
+  rzGuide();
+}
+/* 引导线:贯穿整张表(滚动内容坐标),落在被拖列的右边线上;高度取滚动内容总高,虚拟滚动的 spacer 已撑出整页高度 */
+function rzGuide() {
+  const th = document.querySelector(`#preview th[data-ck="${rz.key}"]`);
+  if (!rz.guide || !th) return;
+  const r = th.getBoundingClientRect(), s = rz.sc.getBoundingClientRect();
+  rz.guide.style.left = Math.round(r.right - s.left + rz.sc.scrollLeft - 1) + 'px';
+  rz.guide.style.height = rz.sc.scrollHeight + 'px';
+}
+function rzEnd() {
+  if (!rz) return;
+  rz.guide?.remove();
+  if (rz.moved) rzBlockUntil = performance.now() + 150;
+  rz = null;
+  document.body.classList.remove('rz-ing');
+  document.querySelectorAll('.th-resize.active').forEach(x => x.classList.remove('active'));
+  document.removeEventListener('pointermove', rzMove);
+  document.removeEventListener('pointerup', rzEnd);
+  document.removeEventListener('pointercancel', rzEnd);
+  window.removeEventListener('blur', rzEnd);
+}
+document.addEventListener('pointerdown', (e) => {
+  const h = e.target.closest?.('.th-resize');
+  if (!h || e.button) return;
+  e.preventDefault();
+  rzStart(e, h.dataset.rz);
+});
+
+/* 重绘会销毁旧节点;把焦点还给用户刚点的输入框(同一条件可能有多份输入框,取可见的那份) */
+function repaint(target) {
+  const id = target?.closest?.('[data-input]')?.dataset.input;
+  renderPreview();
+  if (!id) return;   // 列头过滤面板里的输入框(data-hpi)只在 input 事件里改草稿、不走这里的重绘
+  const el = [...document.querySelectorAll(`[data-input="${id}"]`)].find(x => x.offsetParent !== null);
+  if (el) { el.focus(); const n = el.value.length; el.setSelectionRange(n, n); }
+}
+
+document.addEventListener('click', (e) => {
+  if (performance.now() < rzBlockUntil) return;   // 列宽拖拽刚结束:松手产生的 click 不算点击
+  const t = e.target;
+  const inStop = !!t.closest('[data-stop]');
+  const actEl = t.closest('[data-act]');
+  const act = actEl?.dataset.act;
+  let dirty = false;
+
+  /* 列设置气泡:点它自己和它的按钮之外一律收起(任何 act 执行前都先收) */
+  if (state.colsOpen && !t.closest('.col-pop') && act !== 'cols') { state.colsOpen = false; dirty = true; }
+  if (state.moreOpen && !t.closest('.more-pop') && act !== 'more') { state.moreOpen = false; dirty = true; }
+
+  /* 列头过滤气泡 / 窄档抽屉:点它们之外一律收起(漏斗、chip、窄档入口自己处理开关;气泡与抽屉都带 data-stop,里面的点击不算「之外」) */
+  if ((state.hp || state.sd) && !inStop && !['hfOpen', 'chipOpen', 'openFilter', 'openSort'].includes(act)) {
+    state.hp = null; state.sd = null; state.open = null; dirty = true;
+  }
+
+  /* 0. 模式 1 下拉框里的清除 ×(在触发器之内,须先于 1 处理) */
+  const clr = t.closest('[data-clear]');
+  if (clr) { state.sf[clr.dataset.clear] = ''; state.open = null; renderPreview(); return; }
+
+  /* 1. 下拉触发器 */
+  const opener = t.closest('[data-open]');
+  if (opener) {
+    const id = opener.dataset.open;
+    state.open = state.open === id ? null : id;
+    renderPreview();
+    return;
+  }
+
+  /* 2. 下拉选项 */
+  const pick = t.closest('[data-pick]');
+  if (pick) {
+    const [kind, id, ...rest] = pick.dataset.pick.split(':');
+    const val = rest.join(':');
+    if (kind === 'sf') { state.sf[id] = val; state.open = null; renderPreview(); return; }   // 模式 1 的下拉:只改草稿
+    if (kind === 'pgsize') { setPageSize(Number(id)); state.open = null; renderPreview(); return; }   // 分页的每页条数
+    if (kind === 'hp') {   // 列头过滤面板 / 抽屉里的下拉:只改草稿,点「确认」才提交
+      const d = state.hp?.d;
+      if (id === 'field') state.hp = { key: rest[0], d: hpDraft(rest[0]) };   // 窄档抽屉换字段:草稿重取该列已提交的值
+      else if (d) {
+        const i = Number(rest[0]), v2 = rest.slice(1).join(':'), c = d.conds[i];
+        if (id === 'op' && c) {
+          const multi = (o) => ['in', 'notIn'].includes(o);
+          if (VALUELESS.has(v2) || (fieldOf(state.hp.key).type === 'select' && multi(v2) !== multi(c.op))) c.value = '';   // 换比较符后值的形态不再适用就清空,不猜测转换
+          c.op = v2;
+        } else if (id === 'logic') d.logic = v2;   // 且 / 或是按列一个值(FilterValue.logic)
+        else if (id === 'val' && c) c.value = v2;
+      }
+      state.open = null; renderPreview(); return;
+    }
+    const c = condById(id);
+    if (kind === 'field') {
+      c.field = val;
+      const allowed = OPS_BY_TYPE[fieldOf(val).type];
+      if (!allowed.includes(c.op)) c.op = allowed[0];   // 换字段后比较符要仍然讲得通
+      c.value = '';
+      // 换字段后加入别的字段组:且/或跟着那一组走(FilterValue.logic 是按字段一个值)
+      const grp = [state.main, ...state.more].filter(x => x !== c && x.field === val);
+      c.logic = grp.some(x => x.logic === 'or') ? 'or' : 'and';
+    } else if (kind === 'op') {
+      const multi = (o) => ['in', 'notIn'].includes(o);
+      if (VALUELESS.has(val) || (fieldOf(c.field)?.type === 'select' && multi(val) !== multi(c.op))) c.value = '';
+      c.op = val;
+    } else if (kind === 'val') {
+      c.value = val;
+      // 窄档没有搜索按钮:顶栏那个枚举下拉选完即生效;抽屉里是批量编辑多个条件,仍要点「确认」
+      if (id === 'main' && pick.closest('.tb-search')) { doSearch(); state.open = null; redraw(); return; }
+    } else if (kind === 'logic') {
+      // 库的数据模型里「且/或」是按字段一个值(FilterValue.logic),所以同字段联动,不允许一条 且 一条 或
+      [state.main, ...state.more].filter(x => x.field === c.field).forEach(x => { x.logic = val; });
+    }
+    state.open = null;
+    renderPreview();
+    return;
+  }
+
+  /* 3. 动作按钮:气泡之外的动作(含遮罩)等于「点了别处」,先收起下拉与气泡 */
+  if (actEl) {
+    // 导出/编辑这类只弹 toast 的动作自己不重绘,但这里已收起了浮层,要补一次重绘,免得界面与 state 失步
+    const stale = dirty || (!inStop && act !== 'togglePanel' && (state.open !== null || state.panelOpen));
+    if (!inStop && act !== 'togglePanel') { state.open = null; state.panelOpen = false; }
+    runAct(act, actEl.dataset.v);
+    if (stale) repaint(t);
+    return;
+  }
+
+  /* 4. 点空白处收起弹层;data-stop 区域(气泡 / 抽屉 / 列设置)里点空白只收下拉 */
+  if (!t.closest('.dd')) {
+    if (!inStop && (state.open !== null || state.panelOpen)) { state.open = null; state.panelOpen = false; dirty = true; }
+    else if (inStop && state.open !== null) { state.open = null; dirty = true; }
+  }
+  if (dirty) repaint(t);
+});
+
+/* 输入:只改 state,不重绘,免得输入框失焦;同一条件在别处(窄档输入框 / 抽屉 / 宽档)的输入框同步值 */
+document.addEventListener('input', (e) => {
+  const pj = e.target.closest?.('[data-pgjump]');
+  if (pj) { pj.value = pj.value.replace(/\D+/g, ''); return; }   // quick jumper 只收数字(Pagination.mjs handleJumperInput)
+  const hpi = e.target.closest?.('[data-hpi]');
+  if (hpi) { if (state.hp) state.hp.d.conds[Number(hpi.dataset.hpi)].value = hpi.value; return; }   // 列头过滤面板:只改草稿
+  const inp = e.target.closest('[data-input]');
+  if (!inp) return;
+  if (inp.dataset.input.startsWith('sf:')) { state.sf[inp.dataset.input.slice(3)] = inp.value; return; }   // 模式 1:输入即改草稿,不重绘
+  const cond = condById(inp.dataset.input);
+  cond.value = inp.value;
+  document.querySelectorAll('[data-input]').forEach(x => { if (x !== inp && condById(x.dataset.input) === cond) x.value = inp.value; });
+});
+
+/* 回车即搜索(同时收起气泡 / 抽屉);输入法组词中的回车不算 */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (state.open !== null || state.panelOpen || state.colsOpen || state.moreOpen || state.hp || state.sd) { closeFloats(); renderPreview(); }   // Esc:先收起浮层并丢弃草稿
+    else if (state.max) { state.max = false; renderPreview(); }                                                                 // 没有浮层了再 Esc:还原
+    return;
+  }
+  if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;   // 229:Safari 输入法确认那一下 isComposing 已是 false
+  const pj = e.target.closest?.('[data-pgjump]');
+  if (pj) { pgJump(pj); return; }
+  if (e.target.closest?.('[data-hpi]') && state.hp) { hpCommit(); redraw(); return; }   // 列头过滤面板值输入框里回车 = 确认
+  const inp = e.target.closest('[data-input]');
+  if (!inp) return;
+  if (inp.dataset.input.startsWith('sf:')) doSfSearch(); else doSearch();   // 模式 1 字段里回车 = 点搜索
+  redraw();
+});
+
+/* quick jumper:输入页码回车 / 失焦跳转,超范围夹进 [1, 总页数],跳完清空输入框(Pagination.mjs doQuickJump);非数字不动 */
+function pgJump(inp) {
+  const simple = inp.hasAttribute('data-simple'), cur = state.pager[pagerKey()].page;   // simple:输入框显示的就是当前页,非法 / 同页要还原成当前页(官方 simple 的 jumperValue 始终 = 当前页)
+  const n = Number.parseInt(inp.value, 10);
+  if (Number.isNaN(n)) { if (simple) inp.value = cur; return; }
+  if (goPage(n)) redraw(); else inp.value = simple ? cur : '';
+}
+document.addEventListener('change', (e) => {
+  const pj = e.target.closest?.('[data-pgjump]');
+  if (pj) pgJump(pj);
+});
+
+function render() {
+  renderMods();
+  renderSidePanel();
+  renderStage();
+  renderOverlay();
+}
+
+state.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';   // 跟随系统,和真实应用一致
+document.documentElement.dataset.theme = state.theme;
+render();
+/* 容器档位变了才重绘(气泡 ↔ 抽屉切换);宽度只在档内变化时全靠 CSS 容器查询 */
+window.addEventListener('resize', () => {
+  const pv = $('preview');
+  if (!pv) return;
+  if ((previewW(pv) > 0 && tierOf(previewW(pv)) !== state.tier)
+    || (state.mod === 'search' && sfColsNow() !== state.sfCols)) renderPreview();   // 模式 1:视口跨过 s/m/l 断点,列数与折叠可见数都要重算
+  else if (state.hp) placeHpop();
+});
+</script>
+</body>
+</html>

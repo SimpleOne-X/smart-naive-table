@@ -1,0 +1,11 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>spike s2</title>
+<style>
+body{margin:0;font:14px sans-serif}
+/* 宿主:带 transform 的祖先(路由切换动画常见)+ 高 z-index 的固定顶栏 */
+.host-top{position:fixed;top:0;left:0;right:0;height:48px;background:#334;color:#fff;z-index:var(--top-z,100);display:flex;align-items:center;padding:0 16px}
+.host-main{margin-top:48px;padding:16px;transform:translateZ(0);overflow:hidden}
+.box{height:420px}
+.max-layer{position:fixed;inset:0;z-index:1999;background:#fff;padding:16px;display:flex;flex-direction:column}
+.max-layer .box{flex:1;height:auto;min-height:0}
+</style></head>
+<body><div class="host-top" id="top">host 顶栏</div><div class="host-main"><div id="app"></div></div><script type="module" src="./s2.js"></script></body></html>
