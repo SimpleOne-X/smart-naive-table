@@ -300,6 +300,10 @@ export interface SmartTableProps<T = any> {
   activeRowKey?: string | number | null
   /** 所有数据列可拖拽调整列宽;列上写 resizable 可单独覆盖。配合 storageKey 记住宽度。 */
   resizable?: boolean
+  /** 行拖拽排序(sortablejs 懒加载,仅开启时才加载);松手后发 @row-drag-sort。默认 false。 */
+  rowDraggable?: boolean
+  /** 行拖拽的把手选择器(只有按住它才能拖);缺省整行可拖。 */
+  dragHandle?: string
   /** 过滤态 → 请求参数的序列化;缺省产出 `{ filters: [{ field, logic, conditions }] }`。 */
   filterSerializer?: (state: FilterState) => Record<string, any>
 }

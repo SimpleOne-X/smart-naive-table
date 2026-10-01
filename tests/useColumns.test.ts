@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { h, ref, type Slots, type VNode } from 'vue'
 import {
+  canHideColumn,
   deriveFilterDefs,
   headerIconFloor,
   useColumns,
@@ -565,5 +566,50 @@ describe('useColumns 列宽拖拽', () => {
     expect('width' in col(api, 'amt')).toBe(false)
     expect(col(api, 'name').width).toBe(260)
     expect(api.scrollX.value).toBe(260 + 100)
+  })
+})
+
+describe('列设置至少保留一列(N11)', () => {
+  const three = (): SmartTableColumn<Row>[] => [
+    { key: 'a', title: 'A' },
+    { key: 'b', title: 'B' },
+    { key: 'c', title: 'C' },
+  ]
+
+  it('canHideColumn:除它以外还有已显示的列才允许隐藏;隐藏中的 / 不存在的键不受限', () => {
+    expect(canHideColumn([{ key: 'a', show: true }, { key: 'b', show: false }], 'a')).toBe(false)
+    expect(canHideColumn([{ key: 'a', show: true }, { key: 'b', show: true }], 'a')).toBe(true)
+    expect(canHideColumn([{ key: 'a', show: true }, { key: 'b', show: false }], 'b')).toBe(true)
+    expect(canHideColumn([{ key: 'a', show: true }], 'zzz')).toBe(true)
+  })
+
+  it('toggleShow 隐藏到只剩一列后,再隐藏最后一列被拒绝(返回 false,状态不变);其余情况返回 true', () => {
+    const api = build(three())
+    expect(api.toggleShow('a', false)).toBe(true)
+    expect(api.toggleShow('b', false)).toBe(true)
+    expect(api.toggleShow('c', false)).toBe(false)
+    expect(api.settingItems.value.map((i) => [i.key, i.show])).toEqual([
+      ['a', false],
+      ['b', false],
+      ['c', true],
+    ])
+    expect(api.toggleShow('c', true)).toBe(true) // 显示永远允许
+  })
+
+  it('hideInSetting 的列(设置里看不到,也不能被用户隐藏)不算「保留的那一列」', () => {
+    const api = build([
+      { key: 'a', title: 'A' },
+      { key: 'act', title: '操作', hideInSetting: true },
+    ])
+    expect(api.toggleShow('a', false)).toBe(false) // 设置里只有 a 一列,操作列不算
+  })
+
+  it('已经全部隐藏的列声明(宿主 hide: true)不被拦:能勾回来', () => {
+    const api = build([
+      { key: 'a', title: 'A', hide: true },
+      { key: 'b', title: 'B', hide: true },
+    ])
+    expect(api.toggleShow('a', true)).toBe(true)
+    expect(api.toggleShow('a', false)).toBe(false) // 又只剩它自己了
   })
 })

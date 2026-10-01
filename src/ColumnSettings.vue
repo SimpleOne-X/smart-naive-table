@@ -1,12 +1,13 @@
 <script setup lang="ts">
 // 列设置面板:显隐勾选 + 原生 HTML5 拖拽排序 + 固定切换 + 恢复默认。零拖拽库依赖。
+// 至少保留一列(N11,原型一致):只剩一个已勾选的列时,那一列的勾选框禁用(没有提示文字,禁用态本身就是说明)。
 import { ref, type PropType, type VNodeChild } from 'vue'
 import { NButton, NCheckbox, NPopover, NTooltip, useThemeVars } from 'naive-ui'
 import type { SmartTableLabels } from './types'
-import type { SettingItem } from './useColumns'
+import { canHideColumn, type SettingItem } from './useColumns'
 import { ColumnsIcon, DragIcon } from './icons'
 
-defineProps({
+const props = defineProps({
   items: { type: Array as PropType<SettingItem[]>, required: true },
   labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true },
 })
@@ -32,6 +33,9 @@ function onDrop(idx: number) {
   dragFrom.value = null
   dragOver.value = null
 }
+
+// 只剩一个已勾选的列时,隐藏它会让表格没有数据列 → 禁用它的勾选框(useColumns.toggleShow 同样兜底拒绝,编程式调用也隐藏不掉)
+const isLastShown = (item: SettingItem) => item.show && !canHideColumn(props.items, item.key)
 
 function renderTitle(title: SettingItem['title']): VNodeChild {
   return typeof title === 'function' ? title() : title
@@ -70,7 +74,7 @@ function toggleFixed(item: SettingItem, side: 'left' | 'right') {
         @dragend="((dragFrom = null), (dragOver = null))"
       >
         <span class="smart-table-colset-drag" :style="{ color: themeVars.textColor3 }"><DragIcon /></span>
-        <n-checkbox :checked="item.show" @update:checked="(v: boolean) => emit('toggle', item.key, v)">
+        <n-checkbox :checked="item.show" :disabled="isLastShown(item)" @update:checked="(v: boolean) => emit('toggle', item.key, v)">
           <component :is="() => renderTitle(item.title)" />
         </n-checkbox>
         <span class="smart-table-colset-pins">

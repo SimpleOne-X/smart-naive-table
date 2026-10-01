@@ -34,6 +34,16 @@ export function headerIconFloor(hasFilter: boolean, hasSorter: boolean): number 
   return 12 + 44 + (hasFilter ? 30 : 0) + (hasSorter ? 21 : 0) + 16
 }
 
+/**
+ * 列设置「至少保留一列」(N11,原型一致):隐藏 key 这一列之后,设置里还得剩一列是显示的。
+ * 只看设置里能管的列(hideInSetting 的列用户碰不到,不算);已经隐藏的 / 不存在的键不受限。
+ */
+export function canHideColumn(items: ReadonlyArray<{ key: string; show: boolean }>, key: string): boolean {
+  const target = items.find((i) => i.key === key)
+  if (!target || !target.show) return true
+  return items.some((i) => i.key !== key && i.show)
+}
+
 export function isSpecialColumn<T>(c: SmartTableColumn<T>): c is SmartTableSpecialColumn<T> {
   return 'type' in c && typeof (c as SmartTableSpecialColumn<T>).type === 'string'
 }
@@ -250,7 +260,8 @@ export interface UseColumnsReturn<T> {
   density: ComputedRef<Density>
   setDensity: (d: Density) => void
   settingItems: ComputedRef<SettingItem[]>
-  toggleShow: (key: string, show: boolean) => void
+  /** 返回是否生效:隐藏最后一个显示的列会被拒绝(返回 false,状态不变);显示永远允许。 */
+  toggleShow: (key: string, show: boolean) => boolean
   moveCheck: (from: number, to: number) => void
   setFixed: (key: string, fixed?: 'left' | 'right') => void
   resetSettings: () => void
@@ -406,8 +417,10 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
     }, 300)
   }
 
-  function toggleShow(key: string, show: boolean) {
+  function toggleShow(key: string, show: boolean): boolean {
+    if (!show && !canHideColumn(effectiveChecks.value, key)) return false
     persist(effectiveChecks.value.map((c) => (c.key === key ? { ...c, show } : c)))
+    return true
   }
 
   function moveCheck(from: number, to: number) {

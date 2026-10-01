@@ -634,7 +634,16 @@ describe('SmartTable 密度(B2:宿主的值必须能生效)', () => {
 })
 
 describe('SmartTable 密度的写入端(Q-1:保存列设置 / 列宽不把宿主的密度写进存储)', () => {
-  const base = { columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[], data: rows, rowKey: 'id' }
+  // 有意改动(N11):夹具从 1 列改成 2 列 —— 列设置「至少保留一列」后,单列夹具里取消 name 会被拒绝、根本不写存储,
+  // 下面「不写 density / 保留旧 density」的断言就成了空转;留一个 code 列,取消 name 才是真的保存了列设置。
+  const base = {
+    columns: [
+      { key: 'name', title: 'Name' },
+      { key: 'code', title: 'Code' },
+    ] as SmartTableColumn<unknown>[],
+    data: rows,
+    rowKey: 'id',
+  }
   const raw = (key: string) => JSON.parse(localStorage.getItem('protable:' + key) ?? 'null') as { density?: string } | null
 
   afterEach(() => {
@@ -1506,6 +1515,34 @@ describe('SmartTable 翻页后滚回卡片顶部(E4:只在不开 fillHeight 时)
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
     expect(scrollTo).toHaveBeenCalledTimes(1)
     expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
+    wrapper.unmount()
+  })
+})
+
+describe('SmartTable 列设置至少保留一列(N11)', () => {
+  it('在列设置里把列一个个取消:最后一列取消不掉,表头还剩它;之后能勾回来', async () => {
+    const wrapper = mount(SmartTable, {
+      props: {
+        columns: [
+          { key: 'a', title: 'AA' },
+          { key: 'b', title: 'BB' },
+        ] as SmartTableColumn<unknown>[],
+        data: [{ id: 1, a: 1, b: 2 }],
+        rowKey: 'id',
+      },
+    })
+    const settings = wrapper.findComponent(ColumnSettings)
+    const heads = () => wrapper.findAll('thead th').map((th) => th.text())
+    expect(heads()).toEqual(['AA', 'BB'])
+    settings.vm.$emit('toggle', 'a', false)
+    await nextTick()
+    expect(heads()).toEqual(['BB'])
+    settings.vm.$emit('toggle', 'b', false) // 最后一列:勾选框已禁用,编程式 / 绕过界面的调用也被 toggleShow 兜底拒绝
+    await nextTick()
+    expect(heads()).toEqual(['BB'])
+    settings.vm.$emit('toggle', 'a', true)
+    await nextTick()
+    expect(heads()).toEqual(['AA', 'BB'])
     wrapper.unmount()
   })
 })
