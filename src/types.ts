@@ -87,8 +87,23 @@ export interface SearchConfig {
 
 /* ======================== 过滤 ======================== */
 
-/** 条件动作(对齐 Bootstrap Blazor 的 FilterAction)。 */
-export type FilterAction = 'equal' | 'notEqual' | 'contains' | 'notContains' | 'gt' | 'gte' | 'lt' | 'lte'
+/** 条件动作(对齐 Bootstrap Blazor 的 FilterAction)。isNull / isNotNull 不需要值;in / notIn 的值是数组。 */
+export type FilterAction =
+  | 'equal'
+  | 'notEqual'
+  | 'contains'
+  | 'notContains'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'isNull'
+  | 'isNotNull'
+  | 'like'
+  | 'startsWith'
+  | 'endsWith'
+  | 'in'
+  | 'notIn'
 
 /** 同一列内多个条件的连接方式。 */
 export type FilterLogic = 'and' | 'or'
@@ -386,6 +401,17 @@ export interface SmartTableLabels {
   filterGte: string
   filterLt: string
   filterLte: string
+  /* ---- 3.0 新增的键一律可选:2.1.1 宿主写的完整 labels 对象不会因此报类型错误;
+         缺省取英文默认(defaultLabels),中文宿主整包用 zhCNLabels ---- */
+  filterIsNull?: string
+  filterIsNotNull?: string
+  filterLike?: string
+  filterStartsWith?: string
+  filterEndsWith?: string
+  filterIn?: string
+  filterNotIn?: string
+  /** 无值算子的值位置占位。 */
+  filterNoValue?: string
 }
 
 /* ======================== 持久化存储结构 ======================== */

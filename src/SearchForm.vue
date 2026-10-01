@@ -26,7 +26,7 @@ const props = defineProps({
   fields: { type: Array as PropType<SearchDef[]>, required: true },
   params: { type: Object as PropType<Record<string, any>>, required: true },
   config: { type: Object as PropType<SearchFormConfig>, default: () => ({}) },
-  labels: { type: Object as PropType<SmartTableLabels>, required: true },
+  labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true },
   loading: { type: Boolean, default: false },
   dateValueFormat: { type: String, default: 'yyyy-MM-dd' },
   getOptions: { type: Function as PropType<(key: string) => SmartTableOption[]>, required: true },

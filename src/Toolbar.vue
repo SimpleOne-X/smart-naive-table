@@ -7,7 +7,7 @@ import { DensityIcon, RefreshIcon } from './icons'
 
 const props = defineProps({
   title: { type: String, default: undefined },
-  labels: { type: Object as PropType<SmartTableLabels>, required: true },
+  labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true },
   config: { type: Object as PropType<ToolbarConfig | false>, default: () => ({}) },
   density: { type: String as PropType<Density>, required: true },
 })

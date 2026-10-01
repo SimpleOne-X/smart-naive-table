@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
+  actionValueKind,
   activeConditions,
   applyFilters,
   defaultFilterSerializer,
   filterValueToOptions,
   isFilterActive,
+  isValuelessAction,
   matchCondition,
   matchFilterValue,
+  NO_VALUE_ACTIONS,
   optionsToFilterValue,
 } from '../src/filter'
 import type { FilterAction, FilterValue } from '../src/types'
@@ -226,5 +229,76 @@ describe('defaultFilterSerializer', () => {
   it('全空时不产出 filters 键(避免给后端传空数组)', () => {
     expect(defaultFilterSerializer({})).toEqual({})
     expect(defaultFilterSerializer({ name: val('and', cond('equal', null)) })).toEqual({})
+  })
+})
+
+describe('新增 7 个操作符', () => {
+  it('isNull / isNotNull:空值 = null / undefined / 空白串 / 空数组;0 与 false 不算空;不需要值', () => {
+    for (const empty of [null, undefined, '', '   ', []]) {
+      expect(matchCondition(cond('isNull', null), empty)).toBe(true)
+      expect(matchCondition(cond('isNotNull', null), empty)).toBe(false)
+    }
+    for (const filled of [0, false, 'x', [1]]) {
+      expect(matchCondition(cond('isNull', null), filled)).toBe(false)
+      expect(matchCondition(cond('isNotNull', null), filled)).toBe(true)
+    }
+  })
+
+  it('startsWith / endsWith:忽略大小写;空单元格不匹配', () => {
+    expect(matchCondition(cond('startsWith', 'AL'), 'alice')).toBe(true)
+    expect(matchCondition(cond('startsWith', 'ce'), 'alice')).toBe(false)
+    expect(matchCondition(cond('endsWith', 'CE'), 'alice')).toBe(true)
+    expect(matchCondition(cond('endsWith', 'al'), 'alice')).toBe(false)
+    expect(matchCondition(cond('startsWith', 'a'), null)).toBe(false)
+    expect(matchCondition(cond('endsWith', 'a'), undefined)).toBe(false)
+  })
+
+  it('like:% 任意长度、_ 单个字符,整串匹配、忽略大小写;正则元字符按字面量', () => {
+    expect(matchCondition(cond('like', 'ali%'), 'Alice')).toBe(true)
+    expect(matchCondition(cond('like', '%ice'), 'Alice')).toBe(true)
+    expect(matchCondition(cond('like', 'a_ice'), 'alice')).toBe(true)
+    expect(matchCondition(cond('like', 'a_ice'), 'aice')).toBe(false)
+    expect(matchCondition(cond('like', 'lic'), 'alice')).toBe(false) // 整串匹配,不是包含
+    expect(matchCondition(cond('like', 'a.c'), 'abc')).toBe(false) // . 是字面量
+    expect(matchCondition(cond('like', 'a.c'), 'a.c')).toBe(true)
+    expect(matchCondition(cond('like', '%'), null)).toBe(false)
+  })
+
+  it('in / notIn:值是数组,命中任一项即 in;空单元格时 notIn 为真;值不是数组则 in 为假', () => {
+    expect(matchCondition(cond('in', [1, 2]), 2)).toBe(true)
+    expect(matchCondition(cond('in', [1, 2]), '2')).toBe(true) // 沿用 equal 的跨类型
+    expect(matchCondition(cond('in', [1, 2]), 3)).toBe(false)
+    expect(matchCondition(cond('notIn', [1, 2]), 3)).toBe(true)
+    expect(matchCondition(cond('notIn', [1, 2]), 1)).toBe(false)
+    expect(matchCondition(cond('in', [1, 2]), null)).toBe(false)
+    expect(matchCondition(cond('notIn', [1, 2]), null)).toBe(true)
+    expect(matchCondition(cond('in', 'x'), 'x')).toBe(false)
+  })
+})
+
+describe('无值算子(C4)', () => {
+  it('NO_VALUE_ACTIONS / isValuelessAction / actionValueKind', () => {
+    expect([...NO_VALUE_ACTIONS]).toEqual(['isNull', 'isNotNull'])
+    expect(isValuelessAction('isNull')).toBe(true)
+    expect(isValuelessAction('equal')).toBe(false)
+    expect(actionValueKind('isNotNull')).toBe('none')
+    expect(actionValueKind('in')).toBe('array')
+    expect(actionValueKind('notIn')).toBe('array')
+    expect(actionValueKind('contains')).toBe('scalar')
+  })
+
+  it('值为空的无值算子仍算「生效」:不被 activeConditions 丢掉,也进序列化与求值', () => {
+    const v = val('and', cond('isNull', null))
+    expect(activeConditions(v)).toEqual([cond('isNull', null)])
+    expect(isFilterActive(v)).toBe(true)
+    expect(matchFilterValue(v, null)).toBe(true)
+    expect(matchFilterValue(v, 'x')).toBe(false)
+    expect(defaultFilterSerializer({ name: v })).toEqual({
+      filters: [{ field: 'name', logic: 'and', conditions: [cond('isNull', null)] }],
+    })
+  })
+
+  it('有值类算子的空值仍被丢弃(口径不变);空数组的 in 也不生效', () => {
+    expect(activeConditions(val('and', cond('equal', ''), cond('in', [])))).toEqual([])
   })
 })

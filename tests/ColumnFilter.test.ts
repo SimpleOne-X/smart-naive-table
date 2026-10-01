@@ -12,7 +12,7 @@ const labels = {
   filterReset: '重置',
   filterConfirm: '确定',
   filterSelectAll: '全选',
-} as unknown as SmartTableLabels
+} as unknown as Required<SmartTableLabels>
 
 let mountCount = 0
 const TrackedPanel = defineComponent({

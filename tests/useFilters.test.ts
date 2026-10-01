@@ -41,6 +41,21 @@ describe('deriveFilterDefs', () => {
     expect(num.actions).toEqual(['gt'])
   })
 
+  it('[B7 / D1] 列头面板的默认可选操作符保持 2.1.1:新增的 7 个只在列上显式写 filter.actions 时出现', () => {
+    const [text, num, date, sel, explicit] = deriveFilterDefs<Row>([
+      { key: 'name', filter: true },
+      { key: 'salary', format: 'money', filter: true },
+      { key: 'createTime', format: 'datetime', filter: true },
+      { key: 'status', options: [{ label: 'A', value: 1 }], filter: { mode: 'condition' } },
+      { key: 'nick', filter: { actions: ['like', 'isNull', 'in'] } },
+    ])
+    expect(text.actions).toEqual(['contains', 'notContains', 'equal', 'notEqual'])
+    expect(num.actions).toEqual(['equal', 'notEqual', 'gt', 'gte', 'lt', 'lte'])
+    expect(date.actions).toEqual(['equal', 'notEqual', 'gt', 'gte', 'lt', 'lte'])
+    expect(sel.actions).toEqual(['equal', 'notEqual'])
+    expect(explicit.actions).toEqual(['like', 'isNull', 'in'])
+  })
+
   it('跳过特殊列、无 filter 的列,以及只作搜索项的 hideInTable 列', () => {
     const defs = deriveFilterDefs<Row>(
       [

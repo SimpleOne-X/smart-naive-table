@@ -8,7 +8,7 @@ import { ColumnsIcon, DragIcon } from './icons'
 
 defineProps({
   items: { type: Array as PropType<SettingItem[]>, required: true },
-  labels: { type: Object as PropType<SmartTableLabels>, required: true },
+  labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true },
 })
 
 const emit = defineEmits<{

@@ -20,13 +20,14 @@ import type { SelectMixedOption } from 'naive-ui/es/select/src/interface'
 import type { FilterAction, FilterCondition, FilterValue, SmartTableLabels, SmartTableOption } from './types'
 import type { FilterDef } from './useColumns'
 import { filterValueToOptions, isFilterActive, optionsToFilterValue } from './filter'
+import { ACTION_LABEL_KEY } from './labels'
 import { optionLabel } from './useOptions'
 import { FilterIcon } from './icons'
 
 const props = defineProps({
   def: { type: Object as PropType<FilterDef>, required: true },
   value: { type: Object as PropType<FilterValue | null>, default: null },
-  labels: { type: Object as PropType<SmartTableLabels>, required: true },
+  labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true },
   getOptions: { type: Function as PropType<(key: string) => SmartTableOption[]>, required: true },
   isLoadingOptions: { type: Function as PropType<(key: string) => boolean>, required: true },
   dateValueFormat: { type: String, default: 'yyyy-MM-dd' },
@@ -106,16 +107,6 @@ const actionOptions = computed<SelectMixedOption[]>(() =>
   props.def.actions.map((a) => ({ label: actionLabel(a), value: a })),
 )
 
-const ACTION_LABEL_KEY: Record<FilterAction, keyof SmartTableLabels> = {
-  equal: 'filterEqual',
-  notEqual: 'filterNotEqual',
-  contains: 'filterContains',
-  notContains: 'filterNotContains',
-  gt: 'filterGt',
-  gte: 'filterGte',
-  lt: 'filterLt',
-  lte: 'filterLte',
-}
 function actionLabel(a: FilterAction): string {
   return props.labels[ACTION_LABEL_KEY[a]]
 }

@@ -67,10 +67,25 @@ export function isBlank(v: unknown): boolean {
   return false
 }
 
-/** 值非空的条件才参与求值 —— 用户只填了动作没填值时视为没写。 */
+/** 不需要填值的操作符:值为空也算「写了」,不能被 activeConditions 当成没填丢掉(C4)。 */
+export const NO_VALUE_ACTIONS: readonly FilterAction[] = ['isNull', 'isNotNull']
+
+export function isValuelessAction(action: FilterAction): boolean {
+  return NO_VALUE_ACTIONS.includes(action)
+}
+
+/** 操作符期望的值形状:无值 / 数组(in、notIn)/ 标量。换操作符时据此判断旧值是否还适用。 */
+export type ActionValueKind = 'none' | 'array' | 'scalar'
+
+export function actionValueKind(action: FilterAction): ActionValueKind {
+  if (isValuelessAction(action)) return 'none'
+  return action === 'in' || action === 'notIn' ? 'array' : 'scalar'
+}
+
+/** 值非空的条件才参与求值 —— 用户只填了动作没填值时视为没写;无值算子(isNull 等)除外。 */
 export function activeConditions(value: FilterValue | null | undefined): FilterCondition[] {
   if (!value || !Array.isArray(value.conditions)) return []
-  return value.conditions.filter((c) => c && !isBlank(c.value))
+  return value.conditions.filter((c) => c && (isValuelessAction(c.action) || !isBlank(c.value)))
 }
 
 /** 该列是否处于生效的过滤态(表头漏斗图标高亮、是否进请求参数都看它)。 */
@@ -146,8 +161,32 @@ function matchContains(cell: unknown, value: unknown): boolean {
   return String(cell).toLowerCase().includes(needle)
 }
 
+function matchStartsWith(cell: unknown, value: unknown): boolean {
+  if (cell === null || cell === undefined) return false
+  return String(cell).toLowerCase().startsWith(String(value).toLowerCase())
+}
+
+function matchEndsWith(cell: unknown, value: unknown): boolean {
+  if (cell === null || cell === undefined) return false
+  return String(cell).toLowerCase().endsWith(String(value).toLowerCase())
+}
+
+/** SQL LIKE:% 任意长度、_ 单个字符,整串匹配、忽略大小写;其余字符按字面量。 */
+function matchLike(cell: unknown, value: unknown): boolean {
+  if (cell === null || cell === undefined) return false
+  const source = String(value)
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/%/g, '.*')
+    .replace(/_/g, '.')
+  return new RegExp(`^${source}$`, 'is').test(String(cell))
+}
+
+function matchIn(cell: unknown, value: unknown, dateValueFormat: string): boolean {
+  return Array.isArray(value) && value.some((v) => matchEqual(cell, v, dateValueFormat))
+}
+
 /**
- * 单条件求值。单元格为空时:notEqual/notContains 为真,其余为假。
+ * 单条件求值。单元格为空时:notEqual/notContains/notIn 为真,其余为假。
  * dateValueFormat 对齐 ColumnFilter 日期条件用的 n-date-picker value-format(缺省
  * 'yyyy-MM-dd')—— host 改了这个配置,「等于某天」的判定也要按同一种形状解析过滤值,
  * 否则值形状对不上,day-range 直接退化成普通标量比较,整天语义悄悄失效。
@@ -186,6 +225,20 @@ export function matchCondition(
       if (action === 'lt') return c < 0
       return c <= 0
     }
+    case 'isNull':
+      return isBlank(cell)
+    case 'isNotNull':
+      return !isBlank(cell)
+    case 'startsWith':
+      return matchStartsWith(cell, value)
+    case 'endsWith':
+      return matchEndsWith(cell, value)
+    case 'like':
+      return matchLike(cell, value)
+    case 'in':
+      return matchIn(cell, value, dateValueFormat)
+    case 'notIn':
+      return !matchIn(cell, value, dateValueFormat)
     default:
       // 未识别的 action(如反序列化/编程式构造出的脏数据)按不匹配处理 ——
       // fail-open(默认放行)会让 or 逻辑下整列过滤被一条脏条件悄悄短路成「放行全部」。

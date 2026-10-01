@@ -2,7 +2,7 @@ export { default as SmartTable } from './SmartTable.vue'
 export { useSmartTable, cleanParams } from './useSmartTable'
 export { useTableCrud } from './useTableCrud'
 export { useOptions, findOption, optionLabel } from './useOptions'
-export { defaultLabels, mergeLabels } from './labels'
+export { defaultLabels, mergeLabels, zhCNLabels } from './labels'
 export { formatDate, formatDatetime, formatMoney, applyFormat } from './format'
 export { loadState, saveState, clearState, mergeCols } from './storage'
 export {
@@ -14,8 +14,11 @@ export {
   defaultFilterSerializer,
   optionsToFilterValue,
   filterValueToOptions,
+  NO_VALUE_ACTIONS,
+  isValuelessAction,
+  actionValueKind,
 } from './filter'
-export type { FilterSerializer, SerializedFilter, FilterableField } from './filter'
+export type { FilterSerializer, SerializedFilter, FilterableField, ActionValueKind } from './filter'
 export { useFilters } from './useFilters'
 export { deriveFilterDefs, deriveInitFilters, filterOptionsKey } from './useColumns'
 export type { FilterDef } from './useColumns'
