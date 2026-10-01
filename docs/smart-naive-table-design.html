@@ -1475,7 +1475,7 @@ const HS = () => state.h[state.mod];
    模块 3 / 4 · 列头排序与过滤(对齐官方 DataTable,见 .th-* 样式块的依据)
    ============================================================ */
 /* 宿主的列声明(对应库的列配置):sorters 里有的列才可排序。
-   模块 3:sorter: true(官方单列互斥);模块 4:sorter: { multiple: n }(官方多列,n 大者优先,与点击顺序无关:use-sorter.mjs:48-52)+ 日期列 defaultSortOrder: 'descend'。
+   模块 3:sorter: true(官方单列互斥);模块 4:sorter: { multiple: n }(官方多列,n 大者优先,与点击顺序无关:use-sorter.mjs:56-59)+ 日期列 defaultSortOrder: 'descend'。
    列头过滤:所有数据列都可过滤;有候选项的列(单据状态 / 部门)是 options 模式,其余是 condition 模式(useColumns.ts:154)。 */
 const H_CFG = {
   filter: { multiple: false, sorters: { no: {}, amount: {}, bizDate: {} } },
@@ -1484,8 +1484,8 @@ const H_CFG = {
 const defaultSorts = (mod) => (mod === 'sort' ? [{ key: 'bizDate', order: 'descend' }] : []);
 const sortable = (key) => key in H_CFG[state.mod].sorters;
 const sortOrderOf = (key) => HS().sorts.find(s => s.key === key)?.order ?? false;
-/* 官方点击循环:升序 → 降序 → 取消(data-table/src/utils.mjs getNextOrderOf) */
-const nextOrder = (o) => (o === false ? 'ascend' : o === 'ascend' ? 'descend' : false);
+/* 官方点击循环:降序 → 升序 → 取消(data-table/src/utils.mjs:74-77 getNextOrderOf:无排序时首次点击是降序) */
+const nextOrder = (o) => (o === false ? 'descend' : o === 'descend' ? 'ascend' : false);
 /* 改某列排序:多列模式保留其它列;单列模式互斥(点别的列替换,取消只在该列正是当前排序时生效) */
 function applySort(list, key, order, multiple) {
   if (multiple) return order ? [...list.filter(s => s.key !== key), { key, order }] : list.filter(s => s.key !== key);
@@ -2645,7 +2645,7 @@ function runAct(act, v) {
     case 'noop': return;   // 列宽把手:点一下什么都不做(也不冒泡成排序)
 
     /* 模块 3 / 4:表头排序 */
-    case 'sortClick': {   // 官方循环 升序 → 降序 → 取消;多列模式保留其它列,单列模式互斥
+    case 'sortClick': {   // 官方循环 降序 → 升序 → 取消;多列模式保留其它列,单列模式互斥
       HS().sorts = applySort(HS().sorts, v, nextOrder(sortOrderOf(v)), H_CFG[state.mod].multiple);
       firstPage(state.mod); redraw(); return;
     }
