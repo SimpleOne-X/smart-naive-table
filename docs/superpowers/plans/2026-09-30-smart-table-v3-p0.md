@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 把设计规格里 **P0** 的全部内容(B1–B9、B11、B12、C1–C5、多列排序 API、`filterChips`、`toolbar.more`、触屏兜底、新 labels)落到 `src/`,发布前的最后一个提交是 `3.0.0-beta.1` 的版本号与 CHANGELOG。
+**Goal:** 把设计规格里 **P0** 的全部内容(B1–B9、B11、B12、C1–C5、多列排序 API、`filterChips`、`toolbar.more`、触屏兜底、新 labels)落到 `src/`,**并把原型对照页 `/prototype.html` 放进 playground、把「真实库外观与设计原型不一致」的 P0 项(L0-1…L0-9、N11)对齐(Task 13b–13g)**,发布前的最后一个提交是 `3.0.0-beta.1` 的版本号与 CHANGELOG。
 
 **Architecture:** 库是「胶水层 `SmartTable.vue` + 纯 TS 内核(`filter.ts` / `useColumns.ts` / `useFilters.ts` / `useSmartTable.ts`)+ 几个小 SFC(`ColumnFilter` / `Toolbar` / `SearchForm` / `ColumnSettings`)」。本计划沿用这个分层:**新逻辑优先写成可在 node 环境单测的纯函数**(`sorts.ts` / `filterDraft.ts` / `filterChips.ts` / `searchCols.ts`),SFC 只做接线与渲染。每个默认行为变更(B 级)在**同一个提交里**翻转对应的特征测试。
 
@@ -42,6 +42,15 @@
 | 20 | `onUpdate:sorter` 双调用(C6,E5) | (未提) | **Task 4 一并修**:从 `forwardedAttrs` 摘掉 `onUpdate:sorter`,由 `onSorterChange` / `sort()` / `clearSorter()` 统一转发一次 | 2.1.1 每次点表头会把宿主的 `onUpdate:sorter` 调两次(`use-sorter.mjs:31-37`);既然 Task 4 已经改了转发,留着会让「转发一次」的测试断言不成立 |
 | 21 | `loadState` 的密度回退(E6) | (未提) | `loadState(storageKey, fallbackDensity = 'compact')` 新增可选第二参数;`useColumns` 传宿主解析后的 `defaultDensity`(并在读存储前用 `peekStoredDensity` 判断) | 2.1.1 存储有记录但没有 `density` 字段时写死回退 `'comfortable'`,会盖过宿主值 |
 | 22 | 过滤面板 Esc 的阶段(E3) | (未提) | 面板上 `@keydown.capture` + 下拉展开计数器;容器 `tabindex="-1"` 让点空白处焦点回面板(不用 mousedown 处理) | NSelect / NDatePicker 收起自己时只 `markEventEffectPerformed`,不 `stopPropagation`;spike S3 |
+| 23 | 对齐设计原型(G0 / G3) | (未涉及:Task 1–13 只对齐规格) | **新增 Task 13b–13g**:原型对照页进仓库(13b)+ 工具栏 / 搜索区(13c)+ 漏斗 / 角标 / 过滤列标题(13d)+ 列头面板与不出屏(13e)+ chips(13f)+ 列设置至少保留一列与类型补全(13g)。原则:外观以原型为准(改库)、功能取并集、与官方冲突改原型 | 用户要求预览页与原型「一模一样」;L0-8(窄档分页项 40px)与窄档抽屉 / 卡片归 P2,不做 |
+| 24 | 卡片标题 / 工具栏分组与间距 / 图标尺寸(L0-1、L0-2) | 标题 600 / `textColor2`;右侧全部间距 4;「更多」small;图标 18px | 标题 500 / `textColor1`;业务组 8 / 图标组 4 / 组间 12;「更多」medium;图标 16px | 原型 `.st-title` / `.tb-actions` / `.tb-icons` / `.tb-right`;**2.1.1 外观变化,CHANGELOG 记「外观调整」并给回退** |
+| 25 | 漏斗按钮(L0-3、L0-4,G6) | `NButton tiny` 26 × 22、`textColor1`;角标行内占宽;过滤列标题折行 | **原生按钮 22 × 22**、灰(`thIconColor`)、悬停 / 打开只加底色;角标绝对定位;过滤列标题单行省略(`.smart-table-th-text`) | B12 的下限 102 / 123 按 22px 才对;**2.1.1 外观变化,CHANGELOG 记「外观调整」** |
+| 26 | 列头面板排布(L0-5) | 无引导标签、且 / 或是行下分段按钮、「添加条件」主色、底部靠右、options 间距 28 / 宽 200 | 首列「条件」/ 且或下拉、4 列网格、「添加条件」深色文字按钮(带加号)、底部 `space-evenly`、options 间距 34.4 / 宽 168、「高级条件 ▾」、含勾选无法表达的条件时给提示;**新增可选 labels `filterConditionLead` / `filterCannotCollapse`** | 原型 `.hpop`;初始焦点(第一个可聚焦控件)与值输入的清除 ×(保留)都以原型第 1 批为准,库不改 |
+| 27 | 面板不出屏(L0-9) | `NPopover` 居中,390 宽下左缘 `x = −69` | 量 `NPopover` 定位容器、`clampShift` 加水平平移夹进视口;窄档抽屉仍 **P2** | 公开 `NPopover` 没有夹取开关;不量面板自己(弹层有缩放进场动画) |
+| 28 | 单选过滤(`filter.multiple: false`) | `NCheckbox` 模拟单选 | **官方 `NRadioGroup` / `NRadio`** | 官方 `HeaderButton/FilterMenu.mjs:118-141`;原型第 1 批已改;**2.1.1 外观变化,CHANGELOG 列入** |
+| 29 | chips 外观与行末按钮规则(L0-6) | 灰 NTag、行高 30、「清除全部」靠右且 1 个 chip 也出现 | 主色可点、22px、间距 8 / 12、清除按钮紧跟;有默认值的表偏离默认才「恢复默认」,否则 ≥ 2 个才「清除全部」(`filtersAtDefaults`) | 原型 `.chips` / `hfClearShown`;chips 是 P0 新增,不进 B 级 |
+| 30 | 列设置至少保留一列(N11) | `toggleShow` 允许全部取消 | 只剩一列可见时那一列的勾选框禁用(无提示),`toggleShow` 兜底拒绝并返回 `false` | 原型第 1 批:禁用而不是 toast;**2.1.1 行为变化,CHANGELOG 记「外观调整」,回退「无」** |
+| 31 | `SmartTableProps` 类型 | 没有 `rowDraggable` / `dragHandle`(`SmartTable.vue:84-85` 有) | 补上两个可选属性 | 纯类型补全 |
 
 ## Global Constraints
 
@@ -56,7 +65,7 @@
 - 提交说明末尾加一行:`Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`。
 - 分支:`feat/v3-p0`(**已经存在**:`main` + 设计文档提交,不用再切)。**不要在 `main` 上直接提交。**
 - 动 `src/` 之前没有测试覆盖的部分,先补回归测试(Task 1 已统一补)。
-- **浏览器验证步骤要真的做**:CSS / 弹层 / 焦点在 jsdom 里验证不了,每个带「浏览器验证」的 Task 都要在真实浏览器里按步骤做并记录;**步骤里用到的前置条件(可排序的列、编程式设过滤的按钮、「更多」菜单示例)已经写成 playground 的正式改动**,不要临时在控制台造。
+- **浏览器验证步骤要真的做**:CSS / 弹层 / 焦点在 jsdom 里验证不了,每个带「浏览器验证」的 Task 都要在真实浏览器里按步骤做并记录;**步骤里用到的前置条件(可排序的列、编程式设过滤的按钮、「更多」菜单示例)已经写成 playground 的正式改动**,不要临时在控制台造。**Task 13b 起仓库有原型对照页 `/prototype.html`(真实库复刻设计原型模块 1–4),13c–13g 的浏览器验证都在它上面做,并与 `docs/smart-naive-table-design.html` 同视口并排读数。**
 - 只读参考:`docs/spike/`(一次性验证代码,不随包发布,**不要改它们来「配合」实现**)。
 
 ## Review Focus
@@ -88,10 +97,11 @@
 | `cardStyle.ts` | `CARD_THEME_OVERRIDES`、`mergeCardProps`(B11 + `cardProps`) | `SmartTable.vue`(`SearchForm.vue` 收它合并好的结果) |
 | `pageSize.ts` | `PageSizeOption`、`pageSizeValue`、`mergePageSizes`(并入当前值)、`resolveDefaultPageSize`(D4 优先级) | `SmartTable.vue` |
 | `scrollToCard.ts` | `scrollParentOf`、`keepCardTopVisible`(翻页后滚回卡片顶部,E4) | `SmartTable.vue` |
+| `viewportClamp.ts` | `clampShift`(弹层水平夹进视口,L0-9,Task 13e) | `ColumnFilter.vue` |
 
-修改:`types.ts`、`filter.ts`、`labels.ts`(`Required<SmartTableLabels>`、`zhCNLabels`、`ACTION_LABEL_KEY`、`fmt`)、`config.ts`、`storage.ts`、`icons.ts`、`useColumns.ts`(含 `filterDefTitle`)、`SmartTable.vue`、`ColumnFilter.vue`、`Toolbar.vue`、`SearchForm.vue`、`ColumnSettings.vue`(只改 `labels` 类型)、`index.ts`、`playground/`(`locale.ts`、`DemoBasic.vue`、`DemoFilter.vue`、`mock.ts`,为浏览器验证补前置条件;新增 `DemoAbsorb.vue`、`DemoFill.vue` 两个场景页,`App.vue` 加页签)。
+修改:`types.ts`、`filter.ts`、`labels.ts`(`Required<SmartTableLabels>`、`zhCNLabels`、`ACTION_LABEL_KEY`、`fmt`)、`config.ts`、`storage.ts`、`icons.ts`、`useColumns.ts`(含 `filterDefTitle`)、`SmartTable.vue`、`ColumnFilter.vue`、`Toolbar.vue`、`SearchForm.vue`、`ColumnSettings.vue`(只改 `labels` 类型)、`index.ts`、`playground/`(`locale.ts`、`DemoBasic.vue`、`DemoFilter.vue`、`mock.ts`,为浏览器验证补前置条件;新增 `DemoAbsorb.vue`、`DemoFill.vue` 两个场景页,`App.vue` 加页签);**Task 13b–13g(对齐设计原型)另新增根目录 `prototype.html` 与 `playground/prototype/*`(原型对照页,不进发布包),并改 `Toolbar.vue`、`SearchForm.vue`、`ColumnFilter.vue`、`ConditionRow.vue`、`FilterChips.vue`、`ColumnSettings.vue`、`filterChips.ts`、`useColumns.ts`、`icons.ts`、`labels.ts`、`types.ts`**。
 
-测试(均在 `tests/`):新增 `baseline-2.1.1.test.ts`、`sorts.test.ts`、`pageSize.test.ts`、`scrollToCard.test.ts`、`filterDraft.test.ts`、`filterChips.test.ts`、`searchCols.test.ts`、`SearchForm.test.ts`、`Toolbar.test.ts`;追加或修改 `filter.test.ts`、`useFilters.test.ts`、`useColumns.test.ts`、`SmartTable.test.ts`、`ColumnFilter.test.ts`、`config.test.ts`、`storage.test.ts`。
+测试(均在 `tests/`):新增 `baseline-2.1.1.test.ts`、`sorts.test.ts`、`pageSize.test.ts`、`scrollToCard.test.ts`、`filterDraft.test.ts`、`filterChips.test.ts`、`searchCols.test.ts`、`SearchForm.test.ts`、`Toolbar.test.ts`;追加或修改 `filter.test.ts`、`useFilters.test.ts`、`useColumns.test.ts`、`SmartTable.test.ts`、`ColumnFilter.test.ts`、`config.test.ts`、`storage.test.ts`;**Task 13b–13g 另新增 `prototype.test.ts`、`viewportClamp.test.ts`、`ColumnSettings.test.ts`、`types.test.ts`,并追加 `Toolbar.test.ts`、`SearchForm.test.ts`、`filterChips.test.ts`**。
 
 **全程用同一组命令验证**(每个 Task 结尾都要跑):
 
@@ -100,7 +110,7 @@ npm test
 npm run typecheck
 ```
 
-基线(2026-09-30 在 `feat/v3-p0` 上实测,与 `main` 的代码一致):`Test Files  11 passed (11)`、`Tests  126 passed (126)`,typecheck 无输出 = 通过。**每个 Task 的 Expected 都写累计总数**(实测值,见各 Task);累计数一览(第二轮从 `main` 整条重放的实测值):T1 134、T2 145、T3 151、T4 175、T5 194、T6 203、T7 230、T8 236、T9 244、T10 281(中途提交 257)、T11 302、T12 312、T12b 325、T13 336(Task 14 不加测试)。
+基线(2026-09-30 在 `feat/v3-p0` 上实测,与 `main` 的代码一致):`Test Files  11 passed (11)`、`Tests  126 passed (126)`,typecheck 无输出 = 通过。**每个 Task 的 Expected 都写累计总数**(实测值,见各 Task);累计数一览(第二轮从 `main` 整条重放的实测值):T1 134、T2 145、T3 151、T4 175、T5 194、T6 203、T7 230、T8 236、T9 244、T10 281(中途提交 257)、T11 302、T12 312、T12b 325、T13 336、T13b 351、T13c 360、T13d 363、T13e 385、T13f 393、T13g 404(Task 14 不加测试)。
 
 ---
 
@@ -6964,11 +6974,4206 @@ git commit -m "fix: 开启 collapsible 时窄屏(1 列)折叠态至少露出首�
 
 ---
 
+### 对齐设计原型(Task 13b–13g):外观与 `docs/smart-naive-table-design.html` 一模一样(G0 / G3)
+
+> **为什么有这一组**:用户的目标是「设计原型与真实库的预览页面一模一样」。对齐原则(G3):**外观以原型为准(改库);功能取两边并集;原型与 naive-ui 官方冲突时改原型跟官方**。上面 Task 1–13 做的是规格里 P0 的行为与默认值;逐像素对比原型后,还剩下一批「P0 库实现与原型外观不一致」的项(下表 L0-1…L0-9、N11),在 Task 14 收尾之前补齐。
+> **与前面 Task 的关系**:本组在 Task 1–13 的代码上改外观。**前面 Task 正文里与本组冲突的描述以本组为准**(Task 6 的「更多」`small`、Task 9 的 `NButton` 漏斗与行内角标、Task 10 的行下分段按钮与 8px 面板内边距、Task 11 的「清除全部」总显示);前面 Task 的代码与测试仍原样落地,本组再按各 Step 里的「查找 / 替换为」改过去,有意改动的既有断言都在对应 Task 里点名。
+> **读数方法**:原型 `docs/smart-naive-table-design.html` 与真实库对照页(Task 13b 新增的 `/prototype.html`)在同一个浏览器、同样的视口(1440 × 900,浅 / 深各一遍)下用同一套 DOM 读数比较。**原型的行号是 `8bfe061`(HEAD)里的行号,原型仍在同步修改,以选择器为准**;读数用的是 Edge 无头 + CDP(`getBoundingClientRect` / `getComputedStyle`)。
+> **一个系统性差异(不是库的问题,比较时要扣掉)**:原型的 `.n-btn` 有真实的 1px 边框(`box-sizing: border-box`),官方 `NButton` 的边框是 `::before` 画的、**不占布局**,所以原型里每个带边框 / 描边的按钮都比官方宽 2px(例:「更多」原型 74 = 库 72 + 2;「新增」77 = 75 + 2;文字按钮「展开」38 = 36 + 2;面板里 tiny 按钮 38 = 36 + 2)。按 G3「与官方冲突改原型」,这一条应由原型改成不占布局的描边,库不改。**下面各 Task 的「期望读数」都是库侧的数,括号里写原型数。**
+
+| 缺口 | 原型(出处 + 实测) | 库(P0 前述 Task 落地后 / 2.1.1) | 落在 | 2.1.1 外观变了? |
+|---|---|---|---|---|
+| **L0-1** 工具栏标题 | `.st-title`(`design.html:301`):16px / **500** / `textColor1`(card `titleFontWeight` = `fontWeightStrong`);实测 `16px \| 500 \| rgb(31,34,37)`,暗 `rgba(255,255,255,0.9)` | `h3` 16px / **600** / `textColor2` | 13c | **是**(B 级) |
+| **L0-2** 「更多」与工具栏间距 | `.n-btn` medium 34px(`:272-299`);`.tb-actions` gap 8(`:386`)、`.tb-icons` gap 4(`:387`)、`.tb-right` gap 12(`:383`);chevron 12px、`--n-text-3`(= `iconColor` `rgb(194,194,194)`,`:425`);图标按钮 28×28、图标 16×16(实测 `1315,128,16,16`) | 「更多」`size="small"` 28px、chevron 18px 深色;`n-space :size=4` 全部间距 4;图标按钮的图标 18px | 13c | 间距 / 图标 18→16:**是**;「更多」本身是 P0 新增 |
+| **L0-3** 漏斗 | `.th-filter`(`:1015-1023`):**22×22**、图标 15px、闲置色 = `thIconColor`(与排序箭头同灰 `rgb(194,194,194)`)、悬停 / 面板打开只加 `thButtonColorHover` 底(`rgba(0,0,100,0.03)`,暗 `rgba(255,255,255,0.06)`)、已筛选才变主色 | `NButton tiny quaternary` 26×22、`textColor1`(比箭头深得多)、打开 / 悬停整个图标变深 | 13d | **是**(B 级) |
+| **L0-4** 角标不撑表头 | `.hf-n`(`:1024-1028`):`position:absolute; top:-3px; right:-5px; min-width:12px; height:12px; font:10px/12px 500`,不占宽;标题不折行 | 角标行内占宽(14px + margin),列宽 137 时「物料编码」折成两行,表头 39.4 → 62 | 13d | 角标是 P0 新增(Task 9);**列拖到下限时标题折行撑高表头**是 2.1.1 就有的行为,一并修(见 13d,B 级) |
+| **L0-5** 列头面板排布 | `.hpop`(`:1040-1060`)、`hpRowHtml`(`:2319`)、`hpBodyHtml`(`:2333`)、`hpopHtml`(`:2349`):padding 12;首列 56px(第 1 行「条件」12px 灰字,第 2 行起是且 / 或下拉);比较符 112、值 1fr、删除 28(恒占位);行距 12;「添加条件」文字按钮取**官方 small 档**(宽 / 中档:高 28 / 字 14 / 内边距 0 10px / 图标 18;第 4 批原型已从自定 13px / 24px 改成它)、带加号、**深色(不是主色)**;底部 `space-evenly` 的 tiny「重置 / 确认」;options 面板最小 168、选项间距 34.4、「高级条件 ▾」 | 无引导标签;且 / 或是行下方的分段按钮;「添加条件」主色小按钮;底部按钮靠右;内边距 8;options 面板 200 宽、选项间距 28、「高级条件」无箭头 | 13e | 面板本身是 B7 的 P0 新增形态,排布随 B7 |
+| **L0-6** chips | `.chips` / `.chip` / `.clear`(`:441-463`)、`hdrChipsHtml`(`:2289`):`type=primary` 的可点 `NTag small round closable`(22px 高),间距 `8px 12px`,行下方 12px;「清除全部」紧跟 chips、**≥ 2 个才出现**;有默认值的表只在**偏离默认**时出现「恢复默认」 | 灰色 NTag、行高 30、「清除全部」靠最右且 1 个 chip 也出现 | 13f | chips 是 P0 新增 |
+| **L0-7** 搜索区「展开」 | `.search-card .search-actions .n-btn.text.link`(`:746`):`padding: 0 4px`、与同排 34px 按钮垂直居中(`cy` 同为 136) | `n-space` 默认顶对齐 + 官方文字按钮没有固定高度(实测 28×14,比同排按钮上移 6px) | 13c | **是**(缺陷修复味道) |
+| **L0-9** 窄宽度不出屏 | `placeHpop`(`:2359`):`left = max(8, min(left, innerWidth − w − 8))` | `NPopover placement="bottom"` 居中在漏斗上,390 宽下面板 `x = −69`,左侧被裁出屏幕 | 13e | — |
+| **N11** 列设置至少保留一列 | 原型第 1 批改为:**只剩一列可见时那一列的勾选框禁用**(无 toast;`design.md` 10.8 N11) | `toggleShow` 允许全部取消,表头只剩勾选 / 操作列 | 13g | **是**(B 级) |
+| **N10b** 单选过滤 | `filter.multiple: false` 用官方 `NRadio`(原型第 1 批已改,N10) | 库用 `NCheckbox` 模拟单选;官方 `HeaderButton/FilterMenu.mjs:118-141` 用 `NRadioGroup` / `NRadio` | 13e | **是**(2.1.1 的 `multiple: false` 外观) |
+| 类型补全 | — | `SmartTable.vue:84-85` 有 `rowDraggable` / `dragHandle`,导出的 `SmartTableProps`(`types.ts`)没有 | 13g | 纯类型,无外观变化 |
+| **不做** | **L0-8** 窄档分页项 40px:归 **P2 窄档尺寸**(随 `cardOnNarrow`);窄档抽屉 / 卡片 / 「操作 ▾」同属 P2;模式 2 条件构造器、批量栏、放大、把手视觉属 P1(L1) | — | — | — |
+
+> **和原型第 1 批对齐后撤掉的两处**:① 值输入的清除 ×:原型原先没有,**决定在原型侧补上**(官方默认就是 `clearable`),库不改;② 面板打开时聚焦「值输入框」:原型第 1 批已改成「第一个可聚焦控件」(与库一致,设计文档 10.8 N8),库不改。
+> **对照页宿主层跟原型第 1 批**:不覆盖空状态(官方 `NEmpty`「无数据」)与日期占位(官方 locale 默认);mock 后端 420ms 延迟(刷新 / 搜索 / 翻页 / 排序都有 loading;库的 loading 表现与原型读数一致:表体 `opacity .5` + `pointer-events: none`、正中 28×28 主色 spinner);模块 3 的「单据状态」带 `filter.defaultValue = 未审核`、「部门」是 `filter.multiple: false`。**对照页宿主层暂未复刻的原型场景**(原型第 1 批新增,属 G4 后续批次,**不在 P0 做,另写「对齐补充计划」统一处理**):序号列与固定列、语义色状态标签 / 金额千分位两位小数、搜索区的 `NDatePicker` 范围 / `NSwitch` / `search.render` 自定义控件与「默认本月」、「更多 → 导出」真下载 CSV、「我负责的」`#toolbar` 快捷过滤、负责人的 `filter.render` 自定义面板、删除的 `NPopconfirm`。
+
+> **验证方式**:每个 Task 的「浏览器验证」给出一段可直接粘进 DevTools 控制台的读数脚本和期望数字(库侧);原型侧用同一个浏览器打开 `docs/smart-naive-table-design.html` 读同一批值(选择器见表里的出处),两边对得上才算对齐。**这些步骤要真的做并记录。**
+
+### Task 13b: 原型对照页正式进仓库(`prototype.html`),作为之后逐项对比的工具
+
+> 用**真实库**(`src/`)复刻原型的模块 1–4(搜索区布局 / 按钮与工具栏 / 过滤筛选 / 排序),放在仓库 playground 里,`npm run dev` 后访问 `/prototype.html`(`?m=1..4` 选模块、`?theme=light|dark` 选明暗,缺省 = 原型初始的模块 2、跟随系统主题)。**库做不到的部分一律留空,不用自定义代码假装**(模式 2 条件构造器、批量栏、放大、窄档卡片 / 抽屉 / 「操作 ▾」、列宽把手视觉——它们是 P1 / P2,对照页上看不到就对了)。
+> - 外壳(侧栏、面包屑、`NLayout embedded` 灰底)是**宿主**手写的,和原型里一样不是被测对象;被测的是里面那张 `<SmartTable>`。数据是原型同一份确定性 2000 行(`playground/prototype/data.ts` 是 `design.html` 第 1165–1230 行的逐字移植),「后端」`fetcher.ts` 在内存里做搜索 / 列头过滤(用库导出的 `matchFilterValue`)/ 多列排序 / 分页,带原型一致的 420ms 延迟(单测里 `MOCK_DELAY.ms = 0`)。
+> - 宿主配置(H 类,已配平):全局默认 `align: 'left'` / `titleAlign: 'left'` / `tag: { size: 'small', bordered: true }` / `labels: { ...zhCNLabels, 若干词改回原型的说法 }`;搜索区 `collapsible` + `labelWidth: 70`(库的 `labelWidth` 含 12px 右内边距 = 62 文字区 + 8);列宽 `width` / `minWidth: 176`(名称列弹性)/ 操作列 `resizable: false`;`fill-height` + 宿主 flex 链(父容器定高);`filter-chips`;`filter.actions` 按字段类型给全 15 个操作符中的推荐集合;模块 3 的「单据状态」`filter.defaultValue`、「部门」`filter.multiple: false`;**空状态、日期占位、loading 不覆盖**(库默认就是官方样子)。
+> - 之后 13c–13g 的每个浏览器验证都在这个页面上做,**改库的外观前后各看一眼**。
+
+**Files:**
+- Create: `prototype.html`、`playground/prototype/main.ts`、`playground/prototype/ProtoApp.vue`、`playground/prototype/ProtoModule.vue`、`playground/prototype/data.ts`、`playground/prototype/fetcher.ts`
+- Modify: `CONTRIBUTING.md`(追加一节)
+- Test: `tests/prototype.test.ts`(新建)
+
+**Interfaces:**
+- Consumes: Task 1–13 的全部产物(页面只用库的公开导出:`SmartTable`、`SMART_TABLE_DEFAULTS`、`createSmartTableDefaults`、`zhCNLabels`、`matchFilterValue`)。
+- Produces: `/prototype.html`(dev 页面,**不进发布包**:`package.json` 的 `files` 只有 `dist`);`playground/prototype/fetcher.ts` 的 `MOCK_DELAY`、`fetchRows`;`playground/prototype/data.ts` 的 `DATA` / `FIELD_DEFS` / `addRow` / `delRow`。
+
+- [ ] **Step 1: 写失败测试**
+
+**新建 `tests/prototype.test.ts`:**
+
+```ts
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { DATA, FIELD_DEFS, addRow, delRow } from '../playground/prototype/data'
+import { MOCK_DELAY, fetchRows } from '../playground/prototype/fetcher'
+import ProtoApp from '../playground/prototype/ProtoApp.vue'
+import type { SmartTableParams } from '../src/types'
+
+// 原型对照页(prototype.html)的「后端」与页面:它是之后逐项对比原型与真实库的工具,
+// 数据生成器与原型 docs/smart-naive-table-design.html 是同一份(2000 行、确定性伪随机),
+// 这里锁住它,免得改库时顺手改坏了对照页的数据而不自知。
+
+MOCK_DELAY.ms = 0 // 单测不等 420ms
+
+const params = (p: Record<string, unknown> = {}) => ({ page: 1, pageSize: 100, ...p }) as SmartTableParams
+
+describe('对照页数据(与原型同一份生成器)', () => {
+  it('2000 行,前 8 行是原型的 DATA_BASE,编码不重复', () => {
+    expect(DATA).toHaveLength(2000)
+    expect(DATA[0]).toMatchObject({ no: 'M1000-A', name: '不锈钢法兰', status: '已审核', dept: '采购部', amount: 12800 })
+    expect(DATA[7].no).toBe('M1099')
+    expect(new Set(DATA.map((r) => r.no)).size).toBe(2000)
+  })
+
+  it('FIELD_DEFS 是原型的 8 个字段(含只出现在搜索里的「备注」)', () => {
+    expect(FIELD_DEFS.map((f) => f.key)).toEqual(['no', 'name', 'owner', 'status', 'dept', 'amount', 'bizDate', 'memo'])
+  })
+
+  it('addRow 把「新建物料」放最前并返回编码;delRow 删掉它', () => {
+    const before = DATA.length
+    const no = addRow()
+    expect(no).toBe('M1000-D')
+    expect(DATA[0]).toMatchObject({ no, name: '新建物料', status: '未审核' })
+    expect(DATA).toHaveLength(before + 1)
+    expect(delRow(no)).toBe(true)
+    expect(delRow(no)).toBe(false)
+    expect(DATA).toHaveLength(before)
+  })
+})
+
+describe('对照页的「后端」fetchRows', () => {
+  it('分页:第 1 页取 100 行,total 是全部 2000', async () => {
+    const r = await fetchRows(params())
+    expect(r.items).toHaveLength(100)
+    expect(r.total).toBe(2000)
+    expect(r.items[0].no).toBe('M1000-A')
+    const p2 = await fetchRows(params({ page: 2 }))
+    expect(p2.items[0].no).toBe(DATA[100].no)
+  })
+
+  it('搜索:文本字段是包含(忽略大小写),下拉 / 数字 / 日期是等于', async () => {
+    const byNo = await fetchRows(params({ no: 'm1000' }))
+    expect(byNo.items.length).toBeGreaterThan(0)
+    expect(byNo.items.every((r) => r.no.toLowerCase().includes('m1000'))).toBe(true)
+    const byStatus = await fetchRows(params({ status: '已关闭' }))
+    expect(byStatus.total).toBe(DATA.filter((r) => r.status === '已关闭').length)
+    const byAmount = await fetchRows(params({ amount: '12800' }))
+    expect(byAmount.items.every((r) => r.amount === 12800)).toBe(true)
+  })
+
+  it('列头过滤:用库导出的 matchFilterValue 求值(物料编码 包含 M10 或 包含 M20)', async () => {
+    const r = await fetchRows(
+      params({
+        filters: [
+          {
+            field: 'no',
+            logic: 'or',
+            conditions: [
+              { action: 'contains', value: 'M10' },
+              { action: 'contains', value: 'M20' },
+            ],
+          },
+        ],
+        pageSize: 1000,
+      }),
+    )
+    expect(r.total).toBe(DATA.filter((x) => x.no.includes('M10') || x.no.includes('M20')).length)
+    expect(r.items.every((x) => x.no.includes('M10') || x.no.includes('M20'))).toBe(true)
+  })
+
+  it('多列排序:sorts 里靠前的优先(部门升序,同部门按金额降序)', async () => {
+    const r = await fetchRows(
+      params({
+        pageSize: 1000,
+        sortField: 'dept',
+        sortOrder: 'asc',
+        sorts: [
+          { field: 'dept', order: 'asc' },
+          { field: 'amount', order: 'desc' },
+        ],
+      }),
+    )
+    for (let i = 1; i < r.items.length; i++) {
+      const a = r.items[i - 1]
+      const b = r.items[i]
+      const c = a.dept.localeCompare(b.dept, 'zh')
+      expect(c <= 0).toBe(true)
+      if (c === 0) expect(a.amount >= b.amount).toBe(true)
+    }
+  })
+
+  it('单列排序:只带 sortField / sortOrder 也认', async () => {
+    const r = await fetchRows(params({ sortField: 'amount', sortOrder: 'desc' }))
+    expect(r.items[0].amount).toBe(Math.max(...DATA.map((x) => x.amount)))
+  })
+})
+
+describe('MOCK_DELAY(模拟后端延迟)', () => {
+  it('默认 420ms(与原型的 mock 后端一致);置 0 不等待', async () => {
+    const delay = MOCK_DELAY.ms
+    expect(delay).toBe(0) // 本文件顶部已置 0
+    MOCK_DELAY.ms = 30
+    const t0 = Date.now()
+    await fetchRows(params())
+    expect(Date.now() - t0).toBeGreaterThanOrEqual(25)
+    MOCK_DELAY.ms = 0
+  })
+})
+
+describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', () => {
+  // jsdom 没有 matchMedia / ResizeObserver(naive-ui 与虚拟滚动要用),给个最小桩
+  const real = { matchMedia: window.matchMedia, ResizeObserver: (globalThis as any).ResizeObserver }
+  beforeEach(() => {
+    window.matchMedia = ((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} })) as any
+    ;(globalThis as any).ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  })
+  afterEach(() => {
+    window.matchMedia = real.matchMedia
+    ;(globalThis as any).ResizeObserver = real.ResizeObserver
+    document.body.innerHTML = ''
+  })
+
+  function mountApp(m: 1 | 2 | 3 | 4) {
+    history.replaceState(null, '', `/prototype.html?m=${m}&theme=light`)
+    return mount(ProtoApp, { attachTo: document.body })
+  }
+
+  it.each([1, 2, 3, 4] as const)('模块 %i:侧栏 4 个模块、标题、工具栏、表头都渲染出来', async (m) => {
+    const w = mountApp(m)
+    await flushPromises()
+    expect(w.findAll('#modList .mod')).toHaveLength(4)
+    expect(w.find('.smart-table-title').text()).toBe('物料单据')
+    const heads = w.findAll('thead th').map((th) => th.text())
+    expect(heads).toEqual(expect.arrayContaining(['物料编码', '物料名称', '负责人', '单据状态', '部门', '金额', '单据日期', '操作']))
+    w.unmount()
+  })
+
+  it('模块 3:单据状态有默认过滤「未审核」(出现一个 chip);模块 4 没有默认过滤', async () => {
+    const m3 = mountApp(3)
+    await flushPromises()
+    const chips = m3.findAll('.smart-table-chip')
+    expect(chips.map((c) => c.text())).toEqual(['单据状态 等于 未审核'])
+    m3.unmount()
+    const m4 = mountApp(4)
+    await flushPromises()
+    expect(m4.findAll('.smart-table-chip')).toHaveLength(0)
+    m4.unmount()
+  })
+
+  it('模块 1 有搜索卡片(中文「展开」),模块 3 的表头有漏斗,模块 2 没有搜索也没有漏斗', async () => {
+    const m1 = mountApp(1)
+    await flushPromises()
+    expect(m1.find('.smart-table-search').exists()).toBe(true)
+    expect(m1.find('.smart-table-search').text()).toContain('展开')
+    m1.unmount()
+
+    const m3 = mountApp(3)
+    await flushPromises()
+    expect(m3.findAll('.smart-table-filter-trigger').length).toBeGreaterThan(0)
+    m3.unmount()
+
+    const m2 = mountApp(2)
+    await flushPromises()
+    expect(m2.find('.smart-table-search').exists()).toBe(false)
+    expect(m2.findAll('.smart-table-filter-trigger')).toHaveLength(0)
+    m2.unmount()
+  })
+})
+```
+
+- [ ] **Step 2: 跑,确认失败**
+
+Run: `npx vitest run tests/prototype.test.ts`
+Expected: `Test Files  1 failed (1)`、`Tests  no tests`(实测)—— `Failed to resolve import "../playground/prototype/data" from "tests/prototype.test.ts"`(整个文件加载失败:页面文件还不存在)。
+
+- [ ] **Step 3: 创建页面文件**
+
+**新建 `playground/prototype/ProtoApp.vue`:**
+
+```vue
+<script setup lang="ts">
+// 对照页宿主外壳:复刻 docs/smart-naive-table-design.html 的侧栏 / 面包屑 / 标题 / NLayout embedded 灰底 / 浅深色切换。
+// 外壳本身不是被测对象(原型里也是手写的),被测的是 NLayout 里那张 <SmartTable>。
+// URL 参数:?m=1..4(模块)、?theme=light|dark(缺省跟随系统,与原型一致)。
+import { computed, onMounted, provide, ref, watch } from 'vue'
+import { darkTheme, dateZhCN, NConfigProvider, NLayout, NMessageProvider, zhCN } from 'naive-ui'
+import { SMART_TABLE_DEFAULTS, createSmartTableDefaults, zhCNLabels } from '../../src/index'
+import ProtoModule from './ProtoModule.vue'
+
+type Mod = 'search' | 'toolbar' | 'filter' | 'sort'
+const MODULES: Record<Mod, { no: number; name: string; status: string; statusTxt: string }> = {
+  search: { no: 1, name: '搜索区布局', status: 'done', statusTxt: '已定' },
+  toolbar: { no: 2, name: '按钮与工具栏', status: 'done', statusTxt: '已定' },
+  filter: { no: 3, name: '过滤筛选', status: 'done', statusTxt: '已定' },
+  sort: { no: 4, name: '排序', status: 'done', statusTxt: '已定' },
+}
+const byNo: Record<string, Mod> = { '1': 'search', '2': 'toolbar', '3': 'filter', '4': 'sort' }
+
+const q = new URLSearchParams(location.search)
+// 原型初始模块是 toolbar(模块 2)
+const mod = ref<Mod>(byNo[q.get('m') ?? ''] ?? 'toolbar')
+const theme = ref<'light' | 'dark'>(
+  q.get('theme') === 'dark' || q.get('theme') === 'light'
+    ? (q.get('theme') as 'light' | 'dark')
+    : matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light',
+)
+watch(theme, (t) => (document.documentElement.dataset.theme = t), { immediate: true })
+watch(mod, (m) => {
+  const u = new URL(location.href)
+  u.searchParams.set('m', String(MODULES[m].no))
+  history.replaceState(null, '', u)
+})
+onMounted(() => {
+  document.title = 'SmartTable 设计方案(真实库对照页)'
+})
+
+const naiveTheme = computed(() => (theme.value === 'dark' ? darkTheme : null))
+
+/* ------------------------------------------------------------------
+   宿主的全局默认(H 类):把库默认值对齐原型
+   - align / titleAlign:库默认 center,原型左对齐(金额列在列上写 align: 'right')
+   - tag:库默认 { size: small, bordered: false },原型徽标是 NTag small + 默认 bordered
+   - labels:用库自带的 zhCNLabels 打底,再把与原型措辞不同的几个词改回原型的说法
+   - 其余(density compact、defaultPageSize 100、pageSizes [100,500,1000]、simple 分页、16px 卡片内边距)已是库的 3.0 默认,不用配
+------------------------------------------------------------------- */
+provide(
+  SMART_TABLE_DEFAULTS,
+  createSmartTableDefaults({
+    align: 'left',
+    titleAlign: 'left',
+    tag: { size: 'small', bordered: true },
+    labels: {
+      ...zhCNLabels,
+      search: '搜索', // 库中文包「查询」
+      filter: '筛选', // 「过滤」
+      filterConfirm: '确认', // 「确定」
+      filterLike: '类似于', // 「模糊匹配」
+      filterStartsWith: '左包含', // 「开头是」
+      filterEndsWith: '右包含', // 「结尾是」
+      filterIn: 'IN', // 「属于」
+      filterNotIn: 'NOT IN', // 「不属于」
+      filterNoValue: '不需要填值', // 「无需填值」
+    },
+  }),
+)
+</script>
+
+<template>
+  <n-config-provider :theme="naiveTheme" :locale="zhCN" :date-locale="dateZhCN" style="display: contents">
+    <n-message-provider>
+      <div class="app">
+        <aside class="side">
+          <h1>SmartTable 设计方案</h1>
+          <p class="sub">v2.1.1 → 3.0.0 · 2026-09-30</p>
+          <div class="group-title">设计模块</div>
+          <div id="modList">
+            <button v-for="(m, k) in MODULES" :key="k" class="mod" :class="{ on: mod === k }" @click="mod = k">
+              <span class="no">{{ m.no }}</span><span class="nm">{{ m.name }}</span>
+              <span class="st" :class="m.status">{{ m.statusTxt }}</span>
+            </button>
+          </div>
+          <div id="modPanel">
+            <div class="group-title">主题</div>
+            <div class="mini">
+              <button :class="{ on: theme === 'light' }" @click="theme = 'light'">浅色</button>
+              <button :class="{ on: theme === 'dark' }" @click="theme = 'dark'">深色</button>
+            </div>
+          </div>
+        </aside>
+
+        <main class="main">
+          <div class="crumb">SmartTable 设计方案 / {{ MODULES[mod].no }}. {{ MODULES[mod].name }}</div>
+          <div class="stage-head"><h2>{{ MODULES[mod].name }}</h2></div>
+          <div id="stage">
+            <!-- 原型 .viewport:宿主页面区域 = NLayout embedded 的灰底,圆角 10px,内边距 22px -->
+            <n-layout embedded class="viewport" content-style="display:flex;flex-direction:column;height:100%;padding:22px;box-sizing:border-box;">
+              <KeepAlive>
+                <ProtoModule :key="mod" :mod="mod" />
+              </KeepAlive>
+            </n-layout>
+          </div>
+        </main>
+      </div>
+    </n-message-provider>
+  </n-config-provider>
+</template>
+
+<style>
+/* 外壳 token(原型 :root / html[data-theme="dark"] 中外壳用到的那部分,改前缀 --px- 避免与 naive 组件根上的 --n-* 撞名) */
+:root {
+  --px-primary: #18a058;
+  --px-on-primary: #ffffff;
+  --px-shell-bg: #ececee;
+  --px-panel-bg: #ffffff;
+  --px-border: rgb(239, 239, 245);
+  --px-border-strong: rgb(224, 224, 230);
+  --px-text: rgb(51, 54, 57);
+  --px-text-2: rgb(118, 124, 130);
+  --px-item-hover: rgb(243, 243, 245);
+  --px-tag-plain: #eee;
+  --px-warn: #d97706;
+  --px-ok: #18a058;
+}
+html[data-theme='dark'] {
+  --px-primary: #63e2b7;
+  --px-on-primary: #000000;
+  --px-shell-bg: #0b0b0e;
+  --px-panel-bg: rgb(24, 24, 28);
+  --px-border: rgba(255, 255, 255, 0.09);
+  --px-border-strong: rgba(255, 255, 255, 0.24);
+  --px-text: rgba(255, 255, 255, 0.82);
+  --px-text-2: rgba(255, 255, 255, 0.52);
+  --px-item-hover: rgba(255, 255, 255, 0.09);
+  --px-tag-plain: rgb(51, 51, 51);
+  --px-warn: #fbbf24;
+  --px-ok: #63e2b7;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+html { color-scheme: light; }
+html[data-theme='dark'] { color-scheme: dark; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro SC', 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+  font-size: 14px; color: var(--px-text); background: var(--px-shell-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 骨架(原型 .app / .side / .main,含「页面占满视口」片段) ---------- */
+.app { line-height: normal; display: grid; grid-template-columns: 232px 1fr; height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
+.side {
+  background: var(--px-panel-bg); border-right: 1px solid var(--px-border);
+  padding: 22px 14px 40px; position: sticky; top: 0; height: 100%; overflow-y: auto;
+}
+.side h1 { font-size: 15px; margin: 0 0 4px; letter-spacing: .2px; font-weight: 700; }
+.side .sub { font-size: 11.5px; color: var(--px-text-2); margin: 0 0 18px; line-height: 1.6; }
+.side .group-title { font-size: 11px; font-weight: 600; letter-spacing: .08em; color: var(--px-text-2); text-transform: uppercase; margin: 22px 0 8px; }
+.mod {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; cursor: pointer;
+  border: 1px solid transparent; background: transparent; color: inherit;
+  border-radius: 7px; padding: 9px 10px; margin-bottom: 3px; font-family: inherit; font-size: 13px;
+  transition: background-color .15s;
+}
+.mod:hover { background: var(--px-item-hover); }
+.mod.on { background: color-mix(in srgb, var(--px-primary) 10%, transparent); border-color: color-mix(in srgb, var(--px-primary) 35%, transparent); font-weight: 600; }
+.mod .no { width: 20px; height: 20px; border-radius: 5px; flex: none; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; background: var(--px-tag-plain); color: var(--px-text-2); font-weight: 600; }
+.mod.on .no { background: var(--px-primary); color: var(--px-on-primary); }
+.mod .nm { flex: 1 1 auto; min-width: 0; }
+.mod .st { font-size: 10px; padding: 1px 5px; border-radius: 3px; flex: none; font-weight: 500; }
+.st.done { background: color-mix(in srgb, var(--px-ok) 16%, transparent); color: var(--px-ok); }
+.mini { display: flex; gap: 6px; }
+.mini button { flex: 1; cursor: pointer; font-family: inherit; font-size: 12px; border: 1px solid var(--px-border-strong); background: transparent; color: var(--px-text-2); border-radius: 5px; padding: 5px 8px; transition: background-color .15s, border-color .15s, color .15s; }
+.mini button:hover { border-color: var(--px-primary); }
+.mini button.on { border-color: var(--px-primary); color: var(--px-primary); background: color-mix(in srgb, var(--px-primary) 10%, transparent); }
+
+.main { padding: 26px 32px 26px; min-width: 0; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+.main > * { flex: none; }
+.crumb { font-size: 12px; color: var(--px-text-2); margin-bottom: 6px; }
+.stage-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+.stage-head h2 { margin: 0 0 0; font-size: 20px; letter-spacing: -.01em; font-weight: 700; }
+#stage { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; margin-top: 18px; }
+/* 原型 .stage-desc 为空时 display:none,.stage-head 下方到 .viewport 的间距只有 stage-head 的 margin-bottom 6px;这里不再额外留 18px */
+#stage { margin-top: 0; }
+.viewport.n-layout { flex: 1 1 0; min-height: 0; border-radius: 10px; }
+.viewport > .n-layout-scroll-container { overflow: hidden; }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .side { position: sticky; top: 0; z-index: 20; height: auto; overflow: visible; border-right: 0; border-bottom: 1px solid var(--px-border); padding: 10px 12px; }
+  .side h1, .side .sub, .side .group-title, #modPanel { display: none; }
+  #modList { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  #modList::-webkit-scrollbar { display: none; }
+  .mod { width: auto; flex: none; margin-bottom: 0; white-space: nowrap; }
+  .main { padding: 0; }
+  .crumb, .stage-head { display: none; }
+  .viewport.n-layout { border-radius: 0; }
+  .viewport > .n-layout-scroll-container { padding: 12px !important; }
+}
+</style>
+```
+
+**新建 `playground/prototype/ProtoModule.vue`:**
+
+```vue
+<script setup lang="ts">
+// 对照页的一个模块:用真实库(../../src)复刻原型的一张表。
+// 规则:宿主能配的都照原型配(全局默认见 ProtoApp 的 provide、props、插槽里的宿主按钮、fillHeight、collapsible 搜索……);
+// 库做不到的(条件构造器、放大、批量栏、窄档卡片 / 操作折叠 / 筛选抽屉……)一律留空,不用自定义代码假装。
+// 库默认就对的地方宿主**不覆盖**:空状态(官方 NEmpty「无数据」)、日期占位(官方 locale 的「选择日期」)、loading(NDataTable 官方样子)。
+import { h, ref } from 'vue'
+import { NButton, NSpace, useMessage } from 'naive-ui'
+import { SmartTable, type SmartTableColumn, type SmartTableInst, type FilterAction } from '../../src/index'
+import { addRow, delRow, type Row } from './data'
+import { fetchRows } from './fetcher'
+
+type Mod = 'search' | 'toolbar' | 'filter' | 'sort'
+const props = defineProps<{ mod: Mod }>()
+
+const message = useMessage()
+const tableRef = ref<SmartTableInst<Row> | null>(null)
+const checked = ref<Array<string | number>>([])
+const toast = (msg: string) => message.create(msg, { type: 'default' })
+
+const hdr = props.mod === 'filter' || props.mod === 'sort'
+
+/* ---- 原型 COLS(w = 表格列宽,flex = 弹性列:不写 width、w 当最小宽度) ---- */
+const COLS = [
+  { key: 'no', label: '物料编码', w: 112 },
+  { key: 'name', label: '物料名称', w: 176, flex: true },
+  { key: 'owner', label: '负责人', w: 88 },
+  { key: 'status', label: '单据状态', w: 96 },
+  { key: 'dept', label: '部门', w: 88 },
+  { key: 'amount', label: '金额', w: 104 },
+  { key: 'bizDate', label: '单据日期', w: 112 },
+]
+
+/* ---- 原型 H_CFG:模块 3 = sorter: true(单列互斥);模块 4 = sorter: { multiple: n } + 日期列 defaultSortOrder ---- */
+const SORTERS: Record<string, Record<string, any>> = {
+  filter: { no: true, amount: true, bizDate: true },
+  sort: { dept: { multiple: 3 }, amount: { multiple: 2 }, bizDate: { multiple: 1 } },
+}
+const sorterOf = (key: string) => (hdr ? SORTERS[props.mod][key] : undefined)
+
+/* 原型 hdrColW:模块 3 / 4 的列宽要放得下「标题 + 漏斗 + 箭头」 */
+const colW = (c: (typeof COLS)[number]) =>
+  hdr ? Math.max(c.w, 12 + Math.ceil(c.label.length * 14.5) + 30 + (sorterOf(c.key) ? 21 : 0) + 16) : c.w
+
+/* ---- 原型 OPS_BY_TYPE:15 个操作符按字段类型分发;库默认只给 8 个,宿主在列上写 filter.actions 才出现新的 ---- */
+const ACT: Record<'text' | 'number' | 'date' | 'select', FilterAction[]> = {
+  text: ['contains', 'notContains', 'equal', 'notEqual', 'startsWith', 'endsWith', 'like', 'isNull', 'isNotNull', 'in', 'notIn'],
+  number: ['equal', 'notEqual', 'gt', 'gte', 'lt', 'lte', 'isNull', 'isNotNull', 'in', 'notIn'],
+  date: ['equal', 'notEqual', 'gt', 'gte', 'lt', 'lte', 'isNull', 'isNotNull'],
+  select: ['equal', 'notEqual', 'in', 'notIn', 'isNull', 'isNotNull'],
+}
+
+/* 状态徽标:原型里「已审核 / 未审核」是主色 pill,「已关闭」是默认灰 pill */
+const statusOptions = [
+  { label: '已审核', value: '已审核', tagType: 'primary' as const },
+  { label: '未审核', value: '未审核', tagType: 'primary' as const },
+  { label: '已关闭', value: '已关闭', tagType: 'default' as const },
+]
+const deptOptions = ['采购部', '生产部', '仓储部'].map((v) => ({ label: v, value: v }))
+const STATUS_DEFAULT = { logic: 'and' as const, conditions: [{ action: 'equal' as const, value: '未审核' }] }
+
+const fieldCol = (c: (typeof COLS)[number] & { flex?: boolean }): SmartTableColumn<Row> => {
+  const base: Record<string, any> = { key: c.key, title: c.label }
+  if (c.flex) base.minWidth = c.w
+  else base.width = colW(c)
+  const s = sorterOf(c.key)
+  if (s) base.sorter = s
+  if (props.mod === 'sort' && c.key === 'bizDate') base.defaultSortOrder = 'descend'
+
+  // 搜索(只模块 1):原型是 n-form-item + 普通输入框 / 下拉;金额、日期原型里是文本输入框(库是 NInputNumber / NDatePicker)
+  switch (c.key) {
+    case 'status':
+      base.options = statusOptions
+      base.tag = true
+      if (props.mod === 'search') base.search = true
+      // 原型模块 3:单据状态带 filter.defaultValue = 未审核 —— 初始过滤态 = 默认值,面板「重置」恢复默认,chips 行末偏离默认时出现「恢复默认」
+      if (hdr) base.filter = { actions: ACT.select, ...(props.mod === 'filter' ? { defaultValue: STATUS_DEFAULT } : {}) }
+      break
+    case 'dept':
+      base.options = deptOptions
+      if (props.mod === 'search') base.search = true
+      // 原型模块 3:部门是单选勾选列(filter.multiple: false,官方用 NRadio)
+      if (hdr) base.filter = { actions: ACT.select, ...(props.mod === 'filter' ? { multiple: false } : {}) }
+      break
+    case 'amount':
+      base.align = 'right' // 原型:金额单元格右对齐,表头仍左对齐(titleAlign 取全局默认 left)
+      base.format = (v: unknown) => Number(v).toLocaleString()
+      if (props.mod === 'search') base.search = { type: 'number', placeholder: '请输入数字', props: { clearable: false, showButton: false } }
+      if (hdr) base.filter = { type: 'number', actions: ACT.number }
+      break
+    case 'bizDate':
+      if (props.mod === 'search') base.search = { type: 'date' }
+      if (hdr) base.filter = { type: 'date', actions: ACT.date }
+      break
+    default:
+      if (props.mod === 'search') base.search = { placeholder: '请输入', props: { clearable: false } }
+      if (hdr) base.filter = { type: 'input', actions: ACT.text }
+  }
+  return base as SmartTableColumn<Row>
+}
+
+const columns: SmartTableColumn<Row>[] = [
+  { type: 'selection', width: 40 },
+  ...COLS.map(fieldCol),
+  // 备注:只在模块 1 的搜索表单里出现,不进表格(原型 FIELD_DEFS 有 memo、COLS 没有)
+  ...(props.mod === 'search'
+    ? [{ key: 'memo', title: '备注', hideInTable: true, search: { placeholder: '请输入', props: { clearable: false } } } as SmartTableColumn<Row>]
+    : []),
+  {
+    key: 'actions',
+    title: '操作',
+    width: 112,
+    resizable: false, // 原型:操作列没有拖拽把手、也不吸收余量
+    hideInSetting: true,
+    render: (row: Row) =>
+      h(NSpace, { size: 12, wrapItem: false }, () => [
+        h(NButton, { text: true, onClick: () => toast(`正在编辑 ${row.no}`) }, () => '编辑'),
+        h(NButton, { text: true, type: 'error', onClick: () => onDel(row.no) }, () => '删除'),
+      ]),
+  } as SmartTableColumn<Row>,
+]
+
+/* 「更多」菜单:官方 NDropdown options 原样透传;选中后库发 moreSelect,导出 / 导入由宿主处理 */
+const moreOptions = [
+  { label: '导出', key: 'export' },
+  { label: '导入', key: 'import' },
+  { type: 'divider' as const, key: 'd1' },
+  { label: '下载导入模板', key: 'tpl' },
+]
+function onMore(key: string | number) {
+  if (key === 'export') toast(`已导出 ${tableRef.value?.pagination.itemCount ?? 0} 条`)
+  else if (key === 'import') toast('请选择要导入的文件')
+  else if (key === 'tpl') toast('已下载导入模板')
+}
+
+async function onAdd() {
+  const no = addRow()
+  await tableRef.value?.refresh()
+  toast(`已新增 ${no}`)
+}
+async function onDel(no: string) {
+  if (delRow(no)) {
+    await tableRef.value?.refresh()
+    toast(`已删除 ${no}`)
+  }
+}
+
+/* 模块 1 的搜索区:首行 + 展开 / 收起(collapsible);label 区 70px(库的 labelWidth 含 12px 右内边距 = 原型 62px 文字区 + 8px 间距) */
+const searchCfg = props.mod === 'search' ? { collapsible: true, labelWidth: 70 } : undefined
+</script>
+
+<template>
+  <div class="proto-host">
+    <SmartTable
+      ref="tableRef"
+      :columns="columns"
+      :fetcher="fetchRows"
+      row-key="no"
+      title="物料单据"
+      :search="searchCfg"
+      :toolbar="{ more: moreOptions }"
+      fill-height
+      resizable
+      :filter-chips="hdr"
+      v-model:checked-row-keys="checked"
+      @more-select="onMore"
+    >
+      <template #toolbar-right>
+        <!-- 原型的「新增」图标是 13px;官方 NButton 的图标盒默认 18px(会让按钮宽 3px),所以宿主这里把 iconSizeMedium 调成 13px -->
+        <n-button :type="mod === 'search' ? 'default' : 'primary'" :theme-overrides="{ iconSizeMedium: '13px' }" @click="onAdd">
+          <template #icon>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3v10M3 8h10" /></svg>
+          </template>
+          新增
+        </n-button>
+      </template>
+      <template #pagination-prefix="info">共 {{ info.itemCount }} 条</template>
+    </SmartTable>
+  </div>
+</template>
+
+<style scoped>
+/* 宿主给 fillHeight 的确定高度:flex 链末端(.viewport 内的剩余高度) */
+.proto-host {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.proto-host > :deep(.smart-table) {
+  flex: 1 1 0;
+}
+</style>
+```
+
+**新建 `playground/prototype/data.ts`:**
+
+```ts
+// 原型 docs/smart-naive-table-design.html 第 1165–1230 行的数据生成器,原样移植(2000 行确定性伪随机,前 8 行为 DATA_BASE)。
+export interface Row {
+  no: string
+  name: string
+  owner: string
+  status: string
+  dept: string
+  amount: number
+  bizDate: string
+  memo: string
+}
+
+export const FIELD_DEFS = [
+  { key: 'no', label: '物料编码', type: 'text' },
+  { key: 'name', label: '物料名称', type: 'text' },
+  { key: 'owner', label: '负责人', type: 'text' },
+  { key: 'status', label: '单据状态', type: 'select', options: ['已审核', '未审核', '已关闭'] },
+  { key: 'dept', label: '部门', type: 'select', options: ['采购部', '生产部', '仓储部'] },
+  { key: 'amount', label: '金额', type: 'number' },
+  { key: 'bizDate', label: '单据日期', type: 'date' },
+  { key: 'memo', label: '备注', type: 'text' },
+] as const
+
+const DATA_BASE: Row[] = [
+  { no: 'M1000-A', name: '不锈钢法兰',   owner: '张伟', status: '已审核', dept: '采购部', amount: 12800, bizDate: '2026-09-21', memo: '加急' },
+  { no: 'M1000-B', name: '不锈钢弯头',   owner: '李娜', status: '已审核', dept: '采购部', amount: 3400,  bizDate: '2026-09-20', memo: '' },
+  { no: 'M1024',   name: '碳钢管件',     owner: '王强', status: '未审核', dept: '生产部', amount: 980,   bizDate: '2026-08-18', memo: '待核价' },
+  { no: 'M2011',   name: '密封垫片',     owner: '刘洋', status: '已关闭', dept: '仓储部', amount: 260,   bizDate: '2026-07-17', memo: '' },
+  { no: 'M1000-C', name: '不锈钢三通',   owner: '张伟', status: '已审核', dept: '生产部', amount: 25600, bizDate: '2026-09-12', memo: '样品' },
+  { no: 'M3050',   name: '高压球阀',     owner: '陈静', status: '未审核', dept: '采购部', amount: 47200, bizDate: '2026-06-30', memo: '' },
+  { no: 'M2087',   name: '测试专用件',   owner: '李娜', status: '已关闭', dept: '生产部', amount: 120,   bizDate: '2026-05-11', memo: '测试' },
+  { no: 'M1099',   name: '不锈钢螺栓',   owner: '赵磊', status: '已审核', dept: '仓储部', amount: 1560,  bizDate: '2026-09-02', memo: '' },
+]
+
+const DATA_TOTAL = 2000
+function mulberry32(seed: number) {
+  return function () {
+    seed = (seed + 0x6D2B79F5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+function genRows(base: Row[], total: number): Row[] {
+  const rnd = mulberry32(20260929)
+  const pick = <V,>(arr: V[]): V => arr[Math.floor(rnd() * arr.length)]
+  const wpick = (pairs: [string, number][]) => { let x = rnd() * pairs.reduce((s, p) => s + p[1], 0); for (const [v, w] of pairs) { if ((x -= w) < 0) return v } return pairs[0][0] }
+  const MATERIALS = ['不锈钢', '碳钢', '合金钢', '铸钢', '镀锌', '黄铜', '铝合金']
+  const PIPE = ['法兰', '弯头', '三通', '球阀', '闸阀', '截止阀', '管件', '大小头', '接头']
+  const BOLT = ['螺栓', '螺母', '垫片']
+  const DN = ['DN15', 'DN20', 'DN25', 'DN32', 'DN40', 'DN50', 'DN65', 'DN80', 'DN100', 'DN125', 'DN150', 'DN200']
+  const BOLT_SPEC = ['M8', 'M10', 'M12', 'M16', 'M20', 'M24']
+  const OWNERS = ['张伟', '李娜', '王强', '刘洋', '陈静', '赵磊', '周敏', '吴凡', '郑浩', '孙婷', '黄磊', '何欣']
+  const MEMOS = ['加急', '待核价', '样品', '测试', '补货', '返工', '质检中', '已比价', '客户指定', '缺货']
+  const DAY0 = Date.UTC(2026, 0, 1), DAYS = 272   // 2026-01-01 ~ 2026-09-29 共 272 天
+  const used = new Set(base.map(r => r.no))
+  const rows: Row[] = []
+  while (rows.length < total - base.length) {
+    let no: string
+    do { no = 'M' + (1001 + Math.floor(rnd() * 8999)) + (rnd() < 0.25 ? '-' + 'ABCDEF'[Math.floor(rnd() * 6)] : '') } while (used.has(no))
+    used.add(no)
+    const isBolt = rnd() < 0.18
+    const name = isBolt ? `${pick(MATERIALS)}${pick(BOLT)} ${pick(BOLT_SPEC)}` : `${pick(MATERIALS)}${pick(PIPE)} ${pick(DN)}`
+    rows.push({
+      no, name, owner: pick(OWNERS),
+      status: wpick([['已审核', 55], ['未审核', 32], ['已关闭', 13]]),
+      dept: wpick([['采购部', 40], ['生产部', 35], ['仓储部', 25]]),
+      amount: Math.round(100 + Math.pow(rnd(), 2) * 59900),
+      bizDate: new Date(DAY0 + Math.floor(rnd() * DAYS) * 864e5).toISOString().slice(0, 10),
+      memo: rnd() < 0.2 ? pick(MEMOS) : '',
+    })
+  }
+  return rows.sort((a, b) => (a.bizDate < b.bizDate ? 1 : a.bizDate > b.bizDate ? -1 : (a.no < b.no ? -1 : 1)))   // 新单据在前
+}
+export const DATA: Row[] = [...DATA_BASE.map(r => ({ ...r })), ...genRows(DATA_BASE, DATA_TOTAL)]
+
+/** 原型 nextNo / addRow:新增一行「新建物料」放最前(宿主业务逻辑,库不管)。 */
+function nextNo() {
+  const used = new Set(DATA.map(r => r.no))
+  const seq = [...'DEFGHIJKLMNOPQRSTUVWXYZABC']
+  for (const ch of seq) if (!used.has('M1000-' + ch)) return 'M1000-' + ch
+  let n = 1
+  while (used.has('M1000-' + n)) n++
+  return 'M1000-' + n
+}
+export function addRow(): string {
+  const row: Row = { no: nextNo(), name: '新建物料', owner: '张伟', status: '未审核', dept: '采购部', amount: 0, bizDate: '2026-09-29', memo: '' }
+  DATA.unshift(row)
+  return row.no
+}
+export function delRow(no: string): boolean {
+  const i = DATA.findIndex(r => r.no === no)
+  if (i < 0) return false
+  DATA.splice(i, 1)
+  return true
+}
+```
+
+**新建 `playground/prototype/fetcher.ts`:**
+
+```ts
+// 宿主的「后端」:对 2000 行内存数据做 搜索 / 列头过滤 / 多列排序 / 分页。
+// 库是远程模式(fetcher)——过滤与排序归后端,这里用库导出的 matchFilterValue 当「后端求值器」。
+// 搜索语义照原型 sfConds():text → 包含(忽略大小写),select / number / date → 等于。
+import { matchFilterValue, type PageResult, type SerializedFilter, type SmartTableParams } from '../../src/index'
+import { DATA, FIELD_DEFS, type Row } from './data'
+
+function cmp(a: unknown, b: unknown) {
+  const na = Number(a), nb = Number(b)
+  if (!Number.isNaN(na) && !Number.isNaN(nb) && a !== '' && b !== '') return na === nb ? 0 : na > nb ? 1 : -1
+  const sa = String(a), sb = String(b)
+  return sa === sb ? 0 : sa > sb ? 1 : -1
+}
+
+/** 模拟后端延迟:原型的 mock 后端是 420ms(刷新 / 搜索 / 翻页 / 排序都有 loading)。测试里置 0。 */
+export const MOCK_DELAY = { ms: 420 }
+
+export async function fetchRows(params: SmartTableParams): Promise<PageResult<Row>> {
+  if (MOCK_DELAY.ms > 0) await new Promise((r) => setTimeout(r, MOCK_DELAY.ms))
+  let rows: Row[] = DATA
+  for (const f of FIELD_DEFS) {
+    const v = params[f.key]
+    if (v === undefined || v === null || String(v).trim() === '') continue
+    rows = rows.filter((r) =>
+      f.type === 'text'
+        ? String(r[f.key]).toLowerCase().includes(String(v).trim().toLowerCase())
+        : cmp(r[f.key], String(v).trim()) === 0,
+    )
+  }
+  const filters = params.filters as SerializedFilter[] | undefined
+  if (Array.isArray(filters)) {
+    for (const f of filters) {
+      rows = rows.filter((r) => matchFilterValue({ logic: f.logic, conditions: f.conditions }, r[f.field as keyof Row]))
+    }
+  }
+  // 排序:多列用 params.sorts(高优先级在前),单列用 sortField / sortOrder;比较器照原型 computeRows
+  const sorts: Array<{ field: string; order: 'asc' | 'desc' }> | undefined =
+    params.sorts ?? (params.sortField ? [{ field: params.sortField, order: params.sortOrder }] : undefined)
+  if (sorts?.length) {
+    rows = rows.slice().sort((a, b) => {
+      for (const s of sorts) {
+        const x = a[s.field as keyof Row], y = b[s.field as keyof Row]
+        const c = typeof x === 'number' ? x - (y as number) : String(x).localeCompare(String(y), 'zh')
+        if (c) return s.order === 'asc' ? c : -c
+      }
+      return 0
+    })
+  }
+  const { page, pageSize } = params
+  return { items: rows.slice((page - 1) * pageSize, page * pageSize), total: rows.length }
+}
+```
+
+**新建 `playground/prototype/main.ts`:**
+
+```ts
+import { createApp } from 'vue'
+import ProtoApp from './ProtoApp.vue'
+
+createApp(ProtoApp).mount('#app')
+```
+
+**新建 `prototype.html`:**
+
+```html
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SmartTable 设计方案(真实库对照页)</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/playground/prototype/main.ts"></script>
+  </body>
+</html>
+```
+
+再在 `CONTRIBUTING.md` 末尾追加一节:
+
+**`CONTRIBUTING.md` 追加到文件末尾:**
+
+```markdown
+## 对照设计原型
+
+`npm run dev` 后访问 `/prototype.html`(`?m=1..4` 选模块,`?theme=light|dark` 选明暗):用真实库复刻 `docs/smart-naive-table-design.html` 的模块 1–4,与原型并排逐项比较外观与行为。库做不到的部分留空,不用自定义代码假装。改库的外观 / 排布前后都对着它看一眼。
+```
+
+- [ ] **Step 4: 跑,确认通过**
+
+Run: `npm test && npm run typecheck`
+Expected: `Test Files  21 passed (21)`、`Tests  351 passed (351)`(336 + 15:`prototype.test.ts` 15 条);typecheck 无输出;无 `[Vue warn]`。
+
+- [ ] **Step 5: 浏览器验证(页面本身)**
+
+Run: `node_modules/.bin/vite --port 5173`,打开 `http://localhost:5173/prototype.html?m=3`;另开一个标签页用 `file://` 打开 `docs/smart-naive-table-design.html`、点侧栏「3 过滤筛选」。两边同为 1440 × 900、浅色。用控制台读(库侧;原型侧把选择器换成 `tbody tr`、`.chip`):
+```js
+(async () => {
+  await new Promise((r) => setTimeout(r, 700))
+  return {
+    total: document.querySelector('.n-pagination').innerText.replace(/\s+/g, ' '),
+    heads: [...document.querySelectorAll('thead th')].map((t) => t.innerText.trim()).join('|'),
+    firstRow: document.querySelectorAll('.n-data-table-tr')[1].innerText.replace(/\s+/g, ' ').slice(0, 60),
+    chips: [...document.querySelectorAll('.smart-table-chip')].map((c) => c.innerText.trim()),
+  }
+})()
+```
+Expected(模块 3,库侧):`total` = `共 676 条 / 7 100 / 页`(单据状态默认「未审核」→ 676 / 2000 条,每页 100 → 7 页),`firstRow` = `M1024 碳钢管件 王强 未审核 生产部 980 2026-08-18 编辑 删除`,`chips` = `["单据状态 等于 未审核"]`(这个 chip 行末的按钮规则在 Task 13f 才对齐原型,此刻先不看)。**原型同一模块读数**:总条数 676、首行 M1024 碳钢管件 王强 未审核 生产部 980、同一个 chip(原型多一个序号列、金额带两位小数,属上面写明的宿主层暂未复刻项)。模块 4 首行均为 `M5141 不锈钢球阀 DN150 张伟 已审核 生产部 11,199`、共 2000 条。模块 1–4 的初始视口、卡片、工具栏、表头、两张卡片位置在 1100 宽下与原型逐像素相同(第一轮对照已核)。
+再确认:点「刷新」→ 420ms 内表体半透明且点不动、正中出现 28×28 主色 spinner(读数:`.n-data-table-wrapper` 的 `opacity` = 0.5、`pointer-events` = none、`.n-data-table-loading-wrapper` = 28×28 且中心落在 `.n-data-table` 的正中,与原型 `.dt.loading` 读数相同);**空状态是官方 `NEmpty`**:给「物料编码」加条件「包含 `ZZZ`」→ 表体正中显示 40px 空盒图标 +「无数据」(`.n-data-table .n-empty` 的 `innerText` = `无数据`,有 `.n-empty__icon`),分页显示 `共 0 条`;**宿主没有覆盖空状态文案 / 图标**;模块 1 搜索区的日期框占位是官方 locale 的「选择日期」(不是 `yyyy-MM-dd`)。
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add prototype.html playground/prototype tests/prototype.test.ts CONTRIBUTING.md
+git commit -m "feat(playground): 原型对照页 /prototype.html(真实库复刻设计原型模块 1–4)" -m "后续逐项对齐原型外观(L0-1…L0-9、N11)都靠它并排对比;库做不到的部分留空。不进发布包。" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+### Task 13c: 工具栏与搜索区操作区对齐原型(L0-1、L0-2、L0-7)
+
+> - **L0-1 标题**:字重 / 颜色取主题 `fontWeightStrong`(500)/ `textColor1`(与官方卡片标题一致;`card/styles/light.mjs:36,39`),走 `useThemeVars()`(库自己的元素不依赖 `NCard` 的 `--n-*` 变量)。**2.1.1 是 600 / `textColor2`,外观变了 → CHANGELOG B 级**。
+> - **L0-2 工具栏**:右侧拆成两组——**业务组**(宿主 `#toolbar-right` 的按钮 + 「更多」,间距 8)与**图标组**(刷新 / 密度 / 列设置 `#settings`,间距 4),两组之间 12(原型 `.tb-actions` / `.tb-icons` / `.tb-right`)。空组不画(否则空容器会多一个 12px 的间距)。「更多」改默认 medium(34px,与宿主业务按钮同高),chevron 12px、`iconColor`、右内边距 12(chevron 自带的 `margin-right: -2px` 折进去),文字按钮;图标按钮的图标 **16px**(官方 small 圆形按钮默认 18px;用一个 `abstract` 的 `NConfigProvider` 给整组按钮覆盖 `iconSizeSmall`,不多包 DOM,`#settings` 插槽里的列设置按钮同样生效);`ChevronDownIcon` 等小图标换成与原型 `I_CHEV` / `I_X` / `I_PLUS` 同一套几何(16 视口、笔画 1.8 / 1.6,12–13px 下不会比 24 视口 + 笔画 2 细一圈)——图标换几何放在 Task 13e(那里才用到 `CloseIcon` / `PlusIcon`),这里只改工具栏。**2.1.1 的间距(全 4)与图标尺寸(18)变了 → CHANGELOG B 级**。
+> - **L0-7 搜索区「展开 / 收起」**:`n-space` 加 `align="center"`;官方文字按钮的 `--n-height` 是 `initial`(没有固定高度、没有内边距,实测 28 × 14),所以「展开」按钮自己加 `height: themeVars.heightMedium`(与同排 34px 按钮同高)和 `padding: 0 4px`。**修复 2.1.1 的错位(上移 6px),CHANGELOG 记缺陷修复**。
+> - 回退方式见 Task 14 的 CHANGELOG(标题:`#title` 插槽里自己包 `<span style="font-weight:600">`;业务组间距:宿主用 `<n-space :size="4">` 包自己的按钮;图标 18px:宿主 CSS `--n-icon-size: 18px !important`)。
+
+**Files:**
+- Modify: `src/Toolbar.vue`、`src/SearchForm.vue`
+- Test: `tests/Toolbar.test.ts`、`tests/SearchForm.test.ts`(追加)
+
+**Interfaces:**
+- Consumes: Task 6 的 `Toolbar.vue`(`toolbar.more`)、Task 13 的 `SearchForm.vue`。
+- Produces: CSS 类 `smart-table-toolbar-right` / `smart-table-toolbar-actions` / `smart-table-toolbar-icons` / `smart-table-more-icon`、`smart-table-search-toggle`;`Toolbar.vue` 不再用 `NSpace`。
+
+- [ ] **Step 1: 写失败测试**
+
+**`tests/SearchForm.test.ts` 追加到文件末尾:**
+
+```ts
+
+describe('SearchForm 操作区对齐(L0-7)', () => {
+  it('搜索 / 重置 / 展开 同排垂直居中(n-space align=center),不再默认顶对齐', () => {
+    const w = mountForm('150px 150px')
+    const space = w.find('.smart-table-search .n-space')
+    expect(space.attributes('style')).toContain('align-items: center')
+    w.unmount()
+  })
+
+  it('「展开」文字按钮与同排按钮同高(主题 heightMedium = 34px;官方文字按钮自己的高度是 initial)', () => {
+    const w = mountForm('150px 150px')
+    const toggle = w.find('.smart-table-search-toggle')
+    expect(toggle.exists()).toBe(true)
+    expect(toggle.text()).toBe('Expand')
+    expect(toggle.attributes('style')).toContain('height: 34px')
+    w.unmount()
+  })
+})
+```
+
+**`tests/Toolbar.test.ts` 查找(整段,原样):**
+
+```ts
+// @vitest-environment jsdom
+import { describe, expect, it } from 'vitest'
+import { mount } from '@vue/test-utils'
+import Toolbar from '../src/Toolbar.vue'
+import { defaultLabels } from '../src/labels'
+import { NDropdown } from 'naive-ui'
+
+const mountToolbar = (config: Record<string, unknown> | false = {}, extra: Record<string, unknown> = {}) =>
+  mount(Toolbar, { props: { labels: defaultLabels, config: config as never, density: 'compact' as const, ...extra } })
+```
+
+**替换为:**
+
+```ts
+// @vitest-environment jsdom
+import { describe, expect, it } from 'vitest'
+import { defineComponent, h } from 'vue'
+import { mount } from '@vue/test-utils'
+import Toolbar from '../src/Toolbar.vue'
+import { defaultLabels } from '../src/labels'
+import { NConfigProvider, NDropdown, darkTheme } from 'naive-ui'
+
+const mountToolbar = (config: Record<string, unknown> | false = {}, extra: Record<string, unknown> = {}) =>
+  mount(Toolbar, { props: { labels: defaultLabels, config: config as never, density: 'compact' as const, ...extra } })
+```
+
+**`tests/Toolbar.test.ts` 追加到文件末尾:**
+
+```ts
+
+describe('Toolbar 外观对齐原型(L0-1 / L0-2)', () => {
+  const opts = [{ label: '导出', key: 'export' }]
+
+  it('[L0-1] 标题:字重 500(fontWeightStrong)、颜色 textColor1;不是 2.1.1 的 600 / textColor2', () => {
+    const style = mountToolbar({}, { title: '物料单据' }).find('.smart-table-title').attributes('style') ?? ''
+    expect(style).toContain('font-weight: 500')
+    expect(style).toContain('color: rgb(31, 34, 37)') // 默认亮色主题的 textColor1
+  })
+
+  it('[L0-1] 标题颜色跟主题走:暗色是 textColor1 的暗色值', () => {
+    const Host = defineComponent({
+      render: () =>
+        h(NConfigProvider, { theme: darkTheme }, () =>
+          h(Toolbar, { labels: defaultLabels, config: {}, density: 'compact', title: '物料单据' }),
+        ),
+    })
+    const style = mount(Host).find('.smart-table-title').attributes('style') ?? ''
+    expect(style).toContain('color: rgba(255, 255, 255, 0.9)')
+  })
+
+  it('[L0-2]「更多」是 medium(34px,与宿主按钮同高),不再是 small;chevron 取 iconColor', () => {
+    const wrapper = mountToolbar({ more: opts })
+    const btn = wrapper.find('button[aria-label="More"]')
+    expect(btn.attributes('style')).toContain('--n-height: 34px')
+    expect(wrapper.find('.smart-table-more-icon').attributes('style')).toContain('color: rgb(194, 194, 194)')
+  })
+
+  it('[L0-2] 分组:宿主按钮 + 「更多」在 actions 组(间距 8),内置图标在 icons 组(间距 4),两组并排(间距 12)', () => {
+    const wrapper = mount(Toolbar, {
+      props: { labels: defaultLabels, config: { more: opts } as never, density: 'compact' as const },
+      slots: { right: '<i class="host-btn">新增</i>', settings: '<i class="settings-btn">设置</i>' },
+    })
+    const right = wrapper.find('.smart-table-toolbar-right')
+    expect(right.exists()).toBe(true)
+    const [actions, icons] = right.element.children
+    expect(actions.classList.contains('smart-table-toolbar-actions')).toBe(true)
+    expect(icons.classList.contains('smart-table-toolbar-icons')).toBe(true)
+    expect(actions.querySelector('.host-btn')).not.toBeNull()
+    expect(actions.querySelector('button[aria-label="More"]')).not.toBeNull()
+    expect(icons.querySelector('button[aria-label="Refresh"]')).not.toBeNull()
+    expect(icons.querySelector('.settings-btn')).not.toBeNull()
+    expect(actions.querySelector('button[aria-label="Refresh"]')).toBeNull()
+  })
+
+  it('[L0-2] 内置图标按钮(刷新 / 密度 / 列设置 #settings 里的按钮)图标 16px,不是官方 small 的 18px;「更多」不受影响', () => {
+    const wrapper = mount(Toolbar, {
+      props: { labels: defaultLabels, config: { more: opts, density: true } as never, density: 'compact' as const },
+      slots: { settings: '<button class="settings-btn" aria-label="Columns">列</button>' },
+    })
+    for (const label of ['Refresh', 'Density']) {
+      expect(wrapper.find(`button[aria-label="${label}"]`).attributes('style')).toContain('--n-icon-size: 16px')
+    }
+    expect(wrapper.find('button[aria-label="More"]').attributes('style')).toContain('--n-icon-size: 12px')
+  })
+
+  it('[L0-2] 没有宿主按钮也没有「更多」时不画 actions 组(否则空容器会多出一个 12px 的间距)', () => {
+    const wrapper = mountToolbar({})
+    expect(wrapper.find('.smart-table-toolbar-actions').exists()).toBe(false)
+    expect(wrapper.find('.smart-table-toolbar-icons').exists()).toBe(true)
+  })
+
+  it('[L0-2] 图标全关(toolbar: false)时也不画 icons 组', () => {
+    expect(mountToolbar(false).find('.smart-table-toolbar-icons').exists()).toBe(false)
+  })
+})
+```
+
+- [ ] **Step 2: 跑,确认失败**
+
+Run: `npx vitest run tests/SearchForm.test.ts tests/Toolbar.test.ts`
+Expected: `Test Files  2 failed (2)`、`Tests  8 failed | 14 passed (22)`(实测)—— `Toolbar.test.ts` 6 条红(标题字重 / 颜色 ×2:`expected '' to contain 'font-weight: 500'`;「更多」`--n-height` 不是 34px;图标 `--n-icon-size` 不是 16px;没有 `.smart-table-toolbar-right` 分组;空 actions 组仍会画),`SearchForm.test.ts` 2 条红(`n-space` 没有 `align-items: center`;没有 `.smart-table-search-toggle`)。「toolbar: false 时不画 icons 组」那条此刻本来就绿(类还不存在),它守住实现后的行为。
+
+- [ ] **Step 3: 实现**
+
+**`src/SearchForm.vue` 查找(整段,原样)(第 1 / 4 处):**
+
+```vue
+  NSelect,
+  NSpace,
+  NSwitch,
+} from 'naive-ui'
+import type { CardProps } from 'naive-ui'
+import type { SelectMixedOption } from 'naive-ui/es/select/src/interface'
+```
+
+**替换为:**
+
+```vue
+  NSelect,
+  NSpace,
+  NSwitch,
+  useThemeVars,
+} from 'naive-ui'
+import type { CardProps } from 'naive-ui'
+import type { SelectMixedOption } from 'naive-ui/es/select/src/interface'
+```
+
+**`src/SearchForm.vue` 查找(整段,原样)(第 2 / 4 处):**
+
+```vue
+  reset: []
+}>()
+
+const isInline = computed(() => props.config.layout === 'inline')
+
+// 折叠:仅 grid 布局;collapsed 初始跟随 config.collapsible。
+```
+
+**替换为:**
+
+```vue
+  reset: []
+}>()
+
+const themeVars = useThemeVars()
+const isInline = computed(() => props.config.layout === 'inline')
+
+// 折叠:仅 grid 布局;collapsed 初始跟随 config.collapsible。
+```
+
+**`src/SearchForm.vue` 查找(整段,原样)(第 3 / 4 处):**
+
+```vue
+            <component :is="() => renderField(f)" />
+          </n-form-item-gi>
+          <n-form-item-gi suffix>
+            <n-space>
+              <n-button type="primary" :loading="loading" @click="emit('search')">{{ labels.search }}</n-button>
+              <n-button @click="emit('reset')">{{ labels.reset }}</n-button>
+              <n-button v-if="collapsible" text type="primary" @click="collapsed = !collapsed">
+                {{ collapsed ? labels.expand : labels.collapse }}
+              </n-button>
+            </n-space>
+```
+
+**替换为:**
+
+```vue
+            <component :is="() => renderField(f)" />
+          </n-form-item-gi>
+          <n-form-item-gi suffix>
+            <n-space align="center">
+              <n-button type="primary" :loading="loading" @click="emit('search')">{{ labels.search }}</n-button>
+              <n-button @click="emit('reset')">{{ labels.reset }}</n-button>
+              <n-button v-if="collapsible" class="smart-table-search-toggle" :style="{ height: themeVars.heightMedium }" text type="primary" @click="collapsed = !collapsed">
+                {{ collapsed ? labels.expand : labels.collapse }}
+              </n-button>
+            </n-space>
+```
+
+**`src/SearchForm.vue` 查找(整段,原样)(第 4 / 4 处):**
+
+```vue
+</template>
+
+<style scoped>
+.smart-table-search-inline-row {
+  display: flex;
+  flex-wrap: wrap;
+```
+
+**替换为:**
+
+```vue
+</template>
+
+<style scoped>
+/* 「展开 / 收起」:官方文字按钮没有固定高度和内边距(--n-height 是 initial,实测 28×14,比同排 34px 的按钮矮、还窄 8px);
+   与设计原型一致:高度与同排按钮同高(模板里取主题的 heightMedium)、左右内边距 4px */
+.smart-table-search-toggle {
+  padding: 0 4px;
+}
+.smart-table-search-inline-row {
+  display: flex;
+  flex-wrap: wrap;
+```
+
+**`src/Toolbar.vue` 查找(整段,原样)(第 1 / 5 处):**
+
+```vue
+<script setup lang="ts">
+// 表格卡片头:标题 + 左侧操作区(#left)+ 右侧:宿主按钮(#right)、「更多」菜单、内置图标(刷新/密度/列设置 #settings)。
+import { computed, type PropType } from 'vue'
+import { NButton, NDropdown, NSpace, NTooltip } from 'naive-ui'
+import type { DropdownOption } from 'naive-ui'
+import type { Density, SmartTableLabels, ToolbarConfig, ToolbarMoreOption } from './types'
+import { ChevronDownIcon, DensityIcon, RefreshIcon } from './icons'
+```
+
+**替换为:**
+
+```vue
+<script setup lang="ts">
+// 表格卡片头:标题 + 左侧操作区(#left)+ 右侧:宿主按钮(#right)、「更多」菜单、内置图标(刷新/密度/列设置 #settings)。
+import { computed, type PropType } from 'vue'
+import { NButton, NConfigProvider, NDropdown, NTooltip, useThemeVars } from 'naive-ui'
+import type { DropdownOption } from 'naive-ui'
+import type { Density, SmartTableLabels, ToolbarConfig, ToolbarMoreOption } from './types'
+import { ChevronDownIcon, DensityIcon, RefreshIcon } from './icons'
+```
+
+**`src/Toolbar.vue` 查找(整段,原样)(第 2 / 5 处):**
+
+```vue
+  moreSelect: [key: string | number, option: DropdownOption]
+}>()
+
+const cfg = computed<ToolbarConfig>(() => (props.config === false ? { refresh: false, density: false, columnSettings: false } : props.config))
+
+const densityOptions = computed(() => [
+```
+
+**替换为:**
+
+```vue
+  moreSelect: [key: string | number, option: DropdownOption]
+}>()
+
+const themeVars = useThemeVars()
+
+const cfg = computed<ToolbarConfig>(() => (props.config === false ? { refresh: false, density: false, columnSettings: false } : props.config))
+
+const densityOptions = computed(() => [
+```
+
+**`src/Toolbar.vue` 查找(整段,原样)(第 3 / 5 处):**
+
+```vue
+  return selectable ? list : []
+})
+
+function onMoreSelect(key: string | number, option: DropdownOption) {
+  emit('moreSelect', key, option)
+}
+```
+
+**替换为:**
+
+```vue
+  return selectable ? list : []
+})
+
+// 内置图标组:刷新 / 密度 / 列设置(#settings)。一个都没有时整组不画,免得空容器多出一个组间距。
+const showRefresh = computed(() => cfg.value.refresh !== false && props.remote)
+
+function onMoreSelect(key: string | number, option: DropdownOption) {
+  emit('moreSelect', key, option)
+}
+```
+
+**`src/Toolbar.vue` 查找(整段,原样)(第 4 / 5 处):**
+
+```vue
+<template>
+  <div class="smart-table-toolbar">
+    <div class="smart-table-toolbar-main">
+      <h3 v-if="$slots.title || title" class="smart-table-title">
+        <slot name="title">{{ title }}</slot>
+      </h3>
+      <slot name="left" />
+    </div>
+    <n-space :size="4" align="center">
+      <slot name="right" />
+      <n-dropdown v-if="moreOptions.length" trigger="click" placement="bottom-end" :options="moreOptions" @select="onMoreSelect">
+        <n-button size="small" icon-placement="right" :aria-label="labels.more">
+          {{ labels.more }}
+          <template #icon><ChevronDownIcon /></template>
+        </n-button>
+      </n-dropdown>
+      <n-tooltip v-if="cfg.refresh !== false && remote" trigger="hover">
+        <template #trigger>
+          <n-button quaternary circle size="small" :aria-label="labels.refresh" @click="emit('refresh')">
+            <template #icon><RefreshIcon /></template>
+          </n-button>
+        </template>
+        {{ labels.refresh }}
+      </n-tooltip>
+      <n-dropdown
+        v-if="cfg.density === true"
+        trigger="click"
+        :options="densityOptions"
+        @select="(k: Density) => emit('update:density', k)"
+      >
+        <n-tooltip trigger="hover">
+          <template #trigger>
+            <n-button quaternary circle size="small" :aria-label="labels.density">
+              <template #icon><DensityIcon /></template>
+            </n-button>
+          </template>
+          {{ labels.density }}
+        </n-tooltip>
+      </n-dropdown>
+      <slot name="settings" />
+    </n-space>
+  </div>
+</template>
+
+```
+
+**替换为:**
+
+```vue
+<template>
+  <div class="smart-table-toolbar">
+    <div class="smart-table-toolbar-main">
+      <!-- 标题取主题的 textColor1 / fontWeightStrong(与官方卡片标题一致;设计原型 .st-title:16px / 500 / textColor1)。
+           走 useThemeVars,不依赖 NCard 的 --n-* 变量,换位置(如 #title 插槽放到别处)也跟着明暗主题走 -->
+      <h3
+        v-if="$slots.title || title"
+        class="smart-table-title"
+        :style="{ color: themeVars.textColor1, fontWeight: themeVars.fontWeightStrong }"
+      >
+        <slot name="title">{{ title }}</slot>
+      </h3>
+      <slot name="left" />
+    </div>
+    <div class="smart-table-toolbar-right">
+      <!-- 业务组:宿主按钮 + 「更多」,间距 8px(原型 .tb-actions) -->
+      <div v-if="$slots.right || moreOptions.length" class="smart-table-toolbar-actions">
+        <slot name="right" />
+        <n-dropdown v-if="moreOptions.length" trigger="click" placement="bottom-end" :options="moreOptions" @select="onMoreSelect">
+          <!-- 默认 medium(34px),与宿主的业务按钮同高;chevron 12px、iconColor(原型 --n-text-3),右内边距 12px(chevron 自带的留白算进去) -->
+          <n-button
+            icon-placement="right"
+            :aria-label="labels.more"
+            :theme-overrides="{ iconSizeMedium: '12px' }"
+            style="padding-right: 12px"
+          >
+            {{ labels.more }}
+            <template #icon>
+              <span class="smart-table-more-icon" :style="{ color: themeVars.iconColor }"><ChevronDownIcon /></span>
+            </template>
+          </n-button>
+        </n-dropdown>
+      </div>
+      <!-- 内置图标组:刷新 / 密度 / 列设置,间距 4px(原型 .tb-icons);与业务组之间 12px(原型 .tb-right) -->
+      <div v-if="showRefresh || cfg.density === true || $slots.settings" class="smart-table-toolbar-icons">
+        <!-- 图标按钮的图标 16px(原型;官方 small 圆形按钮默认 18px)。abstract = 不多包一层 DOM;包住 #settings 插槽,列设置按钮同样生效 -->
+        <n-config-provider abstract :theme-overrides="{ Button: { iconSizeSmall: '16px' } }">
+          <n-tooltip v-if="showRefresh" trigger="hover">
+            <template #trigger>
+              <n-button quaternary circle size="small" :aria-label="labels.refresh" @click="emit('refresh')">
+                <template #icon><RefreshIcon /></template>
+              </n-button>
+            </template>
+            {{ labels.refresh }}
+          </n-tooltip>
+          <n-dropdown
+            v-if="cfg.density === true"
+            trigger="click"
+            :options="densityOptions"
+            @select="(k: Density) => emit('update:density', k)"
+          >
+            <n-tooltip trigger="hover">
+              <template #trigger>
+                <n-button quaternary circle size="small" :aria-label="labels.density">
+                  <template #icon><DensityIcon /></template>
+                </n-button>
+              </template>
+              {{ labels.density }}
+            </n-tooltip>
+          </n-dropdown>
+          <slot name="settings" />
+        </n-config-provider>
+      </div>
+    </div>
+  </div>
+</template>
+
+```
+
+**`src/Toolbar.vue` 查找(整段,原样)(第 5 / 5 处):**
+
+```vue
+.smart-table-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+</style>
+```
+
+**替换为:**
+
+```vue
+.smart-table-title {
+  margin: 0;
+  font-size: 16px;
+}
+/* 右侧两组:业务组(宿主按钮 + 更多)8px、内置图标组 4px、组间 12px —— 设计原型 .tb-actions / .tb-icons / .tb-right。
+   n-dropdown / n-tooltip 的触发器不额外包一层,所以 flex 的 gap 直接落在按钮之间。 */
+.smart-table-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.smart-table-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.smart-table-toolbar-icons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+/* 宿主的 #right 插槽里全是 v-if 为假的内容时,组容器是空的:不占位 */
+.smart-table-toolbar-actions:empty,
+.smart-table-toolbar-icons:empty {
+  display: none;
+}
+.smart-table-more-icon {
+  display: inline-flex;
+}
+</style>
+```
+
+- [ ] **Step 4: 跑,确认通过**
+
+Run: `npm test && npm run typecheck`
+Expected: `Test Files  21 passed (21)`、`Tests  360 passed (360)`(351 + 9:`Toolbar.test.ts` +7、`SearchForm.test.ts` +2);typecheck 无输出;无 `[Vue warn]`。
+
+- [ ] **Step 5: 浏览器验证(对照页 vs 原型)**
+
+Run: `node_modules/.bin/vite --port 5173`,打开 `http://localhost:5173/prototype.html?m=3`(1440 × 900,浅色),控制台粘贴:
+```js
+(() => {
+  const R = (e) => { const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height].map((v) => Math.round(v * 10) / 10).join(',') }
+  const tb = document.querySelector('.smart-table-toolbar')
+  const ts = getComputedStyle(tb.querySelector('.smart-table-title'))
+  let prev = null
+  const buttons = [...tb.querySelectorAll('button')].map((b) => {
+    const r = b.getBoundingClientRect()
+    const o = { name: b.getAttribute('aria-label') || b.innerText.trim(), size: r.width + 'x' + r.height, gap: prev === null ? null : Math.round((r.left - prev) * 10) / 10, svg: [...b.querySelectorAll('svg')].map((s) => s.getBoundingClientRect().width + 'x' + s.getBoundingClientRect().height + ' ' + getComputedStyle(s).color).join(' ; ') }
+    prev = r.right
+    return o
+  })
+  return { title: [ts.fontSize, ts.fontWeight, ts.color].join(' | '), buttons, noOverflow: tb.scrollWidth <= tb.clientWidth }
+})()
+```
+Expected(库侧;括号里是原型 `design.html` 同一批读数):
+- `title`:`16px | 500 | rgb(31, 34, 37)`(原型相同;**暗色**切到 `?theme=dark` 重读:`rgba(255, 255, 255, 0.9)`,原型相同);
+- `buttons`(按 DOM 顺序):**新增** `75x34`(原型 77,差 2px 边框),图标 `13x13`;**更多** `72x34`(原型 74)、与「新增」`gap` = **8**、chevron `12x12`(展开菜单时不旋转,`transform: none`,与原型第 4 批一致——官方 `NButton` / `NDropdown` / `NSelect` 的箭头都不旋转)、色 `rgb(194, 194, 194)`(暗 `rgba(255, 255, 255, 0.38)`,原型相同);**刷新** `28x28`、与「更多」`gap` = **12**、图标 `16x16`;**列设置** `28x28`、与「刷新」`gap` = **4**、图标 `16x16`(原型有一个「放大」按钮在「更多」与「刷新」之间,它是 P1,库没有;原型模块 3 的工具栏左侧还有宿主的「我负责的」快捷过滤按钮,对照页宿主层暂未复刻);`noOverflow` = `true`。
+- 工具栏不溢出(Task 6 的要求仍成立):把窗口宽依次设成 390 / 560 / 720 / 1024,上面脚本的 `noOverflow` 都是 `true`(实测 `scrollWidth` 与 `clientWidth` 分别为 332 / 502 / 662 / 650,各自相等)。
+再打开 `?m=1`,控制台粘贴:
+```js
+(() => {
+  const btns = [...document.querySelectorAll('.smart-table-search button')].filter((b) => /搜索|重置|展开|收起/.test(b.innerText))
+  return btns.map((b) => { const r = b.getBoundingClientRect(); return b.innerText.trim() + ' ' + [r.top, r.height].join(',') + ' cy=' + (r.top + r.height / 2) + ' w=' + r.width })
+})()
+```
+Expected:三个按钮的 `top`、`height` 完全相同——`搜索 119,34 cy=136 w=56`、`重置 119,34 cy=136 w=56`、`展开 119,34 cy=136 w=36`(**修复前**「展开」是 `top ≈ 128.8、height 14`,比同排按钮上移 6px;原型 `展开` 38 宽,同样 `cy=136`)。点「展开」文字变「收起」,高度仍是 34。
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add src/Toolbar.vue src/SearchForm.vue tests/Toolbar.test.ts tests/SearchForm.test.ts
+git commit -m "style: 工具栏标题 500 / textColor1、业务组 8 / 图标组 4 / 组间 12、「更多」medium、图标 16px;搜索区「展开」垂直居中(L0-1、L0-2、L0-7)" -m "对齐设计原型;2.1.1 的标题 600 / 间距 4 / 图标 18 属外观变化,CHANGELOG 记 B 级并给回退;「展开」错位记缺陷修复。" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+### Task 13d: 表头漏斗 22px / 灰色 / 绝对定位角标;过滤列标题单行省略(L0-3、L0-4)
+
+> - **L0-3 漏斗**:触发器由 `NButton tiny quaternary`(26 × 22、颜色 `textColor1`,悬停 / 打开时整个图标变深)改成**原生 `<button>`**(原型 `.th-filter`):**22 × 22**(G6;内图标 15px,两侧各留 3.5px——这样 Task 12 的 B12 下限 102 / 123 才算得对,26px 时舒适密度会缺 4px)、闲置色 = 表头图标色 `thIconColor`(与排序箭头同灰)、悬停 / 面板打开**只加** `thButtonColorHover` 底(不变色)、已筛选才变主色 `thIconColorActive`。颜色 / 底色 / 圆角走表头子树里的 `--n-th-icon-color` / `--n-th-button-color-hover` / `--n-th-icon-color-active` / `--n-border-radius`(触发器在 `th` 里,这些变量可用;明暗自动跟随)。**为什么不继续用 `NButton`**:它的 `padding` / 文字色变量写在元素内联样式里,库自己的 CSS 压不过去,要改尺寸与颜色只能 `!important`。键盘聚焦才画焦点环(与原型 `.n-btn:focus-visible` 一致)。`aria-haspopup` / `aria-expanded` / `data-data-table-filter` 不变。**2.1.1 的 26 × 22 / `textColor1` 变了 → CHANGELOG B 级**。
+> - **L0-4 角标不撑表头**:角标挪进按钮里、`position: absolute; top: -3px; right: -5px`(原型 `.hf-n`:`min-width: 12px; height: 12px; font: 500 10px/12px`),`aria-hidden`(条数已在按钮的 `aria-label` 里)。**同一原因的延伸**:列被拖到 B12 的下限时,「物料编码」这类 4 字标题只剩 48px,会**折成两行**,表头从 39.4 撑到 61.8px(实测);原型 `.th-title`(`design.html:1021`)本来就是单行省略(对齐,不是延伸)。过滤列的标题文字单独包一层 `span.smart-table-th-text`(`useColumns.ts`),`white-space: nowrap; overflow: hidden; text-overflow: ellipsis`,漏斗不会被一起裁掉。**2.1.1 里这种折行也存在,属外观变化(B 级,回退:宿主 CSS `.smart-table .smart-table-th-text { white-space: normal; overflow: visible }`)**。没有过滤漏斗的表头(只有排序箭头)保持官方的折行行为不变。
+> - **有意改动的既有断言(2 处,理由同上)**:`tests/useColumns.test.ts` 里「filter 列的标题包成『原标题 + 漏斗』」「函数型标题在包装后仍是渲染期求值」原来直接读 `children[0] === '标题'`,现在标题文字多包了一层 `span.smart-table-th-text`,断言改读它的 `children`(语义不变:仍是渲染期求值、漏斗在第二个孩子)。
+
+**Files:**
+- Modify: `src/ColumnFilter.vue`(触发器模板 + 样式)、`src/useColumns.ts`(标题文字包一层)、`src/SmartTable.vue`(样式)
+- Test: `tests/ColumnFilter.test.ts`(追加)、`tests/useColumns.test.ts`(**2 处有意改动**)
+
+**Interfaces:**
+- Consumes: Task 9 的触发器类 `smart-table-filter-trigger` / `--active` / `--open` / `smart-table-filter-badge`、`data-data-table-filter`;Task 12 的 `headerIconFloor`(漏斗簇 = 8 + 22 = 30,与本 Task 的 22px 一致)。
+- Produces: 触发器内的原生按钮类 `smart-table-filter-btn`;标题文字类 `smart-table-th-text`。
+
+- [ ] **Step 1: 写失败测试**
+
+**`tests/ColumnFilter.test.ts` 追加到文件末尾:**
+
+```ts
+
+describe('ColumnFilter 漏斗触发器的外观(L0-3 / L0-4,对齐原型 .th-filter / .hf-n)', () => {
+  function mountFilter(value: FilterValue | null) {
+    return mount(ColumnFilter, {
+      props: { def: buildOptionsDef(), value, labels, getOptions: () => [], isLoadingOptions: () => false },
+      attachTo: document.body,
+    })
+  }
+
+  it('[L0-3] 触发器是原生 <button type="button">(不是 NButton):尺寸与颜色由库自己的 CSS 定,不受 NButton 的 padding / 颜色变量牵制', () => {
+    const w = mountFilter(null)
+    const btn = w.find('.smart-table-filter-trigger button')
+    expect(btn.classes()).toContain('smart-table-filter-btn')
+    expect(btn.classes()).not.toContain('n-button')
+    expect(btn.attributes('type')).toBe('button')
+    expect(btn.attributes('aria-haspopup')).toBe('dialog')
+    expect(btn.find('svg').exists()).toBe(true)
+    w.unmount()
+  })
+
+  it('[L0-4] 条数角标在按钮「里面」(绝对定位,锚是 22px 的按钮,不占行内宽度,不撑宽 / 撑高表头),且 aria-hidden(条数已在按钮的 aria-label 里)', () => {
+    const w = mountFilter(optionsToFilterValue([1, 2, 3]))
+    const badge = w.find('.smart-table-filter-trigger button .smart-table-filter-badge')
+    expect(badge.exists()).toBe(true)
+    expect(badge.text()).toBe('3')
+    expect(badge.attributes('aria-hidden')).toBe('true')
+    // 按钮的无障碍名只有 aria-label,不含角标的文字
+    expect(w.find('.smart-table-filter-trigger button').attributes('aria-label')).toBe('过滤(已筛选 3 条)')
+    w.unmount()
+  })
+
+  it('[L0-3] 面板打开 → 触发器带 --open(只加底色,不变色);--active(主色)只属于「已筛选」', async () => {
+    const w = mountFilter(null)
+    expect(w.find('.smart-table-filter-trigger--open').exists()).toBe(false)
+    await w.find('.smart-table-filter-trigger').trigger('click')
+    await flushPromises()
+    expect(w.find('.smart-table-filter-trigger--open').exists()).toBe(true)
+    expect(w.find('.smart-table-filter-trigger--active').exists()).toBe(false)
+    w.unmount()
+  })
+})
+```
+
+**`tests/useColumns.test.ts` 查找(整段,原样)(第 1 / 2 处):**
+
+```ts
+    expect(typeof title).toBe('function')
+    const vnode = title(undefined)
+    const children = vnode.children as VNode[]
+    expect(children[0]).toBe('N')
+    expect((children[1] as VNode).props?.['data-key']).toBe('name')
+
+    expect(col(api, 'amt').title).toBe('A') // 无 filter 不包装
+```
+
+**替换为:**
+
+```ts
+    expect(typeof title).toBe('function')
+    const vnode = title(undefined)
+    const children = vnode.children as VNode[]
+    // 有意改动(L0-4):标题文字多包了一层 span.smart-table-th-text(只让文字省略、漏斗不被裁),原断言直接读 children[0] === 'N'
+    expect((children[0] as VNode).props?.class).toBe('smart-table-th-text')
+    expect((children[0] as VNode).children).toEqual(['N'])
+    expect((children[1] as VNode).props?.['data-key']).toBe('name')
+
+    expect(col(api, 'amt').title).toBe('A') // 无 filter 不包装
+```
+
+**`tests/useColumns.test.ts` 查找(整段,原样)(第 2 / 2 处):**
+
+```ts
+      { renderFilter },
+    )
+    const title = col(api, 'name').title as (c: unknown) => VNode
+    expect((title(undefined).children as VNode[])[0]).toBe('姓名')
+    lang = 'en'
+    expect((title(undefined).children as VNode[])[0]).toBe('Name')
+  })
+
+  it('没有 renderFilter 时不包装(useColumns 可脱离 UI 单独使用)', () => {
+```
+
+**替换为:**
+
+```ts
+      { renderFilter },
+    )
+    const title = col(api, 'name').title as (c: unknown) => VNode
+    // 有意改动(L0-4):标题文字在 span.smart-table-th-text 里,取它的 children
+    const text = () => ((title(undefined).children as VNode[])[0] as VNode).children
+    expect(text()).toEqual(['姓名'])
+    lang = 'en'
+    expect(text()).toEqual(['Name'])
+  })
+
+  it('没有 renderFilter 时不包装(useColumns 可脱离 UI 单独使用)', () => {
+```
+
+- [ ] **Step 2: 跑,确认失败**
+
+Run: `npx vitest run tests/ColumnFilter.test.ts tests/useColumns.test.ts`
+Expected: `Test Files  2 failed (2)`、`Tests  4 failed | 68 passed (72)`(实测)—— `ColumnFilter.test.ts` 2 条(漏斗不是原生 button:`expected [ 'n-button', … ] to include 'smart-table-filter-btn'`;角标不在按钮里),`useColumns.test.ts` 2 条(有意改动的标题结构断言:`children[0]` 此刻还是字符串)。「面板打开 → `--open`」那条此刻本来就绿。
+
+- [ ] **Step 3: 实现**
+
+**`src/ColumnFilter.vue` 查找(整段,原样)(第 1 / 2 处):**
+
+```vue
+      >
+        <n-tooltip trigger="hover" :disabled="show">
+          <template #trigger>
+            <!-- aria-haspopup / aria-expanded:屏幕阅读器得知这个按钮会弹出对话框、当前是否展开(D6) -->
+            <n-button
+              quaternary
+              size="tiny"
+              :type="active ? 'primary' : 'default'"
+              :aria-label="ariaLabel"
+              aria-haspopup="dialog"
+              :aria-expanded="show"
+            >
+              <template #icon><FilterIcon /></template>
+            </n-button>
+          </template>
+          {{ labels.filter }}
+        </n-tooltip>
+        <!-- 文字色取主题的 baseColor(亮白 / 暗黑),不写死 #fff:暗色下叠在主色上对比度太低(Q-2) -->
+        <span v-if="activeCount > 1" class="smart-table-filter-badge" :style="{ color: themeVars.baseColor }">{{
+          activeCount
+        }}</span>
+      </span>
+    </template>
+
+```
+
+**替换为:**
+
+```vue
+      >
+        <n-tooltip trigger="hover" :disabled="show">
+          <template #trigger>
+            <!-- 原生 button(设计原型 .th-filter):22×22、图标 15px、闲置色取表头图标色(与排序箭头同灰)、打开 / 悬停只加底色、
+                 已筛选才变主色。不用 NButton:它的 padding / 文字色变量写在内联样式里,压不过库自己的 CSS。
+                 aria-haspopup / aria-expanded:屏幕阅读器得知这个按钮会弹出对话框、当前是否展开(D6) -->
+            <button
+              type="button"
+              class="smart-table-filter-btn"
+              :aria-label="ariaLabel"
+              aria-haspopup="dialog"
+              :aria-expanded="show"
+            >
+              <FilterIcon />
+              <!-- 条数角标:绝对定位在按钮右上角(原型 .hf-n),不占行内宽度,所以多条件时表头既不变宽也不变高(L0-4)。
+                   文字色取主题的 baseColor(亮白 / 暗黑),不写死 #fff:暗色下叠在主色上对比度太低(Q-2)。
+                   aria-hidden:条数已在按钮的 aria-label 里,不要读两遍 -->
+              <span v-if="activeCount > 1" class="smart-table-filter-badge" aria-hidden="true" :style="{ color: themeVars.baseColor }">{{
+                activeCount
+              }}</span>
+            </button>
+          </template>
+          {{ labels.filter }}
+        </n-tooltip>
+      </span>
+    </template>
+
+```
+
+**`src/ColumnFilter.vue` 查找(整段,原样)(第 2 / 2 处):**
+
+```vue
+  /* 表头默认 center 对齐时,漏斗不该把标题挤偏 */
+  vertical-align: middle;
+}
+.smart-table-filter-badge {
+  margin-left: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  font-size: 10px;
+  line-height: 14px;
+  text-align: center;
+  /* 文字色在模板里经 :style 取 themeVars.baseColor(Q-2);背景取官方的激活图标色(角标在 th 的子树里,--n-* 变量可用) */
+  background: var(--n-th-icon-color-active);
+}
+.smart-table-filter {
+```
+
+**替换为:**
+
+```vue
+  /* 表头默认 center 对齐时,漏斗不该把标题挤偏 */
+  vertical-align: middle;
+}
+/* 漏斗按钮(L0-3,设计原型 .th-filter):22×22(G6,图标 15px 两侧各留 3.5px,B12 的拖拽下限 102 / 123 就是按它算的)。
+   颜色走表头的主题变量(触发器在 th 的子树里,--n-th-* 可用):闲置 = thIconColor(与排序箭头同灰),
+   悬停 / 面板打开只加 thButtonColorHover 底色(不变色),已筛选 = thIconColorActive(主色)。 */
+.smart-table-filter-btn {
+  position: relative;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--n-border-radius);
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--n-th-icon-color);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+}
+.smart-table-filter-btn:hover,
+.smart-table-filter-trigger--open .smart-table-filter-btn {
+  background: var(--n-th-button-color-hover);
+}
+.smart-table-filter-trigger--active .smart-table-filter-btn {
+  color: var(--n-th-icon-color-active);
+}
+/* 只在键盘聚焦时画焦点环(与原型 .n-btn:focus-visible 一致:克制的主色细环,外扩 2px) */
+.smart-table-filter-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--n-th-icon-color-active) 55%, transparent);
+  outline-offset: 2px;
+}
+/* 条数角标(L0-4,原型 .hf-n):绝对定位,不占宽、不占高。文字色在模板里经 :style 取 themeVars.baseColor(Q-2);
+   背景取表头的激活图标色(= 主色) */
+.smart-table-filter-badge {
+  position: absolute;
+  top: -3px;
+  right: -5px;
+  min-width: 12px;
+  height: 12px;
+  padding: 0 3px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 12px;
+  text-align: center;
+  pointer-events: none;
+  background: var(--n-th-icon-color-active);
+}
+.smart-table-filter {
+```
+
+**`src/SmartTable.vue` 查找(整段,原样):**
+
+```vue
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+/* 表头图标「悬停才显示」(B6):未激活的排序箭头与漏斗平时透明(仍占位,不回流),悬停该列表头或
+   键盘聚焦到表头内时淡入。官方类名已在真实 NDataTable 上核对(设计文档 9.1)。
+```
+
+**替换为:**
+
+```vue
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  max-width: 100%;
+}
+/* 过滤列的标题文字单行、放不下省略(设计原型 .th-title),漏斗不被裁(L0-4):
+   列被拖到 B12 的下限时,「物料编码」这类 4 字标题只剩 48px,折成两行会把表头从 39.4 撑到 61.8px、图标也被挤歪。
+   B12 的下限保证的是图标簇放得下,标题让位(省略)。标题文字单独包了一层(useColumns),省略号只作用在文字上,不会连漏斗一起裁掉。 */
+.smart-table :deep(.smart-table-th-text) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 表头图标「悬停才显示」(B6):未激活的排序箭头与漏斗平时透明(仍占位,不回流),悬停该列表头或
+   键盘聚焦到表头内时淡入。官方类名已在真实 NDataTable 上核对(设计文档 9.1)。
+```
+
+**`src/useColumns.ts` 查找(整段,原样):**
+
+```ts
+      return result as DataTableColumn<T>
+    }
+
+    // 表头过滤入口:标题后挂漏斗。包一层是为了 sorter 列点漏斗不会连带触发排序
+    // (ColumnFilter 内部 stopPropagation),同时让漏斗贴着标题而不是被 th 撑开。
+    const filterDef = opts.filterDefs?.().find((f) => f.field === key)
+    if (filterDef && opts.renderFilter) {
+      const baseTitle = result.title as string | ((c: unknown) => VNodeChild) | undefined
+      result.title = (c: unknown) =>
+        h('span', { class: 'smart-table-th' }, [
+          typeof baseTitle === 'function' ? baseTitle(c) : baseTitle,
+          opts.renderFilter!(filterDef),
+        ])
+    }
+```
+
+**替换为:**
+
+```ts
+      return result as DataTableColumn<T>
+    }
+
+    // 表头过滤入口:标题后挂漏斗,同时让漏斗贴着标题而不是被 th 撑开。标题文字再单独包一层 .smart-table-th-text:
+    // 列被拖窄时只让文字省略(单行 + ellipsis),不折行撑高表头,也不会连漏斗一起裁掉(L0-4)。
+    const filterDef = opts.filterDefs?.().find((f) => f.field === key)
+    if (filterDef && opts.renderFilter) {
+      const baseTitle = result.title as string | ((c: unknown) => VNodeChild) | undefined
+      result.title = (c: unknown) =>
+        h('span', { class: 'smart-table-th' }, [
+          h('span', { class: 'smart-table-th-text' }, [typeof baseTitle === 'function' ? baseTitle(c) : baseTitle]),
+          opts.renderFilter!(filterDef),
+        ])
+    }
+```
+
+- [ ] **Step 4: 跑,确认通过**
+
+Run: `npm test && npm run typecheck`
+Expected: `Test Files  21 passed (21)`、`Tests  363 passed (363)`(360 + 3:`ColumnFilter.test.ts` +3;`useColumns.test.ts` 的 2 条是改断言,不增);typecheck 无输出;无 `[Vue warn]`。
+
+- [ ] **Step 5: 浏览器验证(对照页 vs 原型)**
+
+Run: `node_modules/.bin/vite --port 5173`,打开 `/prototype.html?m=3`(1440 × 900,浅色)。**先把鼠标移到表格外**,控制台粘贴:
+```js
+(() => {
+  const th = [...document.querySelectorAll('thead th')].find((t) => t.innerText.includes('物料编码'))
+  const t = th.getBoundingClientRect()
+  const f = th.querySelector('.smart-table-filter-btn')
+  const fr = f.getBoundingClientRect()
+  const sv = f.querySelector('svg').getBoundingClientRect()
+  const sr = th.querySelector('.n-data-table-sorter').getBoundingClientRect()
+  const R = (v) => Math.round(v * 10) / 10
+  const opacity = (e) => { let o = 1; for (let x = e; x && x !== th.parentElement; x = x.parentElement) o *= parseFloat(getComputedStyle(x).opacity); return Math.round(o * 100) / 100 }
+  const badge = th.querySelector('.smart-table-filter-badge')
+  const b = badge && badge.getBoundingClientRect()
+  return {
+    th: t.width + 'x' + R(t.height),
+    funnel: fr.width + 'x' + fr.height,
+    funnelSvg: sv.width + 'x' + sv.height,
+    funnelColor: getComputedStyle(f).color,
+    funnelOpacity: opacity(f),
+    funnelToSorter: R(sr.left - fr.right),
+    sorterRightGap: R(t.right - sr.right),
+    badge: b ? { size: b.width + 'x' + b.height, dx: R(b.left - fr.left), dy: R(b.top - fr.top), pos: getComputedStyle(badge).position } : null,
+  }
+})()
+```
+Expected(库侧;括号里是原型 `.th-filter` 读数):
+- `funnel` = `22x22`(原型 22 × 22)、`funnelSvg` = `15x15`(原型 15 × 15)、`funnelColor` = `rgb(194, 194, 194)`(原型 `rgb(194, 194, 194)`,与排序箭头同灰;暗色 `rgba(255, 255, 255, 0.38)`,原型相同)、`funnelOpacity` = `0`(闲置不可见,原型 0;鼠标移到该列表头上变 `1`);`funnelToSorter` = `6`(漏斗 → 箭头,原型 6)、`th` = `137x39.4`(原型 `137x40.4`:原型第 1 批 X1 把行高 / 内边距改成官方 small = 39.4,`th` 另含表格外框的 1px 上边框 → 40.4,不属于本 Task);
+- 鼠标移到漏斗上 / 点开面板:漏斗底色 = `rgba(0, 0, 100, 0.03)`(原型相同;暗 `rgba(255, 255, 255, 0.06)`),**颜色不变**(仍是灰,不是主色);
+- 已筛选(面板里输入 `M10` 确认):漏斗颜色 = 主色 `rgb(24, 160, 88)`(暗 `rgb(99, 226, 183)`),常驻可见。
+再给「物料编码」加第二个条件(点漏斗 → 「添加条件」→ 两行分别填 `M10` / `M20` → 确认),把鼠标移到表格外,再粘贴同一段脚本。Expected:`badge` = `{ size: "12x12", dx: 15, dy: -3, pos: "absolute" }`(原型:角标 `434,204,12,12`,漏斗 `419,207` → 相对 `dx 15 / dy -3`,完全相同);`th` 仍是 `137x39.4`,**没有变宽也没有变高**(修复前角标行内占 ~16px,列宽 137 时标题折成两行、表头 ≈ 62px);暗色下角标文字色 `rgb(0, 0, 0)`、底 `rgb(99, 226, 183)`。
+**拖到下限**:把「物料编码」列的右边界用鼠标向左一直拖到拖不动,再粘贴脚本。Expected:`th` = `123x39.4`(下限 123 = 8 + 标题 + 8 + 22 + 6 + 15 + 16,标题让位成省略号),`sorterRightGap` ≈ `17`(≥ 16,箭头没被裁;原型 17),`funnelToSorter` = `6`;**表头高度仍是 39.4**(修复前 `61.8`,标题折成两行)。仅过滤的列(如「负责人」)拖到下限 `102`、同样单行。
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add src/ColumnFilter.vue src/useColumns.ts src/SmartTable.vue tests/ColumnFilter.test.ts tests/useColumns.test.ts
+git commit -m "style: 漏斗 22px 原生按钮 + 表头图标色 + 绝对定位角标;过滤列标题单行省略(L0-3、L0-4)" -m "对齐设计原型 .th-filter / .hf-n:B12 的下限 102 / 123 按 22px 才对;角标不再撑宽 / 撑高表头;列拖到下限时标题省略而不是折行。有意改动 tests/useColumns.test.ts 里 2 条标题结构断言(标题文字多包了一层 span)。2.1.1 的漏斗 26px / 深色 / 折行属外观变化,CHANGELOG 记 B 级。" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+### Task 13e: 列头面板排布对齐原型;单选过滤用 NRadio;面板不出屏(L0-5、L0-9)
+
+> - **L0-5 排布**(原型 `.hpop` / `hpRowHtml` / `hpBodyHtml` / `hpopHtml`):面板 padding 0;正文 `12px 12px 0`;每行 **4 列网格 `56px 112px 1fr 28px`、间距 8**(首列 / 比较符 / 值 / 删除;删除列恒占位,所以 1 行和多行的值输入同宽),行距 12;**首列:第 1 行是「条件」引导标签(12px、`textColor3`、居中),第 2 行起是且 / 或下拉**(`NSelect small`,选哪个都改整组的连接方式——`FilterValue.logic` 每字段一个值),取代原来行下方的分段按钮;「添加条件」文字按钮是**官方 `NButton` small 档**(`button/styles/_common.mjs`:`heightSmall` 28 / `paddingSmall` 0 10px / `fontSizeSmall` 14 / `iconSizeSmall` 18;与同一面板里 small 的值控件一致,原型第 4 批同款,窄档抽屉的 large 档属 P2)、**带加号图标、颜色保持官方文字按钮的 `textColor2`(不再是主色)**——官方文字按钮(`text`)把高度与内边距重置成 `initial`,所以高度取主题 `heightSmall`(`:style`)、内边距写 `paddingSmall` 的值,字号 / 图标取 `size="small"` 的官方值;「高级条件 ▾」「返回列表 ▴」同档;options 面板「高级条件 ▾」「返回列表 ▴」带箭头(符号字符,不进 label),选项间距 12(行高 22.4 → 间隔 34.4),最高 240 滚动,最小宽 168;高级条件里含勾选表达不了的条件时,「返回」禁用并给出原因提示(新 label `filterCannotCollapse`,原型同款);底部 `space-evenly` 的 tiny「重置 / 确认」,footer `padding: 8px 12px`、上边线 `dividerColor`。删除按钮 `size="small"`(28px)、图标 12px;新增 label `filterConditionLead`(en `Where` / zh `条件`)。自定义面板(`def.render`)沿用 2.1.1 的 8px 内边距与 200px 最小宽(`smart-table-filter--custom`),不套新排布。**面板排布随 B7 的多条件面板一并变,CHANGELOG 在 B7 行里补一句,不单列**。
+> - **单选过滤**(`filter.multiple: false`,原型第 1 批 N10 已改、`design.md` 10.8):库此前用 `NCheckbox` 模拟单选;官方 `HeaderButton/FilterMenu.mjs:118-141` 用 `NRadioGroup` / `NRadio`(G3:与官方冲突跟官方)→ 改成 `NRadioGroup` + `NRadio`,没有「全选」,已有 `equal` 条件时对应 radio 选中。**2.1.1 的 `multiple: false` 外观变了(复选框 → 单选按钮),CHANGELOG 列入**。
+> - **L0-9 不出屏**:`NPopover placement="bottom"` 把面板居中在漏斗上,触发器靠近视口边缘(窄屏尤其明显:390 宽下 400px 的面板左缘 `x = −69`,左侧被裁出屏幕)。公开的 `NPopover` 没有「夹进视口」的开关 → 量 NPopover 的定位容器(vueuc 的 `.v-binder-follower-content`:只有定位用的平移,**没有进场动画的缩放**——量面板自己会量错,弹层有淡入 + 缩放动画)的位置,用纯函数 `clampShift(left, width, viewport, margin = 8)` 算出水平平移,加在面板自己的 `transform` 上;窗口缩放 / 任意祖先滚动(`capture` 阶段)时重新夹取;放不下(比视口 − 16 还宽)时贴左边距,保证左侧的标签与比较符可见。**窄档改用底部抽屉属于 P2(`cardOnNarrow`)**,在那之前窄容器至少不能把内容裁掉。
+> - **有意改动的既有断言(1 处)**:`tests/ColumnFilter.test.ts`「两行 + 『或』」原来 `w.findComponent(NRadioGroup).vm.$emit('update:value', 'or')`,且 / 或的分段按钮没有了,改成在第 2 行 `ConditionRow` 上 `$emit('update:logic', 'or')`(语义不变:连接方式变成 `or` 并随确认提交);顶部 import 里的 `NRadioGroup` 先去掉、单选用例里再加回。
+> - **和原型一致、库不改的两处**:① 打开面板的初始焦点 = 第一个可聚焦控件(原型第 1 批已改成与库一致,设计文档 10.8 N8);② 值输入的清除 ×:原型原先没有、**在原型侧补上**(官方默认 `clearable`)。
+> - **「全选」**(N10):库一直有(多选且选项 > 1);原型第 1 批已补。
+
+**Files:**
+- Create: `src/viewportClamp.ts`
+- Modify: `src/ColumnFilter.vue`、`src/ConditionRow.vue`、`src/icons.ts`(小图标换几何 + `PlusIcon`)、`src/labels.ts`、`src/types.ts`、`playground/prototype/ProtoApp.vue`(`filterSimple` 改回原型措辞)
+- Test: `tests/viewportClamp.test.ts`(新建)、`tests/ColumnFilter.test.ts`(追加 + **1 处有意改动**)
+
+**Interfaces:**
+- Consumes: Task 10 的 `ColumnFilter.vue` / `ConditionRow.vue`、Task 9 的触发器;Task 13d 的原生漏斗按钮。
+- Produces: `SmartTableLabels.filterConditionLead?` / `filterCannotCollapse?`(**可选**,`defaultLabels` 英文 `Where` / `Contains conditions checkboxes cannot show`,`zhCNLabels` `条件` / `含勾选无法表达的条件`);`viewportClamp.ts` 的 `clampShift`;`ConditionRow` 新增 prop `index`、`logic` 与事件 `update:logic`;图标 `PlusIcon`,`ChevronDownIcon` / `CloseIcon` 换成 16 视口几何。
+
+- [ ] **Step 1: 写失败测试**
+
+**新建 `tests/viewportClamp.test.ts`:**
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { clampShift } from '../src/viewportClamp'
+
+describe('clampShift(L0-9:弹层水平夹进视口)', () => {
+  it('完全在视口内(两侧都留得出 8px)→ 0', () => {
+    expect(clampShift(100, 400, 1440)).toBe(0)
+    expect(clampShift(8, 400, 1440)).toBe(0) // 恰好贴着边距
+    expect(clampShift(1440 - 8 - 400, 400, 1440)).toBe(0)
+  })
+
+  it('左侧出屏 → 右移到 left = 8', () => {
+    expect(clampShift(-69, 374, 390)).toBe(77)
+    expect(clampShift(0, 300, 1000)).toBe(8)
+  })
+
+  it('右侧出屏 → 左移到 right = viewport − 8', () => {
+    expect(clampShift(300, 200, 390)).toBe(-118)
+    expect(clampShift(1300, 400, 1440)).toBe(-268)
+  })
+
+  it('比「视口 − 两侧边距」还宽(放不下)→ 贴左边距,保证左侧的内容(标签、比较符)可见', () => {
+    expect(clampShift(-20, 500, 400)).toBe(28)
+    expect(clampShift(50, 500, 400)).toBe(-42)
+  })
+
+  it('边距可配', () => {
+    expect(clampShift(2, 100, 400, 16)).toBe(14)
+  })
+
+  it('结果取整(亚像素 rect 不会产生 translateX(77.3333px) 这类模糊渲染)', () => {
+    expect(Number.isInteger(clampShift(-69.4, 374.2, 390))).toBe(true)
+  })
+})
+```
+
+**`tests/ColumnFilter.test.ts` 查找(整段,原样)(第 1 / 3 处):**
+
+```ts
+// @vitest-environment jsdom
+import { describe, expect, it } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { NConfigProvider, NRadioGroup, NSelect, darkTheme } from 'naive-ui'
+import { h, defineComponent, nextTick } from 'vue'
+```
+
+**替换为:**
+
+```ts
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { NConfigProvider, NRadioGroup, NSelect, darkTheme } from 'naive-ui'
+import { h, defineComponent, nextTick } from 'vue'
+```
+
+**`tests/ColumnFilter.test.ts` 查找(整段,原样)(第 2 / 3 处):**
+
+```ts
+  filterLogicOr: '或',
+  filterAdvanced: '高级条件',
+  filterSimple: '返回列表',
+  filterNoValue: '无需填值',
+  filterEqual: '等于',
+  filterNotEqual: '不等于',
+```
+
+**替换为:**
+
+```ts
+  filterLogicOr: '或',
+  filterAdvanced: '高级条件',
+  filterSimple: '返回列表',
+  filterConditionLead: '条件',
+  filterCannotCollapse: '含勾选无法表达的条件',
+  filterNoValue: '无需填值',
+  filterEqual: '等于',
+  filterNotEqual: '不等于',
+```
+
+**`tests/ColumnFilter.test.ts` 查找(整段,原样)(第 3 / 3 处):**
+
+```ts
+    const rows = w.findAllComponents(ConditionRow)
+    rows[0].vm.$emit('update:value', 'a')
+    rows[1].vm.$emit('update:value', 'b')
+    w.findComponent(NRadioGroup).vm.$emit('update:value', 'or')
+    await nextTick()
+    docClick(confirmBtn())
+    expect(lastEmitted(w)).toEqual(v('or', ['contains', 'a'], ['contains', 'b']))
+```
+
+**替换为:**
+
+```ts
+    const rows = w.findAllComponents(ConditionRow)
+    rows[0].vm.$emit('update:value', 'a')
+    rows[1].vm.$emit('update:value', 'b')
+    rows[1].vm.$emit('update:logic', 'or') // 有意改动(L0-5):且 / 或 从下方的分段按钮改成第 2 行起首列的下拉,事件在条件行上
+    await nextTick()
+    docClick(confirmBtn())
+    expect(lastEmitted(w)).toEqual(v('or', ['contains', 'a'], ['contains', 'b']))
+```
+
+**`tests/ColumnFilter.test.ts` 追加到文件末尾:**
+
+```ts
+
+describe('ColumnFilter 面板排布(L0-5,对齐原型 .hpop)', () => {
+  const conditionDef = (over: Partial<FilterDef> = {}): FilterDef => ({
+    key: 'name',
+    field: 'name',
+    optionsKey: 'name',
+    mode: 'condition',
+    multiple: true,
+    type: 'input',
+    actions: ['contains', 'equal', 'isNull'],
+    ...over,
+  })
+  const two: FilterValue = {
+    logic: 'or',
+    conditions: [
+      { action: 'contains', value: 'a' },
+      { action: 'equal', value: 'b' },
+    ],
+  }
+  async function openPanel(def: FilterDef, value: FilterValue | null) {
+    const w = mount(ColumnFilter, {
+      props: { def, value, labels, getOptions: () => [], isLoadingOptions: () => false },
+      attachTo: document.body,
+    })
+    await w.find('.smart-table-filter-trigger').trigger('click')
+    await flushPromises()
+    return w
+  }
+  const q = (sel: string) => document.body.querySelector(sel) as HTMLElement | null
+  const qa = (sel: string) => Array.from(document.body.querySelectorAll<HTMLElement>(sel))
+
+  it('首列:第 1 行是「条件」引导标签,第 2 行起是且 / 或下拉(显示当前连接方式)', async () => {
+    const w = await openPanel(conditionDef(), two)
+    const rows = qa('.smart-table-filter-row')
+    expect(rows).toHaveLength(2)
+    expect(rows[0].querySelector('.smart-table-filter-lead')!.textContent).toBe('条件')
+    expect(rows[0].querySelector('.smart-table-filter-logic')).toBeNull()
+    expect(rows[1].querySelector('.smart-table-filter-lead')).toBeNull()
+    expect(rows[1].querySelector('.smart-table-filter-logic')!.textContent).toBe('或')
+    w.unmount()
+  })
+
+  it('只有 1 行时没有且 / 或下拉;下方也不再有分段按钮', async () => {
+    const w = await openPanel(conditionDef(), null)
+    expect(qa('.smart-table-filter-logic')).toHaveLength(0)
+    expect(qa('.n-radio-group')).toHaveLength(0)
+    w.unmount()
+  })
+
+  it('改且 / 或:第 2 行起任意一行的下拉都改整组的连接方式,确认后提交', async () => {
+    const w = await openPanel(conditionDef(), two)
+    const rows = w.findAllComponents(ConditionRow)
+    expect(rows[1].props('logic')).toBe('or')
+    rows[1].vm.$emit('update:logic', 'and')
+    await nextTick()
+    expect(w.findAllComponents(ConditionRow)[1].props('logic')).toBe('and')
+    click(qa('.smart-table-filter-footer button')[1])
+    const e = w.emitted('update:value')!
+    expect((e[e.length - 1][0] as FilterValue).logic).toBe('and')
+    w.unmount()
+  })
+
+  it('「添加条件」:官方 small 档的文字按钮,带加号图标,文字不再自带「+ 」前缀,也不再是主色', async () => {
+    const w = await openPanel(conditionDef(), null)
+    const add = q('.smart-table-filter-add')!
+    expect(add.querySelector('svg')).not.toBeNull()
+    expect(add.textContent!.trim()).toBe('添加条件')
+    expect(add.classList.contains('n-button--primary-type')).toBe(false)
+    // 官方 small 档(第 4 批,与同一面板里 small 的值控件一致):字 14 / 图标 18 / 高取主题 heightSmall 28
+    expect(add.getAttribute('style')).toContain('--n-font-size: 14px')
+    expect(add.getAttribute('style')).toContain('--n-icon-size: 18px')
+    expect(add.getAttribute('style')).toContain('height: 28px')
+    w.unmount()
+  })
+
+  it('底部「重置 / 确认」在 footer 里,footer 在面板最底部、带分隔线', async () => {
+    const w = await openPanel(conditionDef(), null)
+    const footer = q('.smart-table-filter-footer')!
+    expect(Array.from(footer.querySelectorAll('button')).map((b) => b.textContent!.trim())).toEqual(['重置', '确定'])
+    expect(footer.parentElement!.lastElementChild).toBe(footer)
+    expect(footer.getAttribute('style')).toContain('border-top')
+    w.unmount()
+  })
+
+  it('自定义面板(def.render)仍是 8px 内边距的老样式,不套新的条件面板排布', async () => {
+    const w = await openPanel(conditionDef({ render: () => h('div', { class: 'custom' }, 'x') }), null)
+    expect(q('.smart-table-filter')!.classList.contains('smart-table-filter--custom')).toBe(true)
+    expect(q('.smart-table-filter-body')).toBeNull()
+    w.unmount()
+  })
+
+  describe('options 列', () => {
+    const opts = [
+      { label: 'A', value: 1 },
+      { label: 'B', value: 2 },
+    ]
+    const optionsDef = (): FilterDef => ({ ...buildOptionsDef(), type: 'select' })
+    async function open(value: FilterValue | null) {
+      const w = mount(ColumnFilter, {
+        props: { def: optionsDef(), value, labels, getOptions: () => opts as never, isLoadingOptions: () => false },
+        attachTo: document.body,
+      })
+      await w.find('.smart-table-filter-trigger').trigger('click')
+      await flushPromises()
+      return w
+    }
+
+    it('底部入口带箭头:「高级条件 ▾」;展开后「返回列表 ▴」', async () => {
+      const w = await open(null)
+      expect(q('.smart-table-filter-advanced-open')!.textContent!.trim()).toBe('高级条件 ▾')
+      click(q('.smart-table-filter-advanced-open'))
+      await nextTick()
+      expect(q('.smart-table-filter-advanced-close')!.textContent!.trim()).toBe('返回列表 ▴')
+      w.unmount()
+    })
+
+    it('高级条件里含勾选表达不了的条件:「返回」禁用,并给出原因提示', async () => {
+      const w = await open({ logic: 'and', conditions: [{ action: 'notEqual', value: 1 }] })
+      expect(q('.smart-table-filter-advanced-close')!.hasAttribute('disabled')).toBe(true)
+      expect(q('.smart-table-filter-hint')!.textContent).toBe('含勾选无法表达的条件')
+      w.unmount()
+    })
+
+    it('能无损收起时没有提示', async () => {
+      const w = await open(null)
+      click(q('.smart-table-filter-advanced-open'))
+      await nextTick()
+      expect(q('.smart-table-filter-hint')).toBeNull()
+      w.unmount()
+    })
+
+    describe('单选(filter.multiple: false)用官方 NRadio,不是复选框', () => {
+      async function openSingle(value: FilterValue | null) {
+        const w = mount(ColumnFilter, {
+          props: {
+            def: { ...optionsDef(), multiple: false },
+            value,
+            labels,
+            getOptions: () => opts as never,
+            isLoadingOptions: () => false,
+          },
+          attachTo: document.body,
+        })
+        await w.find('.smart-table-filter-trigger').trigger('click')
+        await flushPromises()
+        return w
+      }
+      const lastValue = (w: ReturnType<typeof mount>) => {
+        const e = w.emitted('update:value')!
+        return e[e.length - 1][0] as FilterValue | null
+      }
+
+      it('选项是 NRadio(官方 FilterMenu.mjs:118-141 同款),没有 NCheckbox、没有「全选」', async () => {
+        const w = await openSingle(null)
+        expect(qa('.smart-table-filter-options .n-radio')).toHaveLength(2)
+        expect(qa('.smart-table-filter-options .n-checkbox')).toHaveLength(0)
+        expect(q('.smart-table-filter-options')!.classList.contains('n-radio-group')).toBe(true)
+        w.unmount()
+      })
+
+      it('已有 equal 条件时对应的 radio 是选中的;换选另一个 → 提交的是新的单个 equal', async () => {
+        const w = await openSingle({ logic: 'and', conditions: [{ action: 'equal', value: 1 }] })
+        const radios = qa('.smart-table-filter-options .n-radio')
+        expect(radios.map((r) => r.classList.contains('n-radio--checked'))).toEqual([true, false])
+        w.findComponent(NRadioGroup).vm.$emit('update:value', 2)
+        await nextTick()
+        click(qa('.smart-table-filter-footer button')[1])
+        expect(lastValue(w)).toEqual({ logic: 'or', conditions: [{ action: 'equal', value: 2 }] })
+        w.unmount()
+      })
+
+      it('没选就确认 → 提交 null(清除);多选列(默认)仍是复选框', async () => {
+        const w = await openSingle(null)
+        click(qa('.smart-table-filter-footer button')[1])
+        expect(lastValue(w)).toBeNull()
+        w.unmount()
+        const multi = await open(null)
+        expect(qa('.smart-table-filter-options .n-checkbox').length).toBeGreaterThan(0)
+        expect(qa('.smart-table-filter-options .n-radio')).toHaveLength(0)
+        multi.unmount()
+      })
+    })
+  })
+})
+
+describe('ColumnFilter 面板不出屏(L0-9)', () => {
+  const def: FilterDef = {
+    key: 'name',
+    field: 'name',
+    optionsKey: 'name',
+    mode: 'condition',
+    multiple: true,
+    type: 'input',
+    actions: ['contains'],
+  }
+  const realInnerWidth = window.innerWidth
+  afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', { value: realInnerWidth, configurable: true })
+    vi.restoreAllMocks()
+  })
+  const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)))
+
+  async function openAt(left: number, width: number, viewport: number) {
+    Object.defineProperty(window, 'innerWidth', { value: viewport, configurable: true })
+    // jsdom 没有布局:给 NPopover 的定位容器(.v-binder-follower-content,真实布局位置、不含面板自己的平移)合成一个 rect
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (!this.classList.contains('v-binder-follower-content')) return new DOMRect(0, 0, 0, 0)
+      return new DOMRect(left, 100, width, 200)
+    })
+    const w = mount(ColumnFilter, {
+      props: { def, value: null, labels, getOptions: () => [], isLoadingOptions: () => false },
+      attachTo: document.body,
+    })
+    await w.find('.smart-table-filter-trigger').trigger('click')
+    await flushPromises()
+    await frame()
+    await nextTick()
+    return w
+  }
+  const panel = () => document.body.querySelector('.smart-table-filter') as HTMLElement
+
+  it('左侧被裁出屏幕(left = -69,宽 374,视口 390)→ 向右平移到距左边 8px', async () => {
+    const w = await openAt(-69, 374, 390)
+    expect(panel().style.transform).toBe('translateX(77px)')
+    w.unmount()
+  })
+
+  it('右侧被裁(left = 300,宽 200,视口 390)→ 向左平移到距右边 8px', async () => {
+    const w = await openAt(300, 200, 390)
+    expect(panel().style.transform).toBe('translateX(-118px)')
+    w.unmount()
+  })
+
+  it('本来就在视口内 → 不加任何平移', async () => {
+    const w = await openAt(100, 400, 1440)
+    expect(panel().style.transform).toBe('')
+    w.unmount()
+  })
+
+  it('窗口缩放时重新夹取', async () => {
+    const w = await openAt(100, 400, 1440)
+    expect(panel().style.transform).toBe('')
+    Object.defineProperty(window, 'innerWidth', { value: 420, configurable: true })
+    window.dispatchEvent(new Event('resize'))
+    await frame()
+    await nextTick()
+    expect(panel().style.transform).toBe('translateX(-88px)')
+    w.unmount()
+  })
+})
+```
+
+- [ ] **Step 2: 跑,确认失败**
+
+Run: `npx vitest run tests/ColumnFilter.test.ts tests/viewportClamp.test.ts`
+Expected: `Test Files  2 failed (2)`、`Tests  14 failed | 38 passed (52)`(实测)—— `viewportClamp.test.ts` 整个文件加载失败(`Cannot find module '../src/viewportClamp'`);`ColumnFilter.test.ts` 14 条红:首列「条件」/ 且或下拉(`.smart-table-filter-lead` 为 null、分段按钮仍在、没有 `update:logic`)、「添加条件」无图标且仍是主色、自定义面板类、options 的箭头与提示、单选 NRadio、夹进视口 4 条(`expected '' to be 'translateX(77px)'`),外加有意改动的「两行 + 『或』」。
+
+- [ ] **Step 3: 实现**
+
+**新建 `src/viewportClamp.ts`:**
+
+```ts
+// 弹层水平夹进视口(L0-9)。NPopover 的 placement="bottom" 把弹层居中在触发器上,触发器靠近视口边缘时(窄屏尤其明显:
+// 390px 宽下 400px 的列头面板左缘落在 x = -69)弹层的一侧会被裁出屏幕。公开的 NPopover 没有「夹进视口」的开关,
+// 所以量出弹层当前的位置,给内容加一个水平平移把它拉回来(设计原型 placeHpop 也是这么夹的)。
+// 窄档改用底部抽屉属于 P2(cardOnNarrow);在那之前,窄容器至少不能把内容裁掉。
+
+/**
+ * 弹层要水平平移多少像素才能完全落进 [margin, viewport − margin]。
+ * left / width:弹层「不含这次平移」的自然位置与宽度;已经在范围内 → 0;放不下(比视口 − 两侧边距还宽)→ 贴左边距
+ * (保证左侧的标签、比较符可见,右侧被裁比左侧被裁更不影响操作)。结果取整,避免 translateX(77.3333px) 的模糊渲染。
+ */
+export function clampShift(left: number, width: number, viewport: number, margin = 8): number {
+  const max = viewport - margin - width
+  let dx = 0
+  if (max < margin) dx = margin - left
+  else if (left < margin) dx = margin - left
+  else if (left > max) dx = max - left
+  return Math.round(dx)
+}
+```
+
+**`playground/prototype/ProtoApp.vue` 查找(整段,原样):**
+
+```vue
+      filterIn: 'IN', // 「属于」
+      filterNotIn: 'NOT IN', // 「不属于」
+      filterNoValue: '不需要填值', // 「无需填值」
+    },
+  }),
+)
+```
+
+**替换为:**
+
+```vue
+      filterIn: 'IN', // 「属于」
+      filterNotIn: 'NOT IN', // 「不属于」
+      filterNoValue: '不需要填值', // 「无需填值」
+      filterSimple: '收起高级条件', // 「返回列表」
+    },
+  }),
+)
+```
+
+**`src/ColumnFilter.vue` 查找(整段,原样)(第 1 / 10 处):**
+
+```vue
+//   condition —— Bootstrap Blazor 风格,多行 [操作符 + 值](最多 5 条,≥ 2 条出现且/或)
+// 面板内改的是草稿,点「确定」才提交,避免每敲一个字就打一次远程请求;Esc / 点外部丢弃草稿。
+// 键盘 / 焦点 / ARIA:公开的 NPopover 不管(焦点不进面板、Esc 不关闭,见设计文档 9.1),这里自己做(D6)。
+import { computed, nextTick, reactive, ref, watch, type PropType } from 'vue'
+import { NButton, NCheckbox, NPopover, NRadioButton, NRadioGroup, NSpace, NTooltip, useThemeVars } from 'naive-ui'
+import type { FilterAction, FilterLogic, FilterValue, SmartTableLabels, SmartTableOption } from './types'
+import { filterDefTitle, type FilterDef } from './useColumns'
+import {
+```
+
+**替换为:**
+
+```vue
+//   condition —— Bootstrap Blazor 风格,多行 [操作符 + 值](最多 5 条,≥ 2 条出现且/或)
+// 面板内改的是草稿,点「确定」才提交,避免每敲一个字就打一次远程请求;Esc / 点外部丢弃草稿。
+// 键盘 / 焦点 / ARIA:公开的 NPopover 不管(焦点不进面板、Esc 不关闭,见设计文档 9.1),这里自己做(D6)。
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch, type PropType } from 'vue'
+import { NButton, NCheckbox, NPopover, NRadio, NRadioGroup, NTooltip, useThemeVars } from 'naive-ui'
+import type { FilterAction, FilterLogic, FilterValue, SmartTableLabels, SmartTableOption } from './types'
+import { filterDefTitle, type FilterDef } from './useColumns'
+import {
+```
+
+**`src/ColumnFilter.vue` 查找(整段,原样)(第 2 / 10 处):**
+
+```vue
+} from './filter'
+import { fmt } from './labels'
+import { optionLabel } from './useOptions'
+import { FilterIcon } from './icons'
+import ConditionRow from './ConditionRow.vue'
+import {
+  MAX_CONDITIONS,
+```
+
+**替换为:**
+
+```vue
+} from './filter'
+import { fmt } from './labels'
+import { optionLabel } from './useOptions'
+import { FilterIcon, PlusIcon } from './icons'
+import { clampShift } from './viewportClamp'
+import ConditionRow from './ConditionRow.vue'
+import {
+  MAX_CONDITIONS,
+```
+
+**`src/ColumnFilter.vue` 查找(整段,原样)(第 3 / 10 处):**
+
+```vue
+}>()
+
+const themeVars = useThemeVars()
+const show = ref(false)
+const active = computed(() => isFilterActive(props.value))
+const activeCount = computed(() => activeConditions(props.value).length)
+```
+
+**替换为:**
+
+```vue
+}>()
+
+const themeVars = useThemeVars()
+// 工具行的文字按钮用官方 small 档(与同一面板里 small 的值控件一致):字 14 / 图标 18 / 内边距 0 10px / 高 heightSmall(28)。
+// 官方文字按钮(text)把高度与内边距重置成 initial,所以高度取主题的 heightSmall、内边距在样式里写 paddingSmall 的值
+const toolsBtnStyle = computed(() => ({ height: themeVars.value.heightSmall }))
+const show = ref(false)
+const active = computed(() => isFilterActive(props.value))
+const activeCount = computed(() => activeConditions(props.value).length)
+```
+
+**`src/ColumnFilter.vue` 查找(整段,原样)(第 4 / 10 处):**
+
+```vue
+  panelRef.value?.querySelector<HTMLElement>(FOCUSABLE)?.focus()
+}
+
+/** 有 NSelect / NDatePicker 下拉展开的条件行下标。展开期间 Esc 只该收起那个下拉,不能连面板一起关掉(草稿会丢)。 */
+const dropdownRows = reactive(new Set<number>())
+const dropdownOpen = computed(() => dropdownRows.size > 0)
+```
+
+**替换为:**
+
+```vue
+  panelRef.value?.querySelector<HTMLElement>(FOCUSABLE)?.focus()
+}
+
+/* ---- 不出屏(L0-9):NPopover 把面板居中在漏斗上,触发器靠近视口边缘时会被裁出屏幕;量出位置后给面板加一个水平平移夹回来 ---- */
+
+const shiftX = ref(0)
+let clampRaf = 0
+function updateShift() {
+  const el = panelRef.value
+  if (!el) return
+  // 量 NPopover 的定位容器(vueuc 的 follower:只有定位用的平移),不量面板自己:
+  // 弹层有淡入 + 缩放的进场动画,面板自己的 rect 在动画里是缩小的,会量错;容器的 rect 就是真实的布局位置,也不含我们加的平移。
+  // 找不到容器(换了版本 / 不是在 NPopover 里)就退回量面板自己,并还原它身上已有的平移。
+  const host = el.closest<HTMLElement>('.v-binder-follower-content')
+  const r = (host ?? el).getBoundingClientRect()
+  const left = host ? r.left : r.left - shiftX.value
+  const next = clampShift(left, r.width, window.innerWidth)
+  if (next !== shiftX.value) shiftX.value = next
+}
+function scheduleShift() {
+  cancelAnimationFrame(clampRaf)
+  clampRaf = requestAnimationFrame(updateShift)
+}
+function startClamp() {
+  scheduleShift()
+  window.addEventListener('resize', scheduleShift)
+  window.addEventListener('scroll', scheduleShift, true) // 表头横向滚动 / 页面滚动时 NPopover 会跟着重新定位
+}
+function stopClamp() {
+  cancelAnimationFrame(clampRaf)
+  window.removeEventListener('resize', scheduleShift)
+  window.removeEventListener('scroll', scheduleShift, true)
+}
+onBeforeUnmount(stopClamp)
+
+/** 有 NSelect / NDatePicker 下拉展开的条件行下标。展开期间 Esc 只该收起那个下拉,不能连面板一起关掉(草稿会丢)。 */
+const dropdownRows = reactive(new Set<number>())
+const dropdownOpen = computed(() => dropdownRows.size > 0)
+```
+
+**`src/ColumnFilter.vue` 查找(整段,原样)(第 5 / 10 处):**
+
+```vue
+// 弹层内容挂载(每次打开都会重新挂载)后再聚焦第一个可编辑控件:内容是 teleport 出去的,show 变 true 时还不在 DOM 里。
+// 宿主自定义面板(def.render)不自动聚焦:里面是什么控件库不知道,抢焦点可能打断宿主自己的逻辑。
+watch(panelRef, (el) => {
+  if (el && show.value && !props.def.render) void nextTick(focusFirst)
+})
+// 外部(编程式 setFilter / clearFilters)改了值,弹层开着也要跟上
+watch(
+```
+
+**替换为:**
+
+```vue
+// 弹层内容挂载(每次打开都会重新挂载)后再聚焦第一个可编辑控件:内容是 teleport 出去的,show 变 true 时还不在 DOM 里。
+// 宿主自定义面板(def.render)不自动聚焦:里面是什么控件库不知道,抢焦点可能打断宿主自己的逻辑。
+watch(panelRef, (el) => {
+  if (!el) {
+    stopClamp()
+    shiftX.value = 0
+    return
+  }
+  startClamp()
+  if (show.value && !props.def.render) void nextTick(focusFirst)
+})
+// 外部(编程式 setFilter / clearFilters)改了值,弹层开着也要跟上
+watch(
+```
+
+**`src/ColumnFilter.vue` 查找(整段,原样)(第 6 / 10 处):**
+
+```vue
+    <div
+      ref="panelRef"
+      class="smart-table-filter"
+      :class="{ 'smart-table-filter--condition': !def.render && showEditor }"
+      role="dialog"
+      tabindex="-1"
+      :aria-label="panelLabel"
+```
+
+**替换为:**
+
+```vue
+    <div
+      ref="panelRef"
+      class="smart-table-filter"
+      :class="{ 'smart-table-filter--condition': !def.render && showEditor, 'smart-table-filter--custom': !!def.render }"
+      role="dialog"
+      tabindex="-1"
+      :aria-label="panelLabel"
+```
+
+**`src/ColumnFilter.vue` 查找(整段,原样)(第 7 / 10 处):**
+
+```vue
+        borderRadius: themeVars.borderRadius,
+        boxShadow: themeVars.boxShadow2,
+        color: themeVars.textColor2,
+      }"
+      @click.stop
+      @keydown.capture="onPanelKeydown"
+```
+
+**替换为:**
+
+```vue
+        borderRadius: themeVars.borderRadius,
+        boxShadow: themeVars.boxShadow2,
+        color: themeVars.textColor2,
+        transform: shiftX ? `translateX(${shiftX}px)` : undefined,
+      }"
+      @click.stop
+      @keydown.capture="onPanelKeydown"
+```
+
+**`src/ColumnFilter.vue` 查找(整段,原样)(第 8 / 10 处):**
+
+```vue
+      />
+
+      <template v-else>
+        <!-- options:勾选候选项 -->
+        <div v-if="def.mode === 'options' && !advanced" class="smart-table-filter-options">
+          <n-checkbox
+            v-if="def.multiple && flatOptions.length > 1"
+            class="smart-table-filter-all"
+            :checked="allChecked"
+            :indeterminate="someChecked"
+            @update:checked="toggleAll"
+          >
+            {{ labels.filterSelectAll }}
+          </n-checkbox>
+          <n-checkbox
+            v-for="opt in flatOptions"
+            :key="String(opt.value)"
+            :checked="checked.includes(opt.value)"
+            :disabled="opt.disabled"
+            @update:checked="(v: boolean) => toggleOption(opt.value, v)"
+          >
+            {{ optionLabel(opt) }}
+          </n-checkbox>
+          <span v-if="!flatOptions.length" :style="{ color: themeVars.textColor3 }">
+            {{ isLoadingOptions(def.optionsKey) ? '...' : '—' }}
+          </span>
+        </div>
+
+        <!-- 多条件编辑(condition 列恒显示;options 列展开「高级条件」后显示) -->
+        <div v-else class="smart-table-filter-conditions">
+          <ConditionRow
+            v-for="(c, i) in draft.conditions"
+            :key="i"
+            :def="def"
+            :condition="c"
+            :labels="labels"
+            :get-options="getOptions"
+            :is-loading-options="isLoadingOptions"
+            :date-value-format="dateValueFormat"
+            :removable="draft.conditions.length > 1"
+            @update:action="(a: FilterAction) => onAction(i, a)"
+            @update:value="(v: unknown) => onValue(i, v)"
+            @remove="onRemove(i)"
+            @enter="confirm"
+            @dropdown="(o: boolean) => onDropdown(i, o)"
+          />
+          <div v-if="draft.conditions.length > 1" class="smart-table-filter-logic">
+            <n-radio-group size="small" :value="draft.logic" @update:value="onLogic">
+              <n-radio-button value="and">{{ labels.filterLogicAnd }}</n-radio-button>
+              <n-radio-button value="or">{{ labels.filterLogicOr }}</n-radio-button>
+            </n-radio-group>
+          </div>
+          <n-button
+            class="smart-table-filter-add"
+            text
+            size="tiny"
+            type="primary"
+            :disabled="draft.conditions.length >= MAX_CONDITIONS"
+            @click="onAdd"
+          >
+            + {{ labels.filterAddCondition }}
+          </n-button>
+        </div>
+
+        <!-- options 列:勾选 ↔ 高级条件 的切换入口 -->
+        <div v-if="def.mode === 'options'" class="smart-table-filter-advanced">
+          <n-button v-if="!advanced" class="smart-table-filter-advanced-open" text size="tiny" @click="openAdvanced">
+            {{ labels.filterAdvanced }}
+          </n-button>
+          <n-button
+            v-else
+            class="smart-table-filter-advanced-close"
+            text
+            size="tiny"
+            :disabled="!canCollapse"
+            @click="closeAdvanced"
+          >
+            {{ labels.filterSimple }}
+          </n-button>
+        </div>
+      </template>
+
+```
+
+**替换为:**
+
+```vue
+      />
+
+      <template v-else>
+        <div class="smart-table-filter-body">
+          <!-- options 单选(filter.multiple: false):官方用 NRadioGroup / NRadio(data-table/src/HeaderButton/FilterMenu.mjs:118-141),
+               不能用复选框模拟 -->
+          <n-radio-group
+            v-if="def.mode === 'options' && !advanced && !def.multiple"
+            class="smart-table-filter-options"
+            :name="`smart-table-filter-${def.key}`"
+            :value="(checked[0] ?? null) as string | number | null"
+            @update:value="(v: string | number | null) => (checked = v == null ? [] : [v])"
+          >
+            <n-radio v-for="opt in flatOptions" :key="String(opt.value)" :value="opt.value as string | number" :disabled="opt.disabled">
+              {{ optionLabel(opt) }}
+            </n-radio>
+            <span v-if="!flatOptions.length" :style="{ color: themeVars.textColor3 }">
+              {{ isLoadingOptions(def.optionsKey) ? '...' : '—' }}
+            </span>
+          </n-radio-group>
+
+          <!-- options 多选:勾选候选项 -->
+          <div v-else-if="def.mode === 'options' && !advanced" class="smart-table-filter-options">
+            <n-checkbox
+              v-if="def.multiple && flatOptions.length > 1"
+              class="smart-table-filter-all"
+              :checked="allChecked"
+              :indeterminate="someChecked"
+              @update:checked="toggleAll"
+            >
+              {{ labels.filterSelectAll }}
+            </n-checkbox>
+            <n-checkbox
+              v-for="opt in flatOptions"
+              :key="String(opt.value)"
+              :checked="checked.includes(opt.value)"
+              :disabled="opt.disabled"
+              @update:checked="(v: boolean) => toggleOption(opt.value, v)"
+            >
+              {{ optionLabel(opt) }}
+            </n-checkbox>
+            <span v-if="!flatOptions.length" :style="{ color: themeVars.textColor3 }">
+              {{ isLoadingOptions(def.optionsKey) ? '...' : '—' }}
+            </span>
+          </div>
+
+          <!-- 多条件编辑(condition 列恒显示;options 列展开「高级条件」后显示):首列「条件」/ 且或下拉 + 比较符 + 值 + 删除 -->
+          <div v-else class="smart-table-filter-conditions">
+            <ConditionRow
+              v-for="(c, i) in draft.conditions"
+              :key="i"
+              :def="def"
+              :condition="c"
+              :index="i"
+              :logic="draft.logic"
+              :labels="labels"
+              :get-options="getOptions"
+              :is-loading-options="isLoadingOptions"
+              :date-value-format="dateValueFormat"
+              :removable="draft.conditions.length > 1"
+              @update:action="(a: FilterAction) => onAction(i, a)"
+              @update:value="(v: unknown) => onValue(i, v)"
+              @update:logic="onLogic"
+              @remove="onRemove(i)"
+              @enter="confirm"
+              @dropdown="(o: boolean) => onDropdown(i, o)"
+            />
+          </div>
+
+          <!-- 工具行:condition / 高级条件 = 「添加条件」(文字按钮 + 加号);options 勾选态 = 「高级条件 ▾」;
+               options 的高级条件态再靠右放「返回列表 ▴」 -->
+          <div class="smart-table-filter-tools">
+            <n-button
+              v-if="def.mode === 'options' && !advanced"
+              class="smart-table-filter-advanced-open"
+              text
+              size="small"
+              :style="toolsBtnStyle"
+              @click="openAdvanced"
+            >
+              {{ labels.filterAdvanced }} ▾
+            </n-button>
+            <template v-else>
+              <n-button
+                class="smart-table-filter-add"
+                text
+                size="small"
+                :style="toolsBtnStyle"
+                :disabled="draft.conditions.length >= MAX_CONDITIONS"
+                @click="onAdd"
+              >
+                <template #icon><PlusIcon /></template>
+                {{ labels.filterAddCondition }}
+              </n-button>
+              <n-button
+                v-if="def.mode === 'options'"
+                class="smart-table-filter-advanced-close"
+                text
+                size="small"
+                :style="toolsBtnStyle"
+                :disabled="!canCollapse"
+                @click="closeAdvanced"
+              >
+                {{ labels.filterSimple }} ▴
+              </n-button>
+            </template>
+          </div>
+          <div
+            v-if="def.mode === 'options' && advanced && !canCollapse"
+            class="smart-table-filter-hint"
+            :style="{ color: themeVars.textColor3 }"
+          >
+            {{ labels.filterCannotCollapse }}
+          </div>
+        </div>
+      </template>
+
+```
+
+**`src/ColumnFilter.vue` 查找(整段,原样)(第 9 / 10 处):**
+
+```vue
+        class="smart-table-filter-footer"
+        :style="{ borderTop: `1px solid ${themeVars.dividerColor}` }"
+      >
+        <n-space :size="8">
+          <n-button size="tiny" @click="reset">{{ labels.filterReset }}</n-button>
+          <n-button size="tiny" type="primary" @click="confirm">{{ labels.filterConfirm }}</n-button>
+        </n-space>
+      </div>
+    </div>
+  </n-popover>
+```
+
+**替换为:**
+
+```vue
+        class="smart-table-filter-footer"
+        :style="{ borderTop: `1px solid ${themeVars.dividerColor}` }"
+      >
+        <n-button size="tiny" @click="reset">{{ labels.filterReset }}</n-button>
+        <n-button size="tiny" type="primary" @click="confirm">{{ labels.filterConfirm }}</n-button>
+      </div>
+    </div>
+  </n-popover>
+```
+
+**`src/ColumnFilter.vue` 查找(整段,原样)(第 10 / 10 处):**
+
+```vue
+  pointer-events: none;
+  background: var(--n-th-icon-color-active);
+}
+.smart-table-filter {
+  min-width: 200px;
+  padding: 8px;
+  /* 表头文字常是 center,弹层内容一律左对齐 */
+  text-align: left;
+  font-weight: normal;
+}
+/* 容器只接程序化焦点(点空白处 / Esc 的落点),不画焦点环 */
+.smart-table-filter:focus {
+  outline: none;
+}
+/* 条件面板:一行「操作符 | 值 | 删除」放得下;窄屏不越出视口 */
+.smart-table-filter--condition {
+  width: min(400px, calc(100vw - 16px));
+}
+.smart-table-filter-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow: auto;
+}
+.smart-table-filter-conditions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.smart-table-filter-logic {
+  display: flex;
+  align-items: center;
+}
+.smart-table-filter-add {
+  align-self: flex-start;
+}
+.smart-table-filter-advanced {
+  margin-top: 8px;
+}
+.smart-table-filter-footer {
+  margin-top: 8px;
+  padding-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+</style>
+```
+
+**替换为:**
+
+```vue
+  pointer-events: none;
+  background: var(--n-th-icon-color-active);
+}
+/* 面板(设计原型 .hpop):外壳 padding 0,正文 12px 12px 0,底部 footer 自带 8px 12px 内边距与分隔线。
+   options 面板宽度由内容定(最小 168),condition 面板固定 400(窄屏不越出视口)。 */
+.smart-table-filter {
+  min-width: 168px;
+  max-width: calc(100vw - 16px);
+  /* 表头文字常是 center,弹层内容一律左对齐 */
+  text-align: left;
+  font-weight: normal;
+}
+/* 自定义面板(def.render)沿用 2.1.1 的 8px 内边距 / 200px 最小宽,不套新的排布 */
+.smart-table-filter--custom {
+  min-width: 200px;
+  padding: 8px;
+}
+/* 容器只接程序化焦点(点空白处 / Esc 的落点),不画焦点环 */
+.smart-table-filter:focus {
+  outline: none;
+}
+.smart-table-filter--condition {
+  width: min(400px, calc(100vw - 16px));
+}
+.smart-table-filter-body {
+  padding: 12px 12px 0;
+}
+/* options 勾选列表:选项间距 12px(行高 22.4 → 间隔 34.4),最高 240 滚动(原型 .hp-group / 官方勾选菜单) */
+.smart-table-filter-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.smart-table-filter-conditions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* 工具行:与上方内容 8px、与下方 8px;按钮是官方 small 档(`button/styles/_common.mjs`:`heightSmall` 28 / `paddingSmall` 0 10px /
+   `fontSizeSmall` 14 / `iconSizeSmall` 18),原型 `.hp-tools .n-btn.text` 同款(第 4 批已改)。官方文字按钮(text)把高度与内边距重置成 initial,
+   所以高度由模板里取主题 heightSmall(`toolsBtnStyle`),内边距在这里写 paddingSmall 的值;颜色保持官方文字按钮的 textColor2 / 悬停主色 */
+.smart-table-filter-tools {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+.smart-table-filter-tools .n-button {
+  padding: 0 10px;
+}
+.smart-table-filter-advanced-close {
+  margin-left: auto;
+}
+.smart-table-filter-hint {
+  margin: -4px 0 8px;
+  font-size: 12px;
+}
+.smart-table-filter-footer {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-evenly;
+  padding: 8px 12px;
+}
+.smart-table-filter-footer .n-button {
+  margin-right: 8px;
+}
+.smart-table-filter-footer .n-button:last-child {
+  margin-right: 0;
+}
+</style>
+```
+
+**`src/ConditionRow.vue` 查找(整段,原样)(第 1 / 7 处):**
+
+```vue
+<script setup lang="ts">
+// 面板里的一行条件:操作符 + 值控件 + 删除。受控(草稿由 ColumnFilter 持有),只发事件。
+// 值控件按操作符的值形状分发:无值(isNull 等)→ 禁用的占位框;数组(in / notIn)→ 多选;标量 → 按列类型选控件。
+import { computed, onBeforeUnmount, reactive, watch, type PropType } from 'vue'
+import { NButton, NDatePicker, NInput, NInputNumber, NSelect } from 'naive-ui'
+import type { SelectProps } from 'naive-ui'
+import type { FilterAction, FilterCondition, SmartTableLabels, SmartTableOption } from './types'
+import type { FilterDef } from './useColumns'
+import { actionValueKind } from './filter'
+import { ACTION_LABEL_KEY } from './labels'
+```
+
+**替换为:**
+
+```vue
+<script setup lang="ts">
+// 面板里的一行条件:首列(第 1 行是「条件」引导标签,第 2 行起是且 / 或下拉)+ 操作符 + 值控件 + 删除。
+// 受控(草稿由 ColumnFilter 持有),只发事件。排布是 4 列网格 56 / 112 / 1fr / 28(设计原型 .hp-row),删除列恒占位,所以 1 行与多行的值输入同宽。
+// 值控件按操作符的值形状分发:无值(isNull 等)→ 禁用的占位框;数组(in / notIn)→ 多选;标量 → 按列类型选控件。
+import { computed, onBeforeUnmount, reactive, watch, type PropType } from 'vue'
+import { NButton, NDatePicker, NInput, NInputNumber, NSelect, useThemeVars } from 'naive-ui'
+import type { SelectProps } from 'naive-ui'
+import type { FilterAction, FilterCondition, FilterLogic, SmartTableLabels, SmartTableOption } from './types'
+import type { FilterDef } from './useColumns'
+import { actionValueKind } from './filter'
+import { ACTION_LABEL_KEY } from './labels'
+```
+
+**`src/ConditionRow.vue` 查找(整段,原样)(第 2 / 7 处):**
+
+```vue
+const props = defineProps({
+  def: { type: Object as PropType<FilterDef>, required: true },
+  condition: { type: Object as PropType<FilterCondition>, required: true },
+  labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true },
+  getOptions: { type: Function as PropType<(key: string) => SmartTableOption[]>, required: true },
+  isLoadingOptions: { type: Function as PropType<(key: string) => boolean>, required: true },
+```
+
+**替换为:**
+
+```vue
+const props = defineProps({
+  def: { type: Object as PropType<FilterDef>, required: true },
+  condition: { type: Object as PropType<FilterCondition>, required: true },
+  /** 这是第几行(0 起):第 0 行首列是「条件」引导标签,其余行是且 / 或下拉。 */
+  index: { type: Number, default: 0 },
+  /** 整组条件的连接方式(第 2 行起的首列下拉显示它;改它就是改整组)。 */
+  logic: { type: String as PropType<FilterLogic>, default: 'and' },
+  labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true },
+  getOptions: { type: Function as PropType<(key: string) => SmartTableOption[]>, required: true },
+  isLoadingOptions: { type: Function as PropType<(key: string) => boolean>, required: true },
+```
+
+**`src/ConditionRow.vue` 查找(整段,原样)(第 3 / 7 处):**
+
+```vue
+
+const emit = defineEmits<{
+  'update:action': [a: FilterAction]
+  'update:value': [v: unknown]
+  remove: []
+  enter: []
+```
+
+**替换为:**
+
+```vue
+
+const emit = defineEmits<{
+  'update:action': [a: FilterAction]
+  'update:logic': [l: FilterLogic]
+  'update:value': [v: unknown]
+  remove: []
+  enter: []
+```
+
+**`src/ConditionRow.vue` 查找(整段,原样)(第 4 / 7 处):**
+
+```vue
+  dropdown: [open: boolean]
+}>()
+
+const kind = computed(() => actionValueKind(props.condition.action))
+
+// 下拉展开状态:操作符下拉与值控件各记一份,任意一个展开就算「这一行有下拉展开」。
+// 面板要靠它区分 Esc 是「收起下拉」还是「关闭面板」(NSelect / NDatePicker 收起自己时不 stopPropagation)。
+const open = reactive({ action: false, value: false })
+watch(
+  () => open.action || open.value,
+  (v) => emit('dropdown', v),
+)
+onBeforeUnmount(() => {
+  if (open.action || open.value) emit('dropdown', false)
+})
+
+// 当前操作符不在 def.actions 里时(编程式给了列声明之外的操作符),也要能在下拉里显示出来,不能变成空白
+const actionOptions = computed<SelectOpt[]>(() => {
+```
+
+**替换为:**
+
+```vue
+  dropdown: [open: boolean]
+}>()
+
+const themeVars = useThemeVars()
+const kind = computed(() => actionValueKind(props.condition.action))
+
+// 下拉展开状态:操作符下拉与值控件各记一份,任意一个展开就算「这一行有下拉展开」。
+// 面板要靠它区分 Esc 是「收起下拉」还是「关闭面板」(NSelect / NDatePicker 收起自己时不 stopPropagation)。
+const open = reactive({ logic: false, action: false, value: false })
+watch(
+  () => open.logic || open.action || open.value,
+  (v) => emit('dropdown', v),
+)
+onBeforeUnmount(() => {
+  if (open.logic || open.action || open.value) emit('dropdown', false)
+})
+
+// 且 / 或:文案走 labels(渲染期求值)
+const logicOptions = computed<SelectOpt[]>(() => [
+  { label: props.labels.filterLogicAnd, value: 'and' },
+  { label: props.labels.filterLogicOr, value: 'or' },
+])
+
+// 当前操作符不在 def.actions 里时(编程式给了列声明之外的操作符),也要能在下拉里显示出来,不能变成空白
+const actionOptions = computed<SelectOpt[]>(() => {
+```
+
+**`src/ConditionRow.vue` 查找(整段,原样)(第 5 / 7 处):**
+
+```vue
+
+<template>
+  <div class="smart-table-filter-row">
+    <n-select
+      class="smart-table-filter-action"
+      size="small"
+```
+
+**替换为:**
+
+```vue
+
+<template>
+  <div class="smart-table-filter-row">
+    <!-- 首列:第 1 行「条件」引导标签(12px、textColor3);第 2 行起是且 / 或下拉,选哪个都是改整组的连接方式 -->
+    <span v-if="index === 0" class="smart-table-filter-lead" :style="{ color: themeVars.textColor3 }">{{
+      labels.filterConditionLead
+    }}</span>
+    <n-select
+      v-else
+      class="smart-table-filter-logic"
+      size="small"
+      :value="logic"
+      :options="logicOptions"
+      @update:value="(l: FilterLogic) => emit('update:logic', l)"
+      @update:show="(v: boolean) => (open.logic = v)"
+    />
+    <n-select
+      class="smart-table-filter-action"
+      size="small"
+```
+
+**`src/ConditionRow.vue` 查找(整段,原样)(第 6 / 7 处):**
+
+```vue
+      class="smart-table-filter-remove"
+      quaternary
+      circle
+      size="tiny"
+      :aria-label="labels.filterRemoveCondition"
+      @click="emit('remove')"
+    >
+```
+
+**替换为:**
+
+```vue
+      class="smart-table-filter-remove"
+      quaternary
+      circle
+      size="small"
+      :theme-overrides="{ iconSizeSmall: '12px' }"
+      :aria-label="labels.filterRemoveCondition"
+      @click="emit('remove')"
+    >
+```
+
+**`src/ConditionRow.vue` 查找(整段,原样)(第 7 / 7 处):**
+
+```vue
+</template>
+
+<style scoped>
+.smart-table-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* 定宽 basis:NSelect 根节点是 width:100%,用 flex-basis:auto 会把整行吃掉,值控件被挤成 0 宽。 */
+.smart-table-filter-action {
+  flex: 0 0 108px;
+}
+.smart-table-filter-value {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+</style>
+```
+
+**替换为:**
+
+```vue
+</template>
+
+<style scoped>
+/* 4 列网格(设计原型 .hp-row):首列 56(「条件」/ 且或)、比较符 112、值 1fr、删除 28(恒占位)、间距 8。
+   NSelect / NInput 的根节点都是 width:100%,放进网格单元即可,不需要 flex-basis 的技巧。 */
+.smart-table-filter-row {
+  display: grid;
+  grid-template-columns: 56px 112px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 8px;
+}
+.smart-table-filter-lead {
+  min-width: 0;
+  font-size: 12px;
+  text-align: center;
+}
+.smart-table-filter-logic,
+.smart-table-filter-action {
+  min-width: 0;
+}
+.smart-table-filter-value {
+  min-width: 0;
+}
+</style>
+```
+
+**`src/icons.ts` 查找(整段,原样):**
+
+```ts
+export const RefreshIcon = lineIcon(['M23 4v6h-6', 'M20.49 15a9 9 0 1 1-2.13-9.36L23 10'])
+export const DensityIcon = lineIcon(['M3 6h18', 'M3 12h18', 'M3 18h18'])
+export const ColumnsIcon = lineIcon(['M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M9 3v18', 'M15 3v18'])
+export const ChevronDownIcon = lineIcon(['M6 9l6 6 6-6'])
+export const CloseIcon = lineIcon(['M18 6L6 18', 'M6 6l12 12'])
+// 漏斗:表头过滤触发图标(实心,过滤生效时整体变主题色)
+export const FilterIcon: FunctionalComponent = () =>
+  h(
+```
+
+**替换为:**
+
+```ts
+export const RefreshIcon = lineIcon(['M23 4v6h-6', 'M20.49 15a9 9 0 1 1-2.13-9.36L23 10'])
+export const DensityIcon = lineIcon(['M3 6h18', 'M3 12h18', 'M3 18h18'])
+export const ColumnsIcon = lineIcon(['M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M9 3v18', 'M15 3v18'])
+// 小号图标(chevron / 关闭 / 加号):与设计原型 I_CHEV / I_X / I_PLUS 同一套几何(16 × 16 视口、笔画 1.8 / 1.6),
+// 用在 12–13px 的小尺寸上;笔画随视口缩放,换成 24 视口 + 2 的笔画会在 12px 下细一圈。
+function smallIcon(paths: string[], strokeWidth: number): FunctionalComponent {
+  return () =>
+    h(
+      'svg',
+      {
+        viewBox: '0 0 16 16',
+        width: '1em',
+        height: '1em',
+        fill: 'none',
+        stroke: 'currentColor',
+        'stroke-width': strokeWidth,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'aria-hidden': 'true',
+      },
+      paths.map((d) => h('path', { d })),
+    )
+}
+export const ChevronDownIcon = smallIcon(['m4 6 4 4 4-4'], 1.8)
+export const CloseIcon = smallIcon(['M4 4l8 8M12 4l-8 8'], 1.8)
+export const PlusIcon = smallIcon(['M8 3v10M3 8h10'], 1.6)
+// 漏斗:表头过滤触发图标(实心,过滤生效时整体变主题色)
+export const FilterIcon: FunctionalComponent = () =>
+  h(
+```
+
+**`src/labels.ts` 查找(整段,原样)(第 1 / 2 处):**
+
+```ts
+  filterLogicOr: 'OR',
+  filterAdvanced: 'Advanced conditions',
+  filterSimple: 'Back to list',
+  filterClearAll: 'Clear all',
+  filterRestoreDefault: 'Restore defaults',
+}
+```
+
+**替换为:**
+
+```ts
+  filterLogicOr: 'OR',
+  filterAdvanced: 'Advanced conditions',
+  filterSimple: 'Back to list',
+  filterConditionLead: 'Where',
+  filterCannotCollapse: 'Contains conditions checkboxes cannot show',
+  filterClearAll: 'Clear all',
+  filterRestoreDefault: 'Restore defaults',
+}
+```
+
+**`src/labels.ts` 查找(整段,原样)(第 2 / 2 处):**
+
+```ts
+  filterLogicOr: '或',
+  filterAdvanced: '高级条件',
+  filterSimple: '返回列表',
+  filterClearAll: '清除全部',
+  filterRestoreDefault: '恢复默认',
+}
+```
+
+**替换为:**
+
+```ts
+  filterLogicOr: '或',
+  filterAdvanced: '高级条件',
+  filterSimple: '返回列表',
+  filterConditionLead: '条件',
+  filterCannotCollapse: '含勾选无法表达的条件',
+  filterClearAll: '清除全部',
+  filterRestoreDefault: '恢复默认',
+}
+```
+
+**`src/types.ts` 查找(整段,原样):**
+
+```ts
+  /** options 列底部展开多条件编辑的入口 / 收起回勾选列表的入口。 */
+  filterAdvanced?: string
+  filterSimple?: string
+  filterClearAll?: string
+  filterRestoreDefault?: string
+}
+```
+
+**替换为:**
+
+```ts
+  /** options 列底部展开多条件编辑的入口 / 收起回勾选列表的入口。 */
+  filterAdvanced?: string
+  filterSimple?: string
+  /** 面板里第 1 行条件前的引导标签(第 2 行起这一列是且 / 或下拉)。 */
+  filterConditionLead?: string
+  /** 高级条件里含勾选表达不了的条件时,「返回」禁用的原因提示。 */
+  filterCannotCollapse?: string
+  filterClearAll?: string
+  filterRestoreDefault?: string
+}
+```
+
+- [ ] **Step 4: 跑,确认通过**
+
+Run: `npm test && npm run typecheck`
+Expected: `Test Files  22 passed (22)`、`Tests  385 passed (385)`(363 + 22:`viewportClamp.test.ts` 6、`ColumnFilter.test.ts` +16);typecheck 无输出;无 `[Vue warn]`(`config.test.ts` 的 labels 完整性用例会守住两个新键同时出现在 `defaultLabels` 与 `zhCNLabels`)。
+
+- [ ] **Step 5: 浏览器验证(对照页 vs 原型)**
+
+Run: `node_modules/.bin/vite --port 5173`,打开 `/prototype.html?m=3`(1440 × 900,浅色)。点「物料编码」表头的漏斗打开面板,控制台粘贴(再点「添加条件」后重读一次):
+```js
+(() => {
+  const pop = document.querySelector('.smart-table-filter')
+  const pr = pop.getBoundingClientRect()
+  const rel = (e) => { if (!e) return null; const b = e.getBoundingClientRect(); return [b.left - pr.left, b.top - pr.top, b.width, b.height].map((v) => Math.round(v * 10) / 10).join(',') }
+  const q = (s) => pop.querySelector(s)
+  return {
+    panel: pr.width + 'x' + Math.round(pr.height * 10) / 10,
+    lead: rel(q('.smart-table-filter-lead')),
+    op: rel(q('.smart-table-filter-action')),
+    del: rel(q('.smart-table-filter-remove')),
+    logic: rel(q('.smart-table-filter-logic')),
+    add: rel(q('.smart-table-filter-add')),
+    advanced: rel(q('.smart-table-filter-advanced-open')),
+    options: [...pop.querySelectorAll('.smart-table-filter-options .n-checkbox, .smart-table-filter-options .n-radio')].map((e) => rel(e).split(',')[1]).join(' / '),
+    footer: rel(q('.smart-table-filter-footer')),
+    footBtns: [...pop.querySelectorAll('.smart-table-filter-footer button')].map(rel).join(' ; '),
+    addColor: q('.smart-table-filter-add') && getComputedStyle(q('.smart-table-filter-add')).color,
+  }
+})()
+```
+Expected(库侧,坐标都相对面板左上角;括号里是原型 `.hpop` 同一批读数):
+- 1 行(`cond1`):`panel` = `400x123`(原型 400 × 123)、`lead` = `12,16.4,56,19.2`(原型相同)、`op` = `76,12,112,28`(原型相同)、`add` = `12,48,100,28`(原型 `102,28`,差 2px 边框)、`footer` = `0,84,400,39`(原型相同)、`footBtns` = `110.7,93,36,22 ; 253.3,93,36,22`(原型 `109.3 / 252.7,38×22`,差 2px 边框导致 `space-evenly` 的位置差 ≈ 1px);`del`、`logic` 为 `null`;
+- 点「添加条件」后 2 行(`cond2`):`panel` = `400x163`(原型相同)、`del` = `360,12,28,28`(原型相同)、`logic` = `12,52,56,28`(原型相同,第 2 行首列是且 / 或下拉)、`add` = `12,88,100,28`、`footer` = `0,124,400,39`;**且 / 或下拉在这一行的首列,不再有行下方的分段按钮**。
+- 「添加条件」文字色 `rgb(51, 54, 57)`(深色,不是主色 `rgb(24, 160, 88)`)、字号 14px、高 28px、图标 18px(官方 small 档);暗色下 `rgba(255, 255, 255, 0.82)`,原型相同。
+- 点「单据状态」的漏斗(多选 options 列):面板 `168x220.6`(带「全选」一行;原型读数相同 `168x220.6`)、选项行 y = `12 / 46.4 / 80.8 / 115.2`(**间隔 34.4**,原型相同)、「高级条件 ▾」 `12,145.6,91.8,28`(原型 `93.8`,差 2px 边框)、`footer` = `0,181.6,168,39`;点「高级条件 ▾」展开后底部是「返回列表 ▴」(靠右);往条件里加一个 `notEqual` 条件后「返回」禁用并显示「含勾选无法表达的条件」。
+- 点「部门」的漏斗(`multiple: false`):选项是**单选按钮**(`.n-radio`,16px 圆),没有复选框、没有「全选」;选一个再选另一个 → 前一个取消;确认后 chips 里只有一个「部门 等于 …」。
+**不出屏**:DevTools 设备模拟把宽度设成 390(或把窗口拉窄到 390),点「物料编码」的漏斗,控制台:`(() => { const r = document.querySelector('.smart-table-filter').getBoundingClientRect(); return { left: r.left, right: r.right, width: r.width, vw: innerWidth, inView: r.left >= 8 && r.right <= innerWidth - 8 } })()`。Expected:`left` = `8`、`width` = `374`、`right` = `382`、`inView` = `true`(**修复前 `left = -69`**,左侧被裁出屏幕)。再把窗口设成 520 宽、把表格横向滚到最右、点最右一列(「单据日期」)的漏斗:`right` ≤ `512`(= 520 − 8,面板带 `translateX` 向左夹回)。拖动 / 滚动表格时面板跟着漏斗走且始终在视口内。
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add src/viewportClamp.ts src/ColumnFilter.vue src/ConditionRow.vue src/icons.ts src/labels.ts src/types.ts playground/prototype/ProtoApp.vue tests/viewportClamp.test.ts tests/ColumnFilter.test.ts
+git commit -m "style: 列头面板排布对齐原型(首列「条件」/ 且或下拉、4 列网格、添加条件文字按钮、底部 space-evenly);单选过滤用 NRadio;面板夹进视口(L0-5、L0-9)" -m "新增可选 labels filterConditionLead / filterCannotCollapse;有意改动 tests/ColumnFilter.test.ts 里 1 条且 / 或断言(分段按钮 → 首列下拉)。窄档抽屉仍归 P2。" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+### Task 13f: chips 外观与行末按钮规则对齐原型(L0-6)
+
+> - **外观**(原型 `.chips` / `.chip` / `.clear`、`hdrChipsHtml`):chip 是**主色**的可点 `NTag small round closable`(22px 高;底 primary 10%、字 primary、`cursor: pointer`);孤儿 chip(列已不存在,没有面板可开)保持默认灰;间距 `8px 12px`,行下方 12px(原来 `padding-bottom: 8px`、`gap: 6px`,行高 30);「清除全部」文字按钮 22px 高、`padding: 0 4px`,**紧跟在 chips 后面**(原来靠最右)。
+> - **行末按钮出现的规则(和原型第 1 批一致)**:**有默认值的表**(任一列声明了生效的 `filter.defaultValue`):只在当前过滤态**偏离默认**时出现「恢复默认」(1 个 chip 也出现;回到默认就消失);**没有默认值的表**:≥ 2 个 chip 才出现「清除全部」(1 个 chip 自己的 × 就够了)。「偏离」= 把当前过滤态与各列默认值逐列比较(只比生效的条件;没有默认值的列要求没有生效条件;孤儿键有生效条件算偏离;单条条件时 `logic` 不同算相同)——纯函数 `filtersAtDefaults(defs, state)`。chips 行本身仍只在有 chip 时出现。
+> - **有意改动的既有断言(2 处)**:`tests/SmartTable.test.ts` 的「行末按钮:没有列声明 defaultValue → 『Clear all』;点击清空全部」与「[Q-7] 孤儿键仍会进远程请求参数 —— 所以它必须看得见,『清除全部』也要渲染并能清掉它」原来只设了 **1 个**条件 / 1 个孤儿键就期望「清除全部」出现;≥ 2 才出现的新规则下,把它们改成设 2 个条件(2 个孤儿键)。断言本身(按钮文案、点击后清空)不变。
+> - chips 是 P0 新增(Task 11),所以这些外观 / 规则不是对 2.1.1 的变化,不进 B 级。
+
+**Files:**
+- Modify: `src/FilterChips.vue`、`src/filterChips.ts`(`filtersAtDefaults`)、`src/SmartTable.vue`(传 `at-defaults`)
+- Test: `tests/filterChips.test.ts`(追加)、`tests/SmartTable.test.ts`(追加 + **2 处有意改动**)
+
+**Interfaces:**
+- Consumes: Task 11 的 `FilterChips.vue` / `filterChips.ts`(`hasActiveDefaults`)。
+- Produces: `filterChips.ts` 的 `filtersAtDefaults(defs: FilterDef[], state: FilterState): boolean`;`FilterChips` 新增 prop `atDefaults`。
+
+- [ ] **Step 1: 写失败测试**
+
+**`tests/SmartTable.test.ts` 查找(整段,原样)(第 1 / 3 处):**
+
+```ts
+  it('行末按钮:没有列声明 defaultValue → 「Clear all」;点击清空全部', async () => {
+    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true } })
+    inst(wrapper).setFilter('name', value('contains', 'a'))
+    await nextTick()
+    const btn = wrapper.find('.smart-table-chips__clear')
+    expect(btn.text()).toBe('Clear all')
+```
+
+**替换为:**
+
+```ts
+  it('行末按钮:没有列声明 defaultValue → 「Clear all」;点击清空全部', async () => {
+    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true } })
+    inst(wrapper).setFilter('name', value('contains', 'a'))
+    inst(wrapper).setFilter('dept', value('equal', 'x')) // 有意改动(L0-6):「清除全部」≥ 2 个 chip 才出现,原来只设 1 个条件
+    await nextTick()
+    const btn = wrapper.find('.smart-table-chips__clear')
+    expect(btn.text()).toBe('Clear all')
+```
+
+**`tests/SmartTable.test.ts` 查找(整段,原样)(第 2 / 3 处):**
+
+```ts
+    const wrapper = mount(SmartTable, { props: { columns: cols, fetcher, rowKey: 'id', filterChips: true } })
+    await flushPromises()
+    inst(wrapper).setFilter('ghost', value('equal', 'x'))
+    await flushPromises()
+    expect(JSON.stringify(fetcher.mock.calls.at(-1)![0])).toContain('ghost')
+    const btn = wrapper.find('.smart-table-chips__clear')
+```
+
+**替换为:**
+
+```ts
+    const wrapper = mount(SmartTable, { props: { columns: cols, fetcher, rowKey: 'id', filterChips: true } })
+    await flushPromises()
+    inst(wrapper).setFilter('ghost', value('equal', 'x'))
+    inst(wrapper).setFilter('ghost2', value('equal', 'y')) // 有意改动(L0-6):「清除全部」≥ 2 个 chip 才出现,原来只有 1 个孤儿键
+    await flushPromises()
+    expect(JSON.stringify(fetcher.mock.calls.at(-1)![0])).toContain('ghost')
+    const btn = wrapper.find('.smart-table-chips__clear')
+```
+
+**`tests/SmartTable.test.ts` 查找(整段,原样)(第 3 / 3 处):**
+
+```ts
+    await btn.trigger('click')
+    await flushPromises()
+    expect(JSON.stringify(fetcher.mock.calls.at(-1)![0])).not.toContain('ghost')
+    wrapper.unmount()
+  })
+
+```
+
+**替换为:**
+
+```ts
+    await btn.trigger('click')
+    await flushPromises()
+    expect(JSON.stringify(fetcher.mock.calls.at(-1)![0])).not.toContain('ghost')
+    wrapper.unmount()
+  })
+
+  it('[L0-6] 1 个条件时没有「清除全部」(chip 自己的 × 就够了);≥ 2 个才出现', async () => {
+    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true } })
+    inst(wrapper).setFilter('name', value('contains', 'a'))
+    await nextTick()
+    expect(wrapper.find('.smart-table-chips__clear').exists()).toBe(false)
+    inst(wrapper).setFilter('dept', value('equal', 'x'))
+    await nextTick()
+    expect(wrapper.find('.smart-table-chips__clear').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('[L0-6] 有默认值的表:只在偏离默认时出现「Restore defaults」(1 个 chip 也出现);回到默认就消失', async () => {
+    const withDefault = [{ key: 'name', title: '姓名', filter: { defaultValue: value('contains', 'seed') } }] as SmartTableColumn<unknown>[]
+    const wrapper = mount(SmartTable, { props: { columns: withDefault, data: rows, rowKey: 'id', filterChips: true } })
+    await nextTick()
+    expect(wrapper.findAll('.smart-table-chip')).toHaveLength(1) // 初始过滤态 = 默认值,有 1 个 chip
+    expect(wrapper.find('.smart-table-chips__clear').exists()).toBe(false) // 没偏离:不出现
+    inst(wrapper).setFilter('name', value('contains', 'changed'))
+    await nextTick()
+    expect(wrapper.findAll('.smart-table-chip')).toHaveLength(1)
+    expect(wrapper.find('.smart-table-chips__clear').text()).toBe('Restore defaults') // 偏离:1 个 chip 也出现
+    await wrapper.find('.smart-table-chips__clear').trigger('click')
+    await nextTick()
+    expect(wrapper.find('.smart-table-chips__clear').exists()).toBe(false) // 回到默认:又消失
+    wrapper.unmount()
+  })
+
+  it('[L0-6] 有默认值的表上用户又加了别的列的条件:算偏离,「Restore defaults」出现(它会清掉那些、恢复默认)', async () => {
+    const mixed = [
+      { key: 'name', title: '姓名', filter: { defaultValue: value('contains', 'seed') } },
+      { key: 'dept', title: '部门', filter: true },
+    ] as SmartTableColumn<unknown>[]
+    const wrapper = mount(SmartTable, { props: { columns: mixed, data: rows, rowKey: 'id', filterChips: true } })
+    await nextTick()
+    inst(wrapper).setFilter('dept', value('equal', 'x'))
+    await nextTick()
+    expect(wrapper.find('.smart-table-chips__clear').text()).toBe('Restore defaults')
+    await wrapper.find('.smart-table-chips__clear').trigger('click')
+    await nextTick()
+    expect(Object.keys(inst(wrapper).filters)).toEqual(['name'])
+    wrapper.unmount()
+  })
+
+  it('[L0-6] chip 是主色(NTag type=primary)、可点;孤儿 chip(没有面板可开)是默认灰;「清除全部」紧跟在 chips 后面', async () => {
+    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true } })
+    inst(wrapper).setFilter('name', value('contains', 'a'))
+    inst(wrapper).setFilter('ghost', value('equal', 'x'))
+    await nextTick()
+    const tags = wrapper.findComponent(FilterChips).findAllComponents(NTag)
+    expect(tags).toHaveLength(2)
+    expect(tags[0].props('type')).toBe('primary')
+    expect(tags[1].props('type')).toBe('default')
+    const root = wrapper.find('.smart-table-chips').element
+    expect(root.children[0].classList.contains('smart-table-chips__list')).toBe(true)
+    expect(root.children[1].classList.contains('smart-table-chips__clear')).toBe(true)
+    wrapper.unmount()
+  })
+
+```
+
+**`tests/filterChips.test.ts` 查找(整段,原样):**
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { buildChips, countFitting, hasActiveDefaults, removeChipCondition, shrinkForMore } from '../src/filterChips'
+import { defaultLabels } from '../src/labels'
+import type { FilterDef } from '../src/useColumns'
+import type { FilterState, FilterValue } from '../src/types'
+```
+
+**替换为:**
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { buildChips, countFitting, filtersAtDefaults, hasActiveDefaults, removeChipCondition, shrinkForMore } from '../src/filterChips'
+import { defaultLabels } from '../src/labels'
+import type { FilterDef } from '../src/useColumns'
+import type { FilterState, FilterValue } from '../src/types'
+```
+
+**`tests/filterChips.test.ts` 追加到文件末尾:**
+
+```ts
+
+describe('filtersAtDefaults(过滤态是否就是默认值)', () => {
+  const withDefault = [def({ key: 'a', defaultValue: v('and', ['equal', 'x']) }), def({ key: 'b' })]
+
+  it('没有任何默认值、也没有条件 → 是默认态', () => {
+    expect(filtersAtDefaults([def({ key: 'a' })], {})).toBe(true)
+  })
+
+  it('没有默认值但有生效条件 → 偏离', () => {
+    expect(filtersAtDefaults([def({ key: 'a' })], { a: v('and', ['contains', '1']) })).toBe(false)
+  })
+
+  it('有默认值:状态恰好等于默认 → 是;被清掉 / 改了值 / 多了别的列的条件 / 多了孤儿键 → 偏离', () => {
+    expect(filtersAtDefaults(withDefault, { a: v('and', ['equal', 'x']) })).toBe(true)
+    expect(filtersAtDefaults(withDefault, {})).toBe(false)
+    expect(filtersAtDefaults(withDefault, { a: v('and', ['equal', 'y']) })).toBe(false)
+    expect(filtersAtDefaults(withDefault, { a: v('and', ['equal', 'x']), b: v('and', ['contains', '1']) })).toBe(false)
+    expect(filtersAtDefaults(withDefault, { a: v('and', ['equal', 'x']), ghost: v('and', ['equal', '1']) })).toBe(false)
+  })
+
+  it('空条件(无生效)不算条件;单条时 logic 不同也算相同', () => {
+    expect(filtersAtDefaults(withDefault, { a: v('and', ['equal', 'x']), b: v('and', ['contains', '']) })).toBe(true)
+    expect(filtersAtDefaults(withDefault, { a: { logic: 'or', conditions: [{ action: 'equal', value: 'x' }] } })).toBe(true)
+  })
+})
+```
+
+- [ ] **Step 2: 跑,确认失败**
+
+Run: `npx vitest run tests/SmartTable.test.ts tests/filterChips.test.ts`
+Expected: `Test Files  2 failed (2)`、`Tests  7 failed | 89 passed (96)`(实测)—— `SmartTable.test.ts` 3 条(1 个条件时仍有「清除全部」:`expected true to be false`;chip 的 `type` 是 `default` 不是 `primary`;有默认值且没偏离时仍有「恢复默认」),`filterChips.test.ts` 4 条(`filtersAtDefaults` 还不存在:`(0 , filtersAtDefaults) is not a function`)。两处有意改动的断言此刻本来就绿(多设一个条件只会让旧规则更满足)。
+
+- [ ] **Step 3: 实现**
+
+**`src/FilterChips.vue` 查找(整段,原样)(第 1 / 6 处):**
+
+```vue
+// 「+N」渲染出来后自己也占位,若它折到了第二行就再让出一个位置(shrinkForMore),直到稳定;
+// 容器宽度变了再量一次(只在宽度变化时重量,否则测量时行高变化会触发死循环)。
+// 键盘:chip 是 role="button" tabindex="0",Enter / Space 等同点击;「孤儿」chip(列已不存在)没有面板可开,点击是空操作,× 照常清除。
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type PropType } from 'vue'
+import { NButton, NPopover, NTag } from 'naive-ui'
+import type { SmartTableLabels } from './types'
+```
+
+**替换为:**
+
+```vue
+// 「+N」渲染出来后自己也占位,若它折到了第二行就再让出一个位置(shrinkForMore),直到稳定;
+// 容器宽度变了再量一次(只在宽度变化时重量,否则测量时行高变化会触发死循环)。
+// 键盘:chip 是 role="button" tabindex="0",Enter / Space 等同点击;「孤儿」chip(列已不存在)没有面板可开,点击是空操作,× 照常清除。
+// 外观(设计原型 .chips / .chip):主色可点的 NTag small(22px 高)、间距 8px 12px、行下方 12px、「清除全部」紧跟在 chips 后面;孤儿 chip 与「+N」保持默认灰。
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type PropType } from 'vue'
+import { NButton, NPopover, NTag } from 'naive-ui'
+import type { SmartTableLabels } from './types'
+```
+
+**`src/FilterChips.vue` 查找(整段,原样)(第 2 / 6 处):**
+
+```vue
+  items: { type: Array as PropType<ChipItem[]>, required: true },
+  labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true },
+  hasDefaults: { type: Boolean, default: false },
+})
+
+const emit = defineEmits<{
+  open: [key: string]
+```
+
+**替换为:**
+
+```vue
+  items: { type: Array as PropType<ChipItem[]>, required: true },
+  labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true },
+  hasDefaults: { type: Boolean, default: false },
+  /** 当前过滤态已经等于各列声明的默认值(有默认值的表上,此时不需要「恢复默认」)。 */
+  atDefaults: { type: Boolean, default: false },
+})
+
+// 行末按钮出现的规则(原型一致):有默认值的表 = 偏离默认才出现「恢复默认」(1 个 chip 也出现);没有默认值的表 = ≥ 2 个 chip 才出现「清除全部」
+const showAction = computed(() => (props.hasDefaults ? !props.atDefaults : props.items.length > 1))
+
+const emit = defineEmits<{
+  open: [key: string]
+```
+
+**`src/FilterChips.vue` 查找(整段,原样)(第 3 / 6 处):**
+
+```vue
+        round
+        closable
+        size="small"
+        @click="openChip(c)"
+        @keydown="(e: KeyboardEvent) => onChipKeydown(e, c)"
+        @close="emit('remove', c.key, c.index)"
+```
+
+**替换为:**
+
+```vue
+        round
+        closable
+        size="small"
+        :type="c.orphan ? 'default' : 'primary'"
+        @click="openChip(c)"
+        @keydown="(e: KeyboardEvent) => onChipKeydown(e, c)"
+        @close="emit('remove', c.key, c.index)"
+```
+
+**`src/FilterChips.vue` 查找(整段,原样)(第 4 / 6 处):**
+
+```vue
+            round
+            closable
+            size="small"
+            @click="openChip(c)"
+            @keydown="(e: KeyboardEvent) => onChipKeydown(e, c)"
+            @close="emit('remove', c.key, c.index)"
+```
+
+**替换为:**
+
+```vue
+            round
+            closable
+            size="small"
+            :type="c.orphan ? 'default' : 'primary'"
+            @click="openChip(c)"
+            @keydown="(e: KeyboardEvent) => onChipKeydown(e, c)"
+            @close="emit('remove', c.key, c.index)"
+```
+
+**`src/FilterChips.vue` 查找(整段,原样)(第 5 / 6 处):**
+
+```vue
+        </div>
+      </n-popover>
+    </div>
+    <n-button class="smart-table-chips__clear" text size="tiny" @click="emit('clear')">
+      {{ hasDefaults ? labels.filterRestoreDefault : labels.filterClearAll }}
+    </n-button>
+  </div>
+</template>
+
+<style scoped>
+.smart-table-chips {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0 0 8px;
+}
+.smart-table-chips__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.smart-table-chip {
+```
+
+**替换为:**
+
+```vue
+        </div>
+      </n-popover>
+    </div>
+    <n-button v-if="showAction" class="smart-table-chips__clear" text size="tiny" @click="emit('clear')">
+      {{ hasDefaults ? labels.filterRestoreDefault : labels.filterClearAll }}
+    </n-button>
+  </div>
+</template>
+
+<style scoped>
+/* 清除按钮紧跟在 chips 后面(原型是同一个 wrap 行里的下一个元素);list 按内容收缩而不是撑满,放不下时 chips 在 list 里折行(测量用),
+   最终显示的是一行 + 「+N」。行与表格之间 12px。 */
+.smart-table-chips {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.smart-table-chips__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.smart-table-chip {
+```
+
+**`src/FilterChips.vue` 查找(整段,原样)(第 6 / 6 处):**
+
+```vue
+}
+.smart-table-chips__clear {
+  flex: none;
+  align-self: center;
+}
+</style>
+```
+
+**替换为:**
+
+```vue
+}
+.smart-table-chips__clear {
+  flex: none;
+  /* 官方文字按钮没有固定高度和内边距(--n-height 是 initial):与 chip 同高 22px、左右内边距 4px(原型 .chips .clear) */
+  height: 22px;
+  padding: 0 4px;
+}
+</style>
+```
+
+**`src/SmartTable.vue` 查找(整段,原样)(第 1 / 3 处):**
+
+```vue
+  type FilterDef,
+} from './useColumns'
+import { applyFilters } from './filter'
+import { buildChips, hasActiveDefaults, removeChipCondition } from './filterChips'
+import { mergePageSizes, resolveDefaultPageSize } from './pageSize'
+import { mergeCardProps } from './cardStyle'
+import { keepCardTopVisible } from './scrollToCard'
+```
+
+**替换为:**
+
+```vue
+  type FilterDef,
+} from './useColumns'
+import { applyFilters } from './filter'
+import { buildChips, filtersAtDefaults, hasActiveDefaults, removeChipCondition } from './filterChips'
+import { mergePageSizes, resolveDefaultPageSize } from './pageSize'
+import { mergeCardProps } from './cardStyle'
+import { keepCardTopVisible } from './scrollToCard'
+```
+
+**`src/SmartTable.vue` 查找(整段,原样)(第 2 / 3 处):**
+
+```vue
+  chipsEnabled.value ? buildChips(filterDefs.value as FilterDef[], filters.state.value, mergedLabels.value, optionLabelOf) : [],
+)
+const chipsHaveDefaults = computed(() => hasActiveDefaults(filterDefs.value as FilterDef[]))
+
+/** 点 chip = 请求重开该列面板:给对应 ColumnFilter 递增 openRequest。被隐藏的列没有漏斗,递增了也是空操作。 */
+const openTick = reactive<Record<string, number>>({})
+```
+
+**替换为:**
+
+```vue
+  chipsEnabled.value ? buildChips(filterDefs.value as FilterDef[], filters.state.value, mergedLabels.value, optionLabelOf) : [],
+)
+const chipsHaveDefaults = computed(() => hasActiveDefaults(filterDefs.value as FilterDef[]))
+const chipsAtDefaults = computed(() => filtersAtDefaults(filterDefs.value as FilterDef[], filters.state.value))
+
+/** 点 chip = 请求重开该列面板:给对应 ColumnFilter 递增 openRequest。被隐藏的列没有漏斗,递增了也是空操作。 */
+const openTick = reactive<Record<string, number>>({})
+```
+
+**`src/SmartTable.vue` 查找(整段,原样)(第 3 / 3 处):**
+
+```vue
+        :items="chipItems"
+        :labels="mergedLabels"
+        :has-defaults="chipsHaveDefaults"
+        @open="onChipOpen"
+        @remove="onChipRemove"
+        @clear="filters.clearFilters"
+```
+
+**替换为:**
+
+```vue
+        :items="chipItems"
+        :labels="mergedLabels"
+        :has-defaults="chipsHaveDefaults"
+        :at-defaults="chipsAtDefaults"
+        @open="onChipOpen"
+        @remove="onChipRemove"
+        @clear="filters.clearFilters"
+```
+
+**`src/filterChips.ts` 追加到文件末尾:**
+
+```ts
+
+/** 一列的过滤值归一成可比较的形状:无生效条件 → null;只有 1 条时 logic 恒为 and(它在单条时没有意义)。 */
+function canon(value: FilterValue | null | undefined): string {
+  const conds = activeConditions(value)
+  if (!conds.length) return ''
+  return JSON.stringify({ logic: conds.length > 1 ? value!.logic : 'and', conditions: conds.map((c) => [c.action, c.value ?? null]) })
+}
+
+/**
+ * 当前过滤态是不是就等于各列声明的默认值(只比生效的条件):没有默认值的列要求没有生效条件,孤儿键有生效条件就算偏离。
+ * chips 行末按钮据此决定要不要出现(原型一致):有默认值的表,**偏离**默认才出现「恢复默认」;
+ * 没有默认值的表则看 chip 个数(≥ 2 才出现「清除全部」)。
+ */
+export function filtersAtDefaults(defs: FilterDef[], state: FilterState): boolean {
+  const keys = new Set([...Object.keys(state), ...defs.map((d) => d.key)])
+  const defaultOf = new Map(defs.map((d) => [d.key, d.defaultValue]))
+  for (const k of keys) {
+    if (canon(state[k]) !== canon(defaultOf.get(k))) return false
+  }
+  return true
+}
+```
+
+- [ ] **Step 4: 跑,确认通过**
+
+Run: `npm test && npm run typecheck`
+Expected: `Test Files  22 passed (22)`、`Tests  393 passed (393)`(385 + 8:`filterChips.test.ts` +4、`SmartTable.test.ts` +4);typecheck 无输出;无 `[Vue warn]`。
+
+- [ ] **Step 5: 浏览器验证(对照页 vs 原型)**
+
+Run: `node_modules/.bin/vite --port 5173`,打开 `/prototype.html?m=4`(模块 4 没有默认值;1440 × 900,浅色),给「物料编码」加一个条件 `M10`、再加第二个条件 `M20`(每次确认),控制台粘贴:
+```js
+(() => {
+  const c = document.querySelector('.smart-table-chips')
+  const R = (e) => { const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height].map((v) => Math.round(v * 10) / 10).join(',') }
+  const chips = [...c.querySelectorAll('.smart-table-chip')]
+  const clr = c.querySelector('.smart-table-chips__clear')
+  const cs = getComputedStyle(chips[0])
+  return {
+    box: R(c),
+    chip: [cs.color, cs.backgroundColor, cs.height, cs.fontSize].join(' | '),
+    chips: chips.map((x) => x.innerText.trim() + ' ' + R(x)),
+    clear: clr ? clr.innerText.trim() + ' ' + R(clr) + ' ' + getComputedStyle(clr).color + ' | ' + getComputedStyle(clr).fontSize : null,
+    gap: getComputedStyle(c.querySelector('.smart-table-chips__list')).gap,
+    marginBottom: getComputedStyle(c).marginBottom,
+  }
+})()
+```
+Expected(库侧;括号里是原型 `.chips` 读数):
+- 只有 1 个 chip 时:`clear` = `null`(没有「清除全部」);`box` 高 `22`(原型 22);
+- 2 个 chip 时:`box` = `303,165,1066,22`(原型相同)、`chip` = `rgb(24, 160, 88) | rgba(24, 160, 88, 0.1) | 22px | 12px`(原型 `rgb(24,160,88)`、底 primary 10%、22px、12px;暗色 `rgb(99, 226, 183)`、底透明,相同)、`clear` = `清除全部 620.3,165,56,22 rgb(51, 54, 57) | 12px`(原型第 4 批已把关闭钮改成官方 `n-base-close` 12px,读数与原型逐像素相同:chip 宽 `133.7`、清除按钮 `620.3,165,56,22`)、`gap` = `8px 12px`、`marginBottom` = `12px`;「清除全部」**紧跟在最后一个 chip 之后 12px**,不再靠最右。
+再打开 `/prototype.html?m=3`(单据状态默认「未审核」):初始有一个 chip「单据状态 等于 未审核」且**没有**行末按钮(没偏离默认);给「物料编码」加条件 → 出现「恢复默认」(2 个 chip,有默认值的表叫「恢复默认」不叫「清除全部」);点它 → 回到只有「未审核」一个 chip、按钮消失;把「未审核」的 chip 点 × 删掉 → chips 行消失(0 个 chip)。原型模块 3 同样的行为(原型第 1 批 `hfClearShown`)。
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add src/FilterChips.vue src/filterChips.ts src/SmartTable.vue tests/filterChips.test.ts tests/SmartTable.test.ts
+git commit -m "style: chips 对齐原型(主色可点、22px 行高、间距 8 / 12、清除按钮紧跟);行末按钮:有默认值偏离才「恢复默认」,否则 ≥ 2 个才「清除全部」(L0-6)" -m "新增纯函数 filtersAtDefaults;有意改动 tests/SmartTable.test.ts 里 2 条只设了 1 个条件就期望「清除全部」的用例(≥ 2 才出现)。" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+### Task 13g: 列设置「至少保留一列」(N11);`SmartTableProps` 补 `rowDraggable` / `dragHandle`
+
+> - **N11**:原型第 1 批的做法 = **只剩一个已勾选的列时,那一列的勾选框禁用**(没有 toast、没有提示文字,禁用态本身就是说明;`design.md` 10.8 N11)。库此前 `toggleShow` 允许把列全部取消,表头只剩勾选 / 操作列。落地:纯函数 `canHideColumn(items, key)`(只看设置里能管的列;`hideInSetting` 的列用户碰不到,不算;已经隐藏的 / 不存在的键不受限)——`ColumnSettings.vue` 用它禁用唯一那一列的勾选框,`useColumns.toggleShow` 同样兜底拒绝(**返回值改为 `boolean`:是否生效**——编程式 / 绕过界面的调用也隐藏不掉;显示永远允许)。**2.1.1 允许全部取消,外观 / 行为变了 → CHANGELOG B 级,回退「无」**(取消全部列没有意义,表头只剩勾选 / 操作列)。
+> - **有意改动的既有夹具(1 处)**:`tests/SmartTable.test.ts` 的「密度的写入端(Q-1)」一组用单列夹具(`columns: [{ key: 'name' }]`)并 `$emit('toggle', 'name', false)` 触发保存;N11 之后单列夹具里取消 `name` 会被拒绝、根本不写存储,其中两条「不写 density / 保留旧 density」的断言会**空转**(甚至不再失败)。夹具改成 2 列(加 `code`),取消 `name` 才是真的保存了列设置——断言本身不变。
+> - **类型补全**:`SmartTable.vue:84-85` 一直有 `rowDraggable`(Boolean,默认 false)与 `dragHandle`(String)两个 prop,导出的 `SmartTableProps`(`types.ts`)里没有声明,宿主按类型写 props 对象时这两个键会被当成多余属性报错。补上两个可选属性;`tests/types.test.ts` 在**编译期**锁住(`vue-tsc` 检查本文件;运行期的断言只是占位)。
+
+**Files:**
+- Modify: `src/useColumns.ts`(`canHideColumn`、`toggleShow`)、`src/ColumnSettings.vue`、`src/types.ts`(`SmartTableProps`)
+- Test: `tests/ColumnSettings.test.ts`(新建)、`tests/types.test.ts`(新建)、`tests/useColumns.test.ts`(追加)、`tests/SmartTable.test.ts`(追加 + **夹具有意改动 1 处**)
+
+**Interfaces:**
+- Consumes: Task 5 / 12 的 `useColumns`(`toggleShow`、`settingItems`)、`ColumnSettings.vue`。
+- Produces: `useColumns.ts` 的 `canHideColumn(items, key): boolean`;`UseColumnsApi.toggleShow(key, show): boolean`;`SmartTableProps.rowDraggable?: boolean` / `dragHandle?: string`。**不新增 label**。
+
+- [ ] **Step 1: 写失败测试**
+
+**新建 `tests/ColumnSettings.test.ts`:**
+
+```ts
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { NCheckbox } from 'naive-ui'
+import ColumnSettings from '../src/ColumnSettings.vue'
+import { defaultLabels } from '../src/labels'
+import type { SettingItem } from '../src/useColumns'
+
+// N11:列设置「至少保留一列」。原型:只剩一列可见时,那一列的勾选框禁用(无提示)。
+
+const items = (...shows: boolean[]): SettingItem[] => shows.map((show, i) => ({ key: `c${i}`, title: `列${i}`, show }))
+
+async function openPanel(list: SettingItem[]) {
+  const w = mount(ColumnSettings, { props: { items: list, labels: defaultLabels }, attachTo: document.body })
+  await w.find('button[aria-label="Columns"]').trigger('click')
+  await flushPromises()
+  return w
+}
+const disabledFlags = (w: ReturnType<typeof mount>) => w.findAllComponents(NCheckbox).map((c) => c.props('disabled'))
+
+describe('ColumnSettings 至少保留一列(N11)', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  it('只剩 1 个已勾选的列:那一列的勾选框禁用,其余(未勾选的)仍可勾', async () => {
+    const w = await openPanel(items(true, false, false))
+    expect(disabledFlags(w)).toEqual([true, false, false])
+    expect(document.body.querySelectorAll('.n-checkbox--disabled')).toHaveLength(1)
+    w.unmount()
+  })
+
+  it('还有 ≥ 2 个已勾选:都不禁用,取消照常发 toggle', async () => {
+    const w = await openPanel(items(true, true, false))
+    expect(disabledFlags(w)).toEqual([false, false, false])
+    w.findAllComponents(NCheckbox)[0].vm.$emit('update:checked', false)
+    await flushPromises()
+    expect(w.emitted('toggle')).toEqual([['c0', false]])
+    w.unmount()
+  })
+
+  it('勾回一个被隐藏的列后,原来唯一的那一列立刻解除禁用', async () => {
+    const w = await openPanel(items(true, false))
+    expect(disabledFlags(w)).toEqual([true, false])
+    await w.setProps({ items: items(true, true) })
+    expect(disabledFlags(w)).toEqual([false, false])
+    w.unmount()
+  })
+
+  it('没有提示文字(原型不弹 toast,禁用态本身就是说明)', async () => {
+    const w = await openPanel(items(true, false))
+    expect(document.body.querySelector('[role="status"]')).toBeNull()
+    w.unmount()
+  })
+})
+```
+
+**新建 `tests/types.test.ts`:**
+
+```ts
+import { describe, expect, expectTypeOf, it } from 'vitest'
+import type { SmartTableProps } from '../src'
+
+// SmartTable.vue 一直有 rowDraggable / dragHandle 两个 prop(README 也写了),但导出的 SmartTableProps 类型里没有声明 ——
+// 宿主按类型写 props 对象时这两个键会被当成多余属性报错。这里在编译期锁住它们存在且类型正确(vue-tsc 会检查本文件)。
+describe('SmartTableProps 类型补全', () => {
+  it('rowDraggable / dragHandle 是可选属性', () => {
+    const props: SmartTableProps = { columns: [], rowDraggable: true, dragHandle: '.my-handle' }
+    expect(props.rowDraggable).toBe(true)
+    expectTypeOf<SmartTableProps['rowDraggable']>().toEqualTypeOf<boolean | undefined>()
+    expectTypeOf<SmartTableProps['dragHandle']>().toEqualTypeOf<string | undefined>()
+  })
+
+  it('不传也合法(向后兼容)', () => {
+    const props: SmartTableProps = { columns: [] }
+    expect(props.rowDraggable).toBeUndefined()
+  })
+})
+```
+
+**`tests/SmartTable.test.ts` 查找(整段,原样):**
+
+```ts
+})
+
+describe('SmartTable 密度的写入端(Q-1:保存列设置 / 列宽不把宿主的密度写进存储)', () => {
+  const base = { columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[], data: rows, rowKey: 'id' }
+  const raw = (key: string) => JSON.parse(localStorage.getItem('protable:' + key) ?? 'null') as { density?: string } | null
+
+  afterEach(() => {
+```
+
+**替换为:**
+
+```ts
+})
+
+describe('SmartTable 密度的写入端(Q-1:保存列设置 / 列宽不把宿主的密度写进存储)', () => {
+  // 有意改动(N11):夹具从 1 列改成 2 列 —— 列设置「至少保留一列」后,单列夹具里取消 name 会被拒绝、根本不写存储,
+  // 下面「不写 density / 保留旧 density」的断言就成了空转;留一个 code 列,取消 name 才是真的保存了列设置。
+  const base = {
+    columns: [
+      { key: 'name', title: 'Name' },
+      { key: 'code', title: 'Code' },
+    ] as SmartTableColumn<unknown>[],
+    data: rows,
+    rowKey: 'id',
+  }
+  const raw = (key: string) => JSON.parse(localStorage.getItem('protable:' + key) ?? 'null') as { density?: string } | null
+
+  afterEach(() => {
+```
+
+**`tests/SmartTable.test.ts` 追加到文件末尾:**
+
+```ts
+
+describe('SmartTable 列设置至少保留一列(N11)', () => {
+  it('在列设置里把列一个个取消:最后一列取消不掉,表头还剩它;之后能勾回来', async () => {
+    const wrapper = mount(SmartTable, {
+      props: {
+        columns: [
+          { key: 'a', title: 'AA' },
+          { key: 'b', title: 'BB' },
+        ] as SmartTableColumn<unknown>[],
+        data: [{ id: 1, a: 1, b: 2 }],
+        rowKey: 'id',
+      },
+    })
+    const settings = wrapper.findComponent(ColumnSettings)
+    const heads = () => wrapper.findAll('thead th').map((th) => th.text())
+    expect(heads()).toEqual(['AA', 'BB'])
+    settings.vm.$emit('toggle', 'a', false)
+    await nextTick()
+    expect(heads()).toEqual(['BB'])
+    settings.vm.$emit('toggle', 'b', false) // 最后一列:勾选框已禁用,编程式 / 绕过界面的调用也被 toggleShow 兜底拒绝
+    await nextTick()
+    expect(heads()).toEqual(['BB'])
+    settings.vm.$emit('toggle', 'a', true)
+    await nextTick()
+    expect(heads()).toEqual(['AA', 'BB'])
+    wrapper.unmount()
+  })
+})
+```
+
+**`tests/useColumns.test.ts` 查找(整段,原样):**
+
+```ts
+import { describe, expect, it, vi } from 'vitest'
+import { h, ref, type Slots, type VNode } from 'vue'
+import {
+  deriveFilterDefs,
+  headerIconFloor,
+  useColumns,
+```
+
+**替换为:**
+
+```ts
+import { describe, expect, it, vi } from 'vitest'
+import { h, ref, type Slots, type VNode } from 'vue'
+import {
+  canHideColumn,
+  deriveFilterDefs,
+  headerIconFloor,
+  useColumns,
+```
+
+**`tests/useColumns.test.ts` 追加到文件末尾:**
+
+```ts
+
+describe('列设置至少保留一列(N11)', () => {
+  const three = (): SmartTableColumn<Row>[] => [
+    { key: 'a', title: 'A' },
+    { key: 'b', title: 'B' },
+    { key: 'c', title: 'C' },
+  ]
+
+  it('canHideColumn:除它以外还有已显示的列才允许隐藏;隐藏中的 / 不存在的键不受限', () => {
+    expect(canHideColumn([{ key: 'a', show: true }, { key: 'b', show: false }], 'a')).toBe(false)
+    expect(canHideColumn([{ key: 'a', show: true }, { key: 'b', show: true }], 'a')).toBe(true)
+    expect(canHideColumn([{ key: 'a', show: true }, { key: 'b', show: false }], 'b')).toBe(true)
+    expect(canHideColumn([{ key: 'a', show: true }], 'zzz')).toBe(true)
+  })
+
+  it('toggleShow 隐藏到只剩一列后,再隐藏最后一列被拒绝(返回 false,状态不变);其余情况返回 true', () => {
+    const api = build(three())
+    expect(api.toggleShow('a', false)).toBe(true)
+    expect(api.toggleShow('b', false)).toBe(true)
+    expect(api.toggleShow('c', false)).toBe(false)
+    expect(api.settingItems.value.map((i) => [i.key, i.show])).toEqual([
+      ['a', false],
+      ['b', false],
+      ['c', true],
+    ])
+    expect(api.toggleShow('c', true)).toBe(true) // 显示永远允许
+  })
+
+  it('hideInSetting 的列(设置里看不到,也不能被用户隐藏)不算「保留的那一列」', () => {
+    const api = build([
+      { key: 'a', title: 'A' },
+      { key: 'act', title: '操作', hideInSetting: true },
+    ])
+    expect(api.toggleShow('a', false)).toBe(false) // 设置里只有 a 一列,操作列不算
+  })
+
+  it('已经全部隐藏的列声明(宿主 hide: true)不被拦:能勾回来', () => {
+    const api = build([
+      { key: 'a', title: 'A', hide: true },
+      { key: 'b', title: 'B', hide: true },
+    ])
+    expect(api.toggleShow('a', true)).toBe(true)
+    expect(api.toggleShow('a', false)).toBe(false) // 又只剩它自己了
+  })
+})
+```
+
+- [ ] **Step 2: 跑,确认失败**
+
+Run: `npx vitest run tests/ColumnSettings.test.ts tests/SmartTable.test.ts tests/types.test.ts tests/useColumns.test.ts && npm run typecheck`
+Expected: `Test Files  3 failed | 1 passed (4)`、`Tests  8 failed | 119 passed (127)`(实测),分布在 `ColumnSettings.test.ts` / `useColumns.test.ts`(`canHideColumn` 不是函数、`toggleShow` 返回 `undefined`)/ `SmartTable.test.ts`(最后一列没被拦住:`expected [] to deeply equal [ 'BB' ]`)三个文件;`types.test.ts` 的运行期断言此刻本来就绿——它红在下面的 `npm run typecheck`;`npm run typecheck` 报错(`tests/types.test.ts`:`'rowDraggable' does not exist in type 'SmartTableProps<any>'`;`tests/useColumns.test.ts`:`Module '"../src/useColumns"' has no exported member 'canHideColumn'`)。
+
+- [ ] **Step 3: 实现**
+
+**`src/ColumnSettings.vue` 查找(整段,原样)(第 1 / 3 处):**
+
+```vue
+<script setup lang="ts">
+// 列设置面板:显隐勾选 + 原生 HTML5 拖拽排序 + 固定切换 + 恢复默认。零拖拽库依赖。
+import { ref, type PropType, type VNodeChild } from 'vue'
+import { NButton, NCheckbox, NPopover, NTooltip, useThemeVars } from 'naive-ui'
+import type { SmartTableLabels } from './types'
+import type { SettingItem } from './useColumns'
+import { ColumnsIcon, DragIcon } from './icons'
+
+defineProps({
+  items: { type: Array as PropType<SettingItem[]>, required: true },
+  labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true },
+})
+```
+
+**替换为:**
+
+```vue
+<script setup lang="ts">
+// 列设置面板:显隐勾选 + 原生 HTML5 拖拽排序 + 固定切换 + 恢复默认。零拖拽库依赖。
+// 至少保留一列(N11,原型一致):只剩一个已勾选的列时,那一列的勾选框禁用(没有提示文字,禁用态本身就是说明)。
+import { ref, type PropType, type VNodeChild } from 'vue'
+import { NButton, NCheckbox, NPopover, NTooltip, useThemeVars } from 'naive-ui'
+import type { SmartTableLabels } from './types'
+import { canHideColumn, type SettingItem } from './useColumns'
+import { ColumnsIcon, DragIcon } from './icons'
+
+const props = defineProps({
+  items: { type: Array as PropType<SettingItem[]>, required: true },
+  labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true },
+})
+```
+
+**`src/ColumnSettings.vue` 查找(整段,原样)(第 2 / 3 处):**
+
+```vue
+  dragFrom.value = null
+  dragOver.value = null
+}
+
+function renderTitle(title: SettingItem['title']): VNodeChild {
+  return typeof title === 'function' ? title() : title
+```
+
+**替换为:**
+
+```vue
+  dragFrom.value = null
+  dragOver.value = null
+}
+
+// 只剩一个已勾选的列时,隐藏它会让表格没有数据列 → 禁用它的勾选框(useColumns.toggleShow 同样兜底拒绝,编程式调用也隐藏不掉)
+const isLastShown = (item: SettingItem) => item.show && !canHideColumn(props.items, item.key)
+
+function renderTitle(title: SettingItem['title']): VNodeChild {
+  return typeof title === 'function' ? title() : title
+```
+
+**`src/ColumnSettings.vue` 查找(整段,原样)(第 3 / 3 处):**
+
+```vue
+        @dragend="((dragFrom = null), (dragOver = null))"
+      >
+        <span class="smart-table-colset-drag" :style="{ color: themeVars.textColor3 }"><DragIcon /></span>
+        <n-checkbox :checked="item.show" @update:checked="(v: boolean) => emit('toggle', item.key, v)">
+          <component :is="() => renderTitle(item.title)" />
+        </n-checkbox>
+        <span class="smart-table-colset-pins">
+```
+
+**替换为:**
+
+```vue
+        @dragend="((dragFrom = null), (dragOver = null))"
+      >
+        <span class="smart-table-colset-drag" :style="{ color: themeVars.textColor3 }"><DragIcon /></span>
+        <n-checkbox :checked="item.show" :disabled="isLastShown(item)" @update:checked="(v: boolean) => emit('toggle', item.key, v)">
+          <component :is="() => renderTitle(item.title)" />
+        </n-checkbox>
+        <span class="smart-table-colset-pins">
+```
+
+**`src/types.ts` 查找(整段,原样):**
+
+```ts
+  activeRowKey?: string | number | null
+  /** 所有数据列可拖拽调整列宽;列上写 resizable 可单独覆盖。配合 storageKey 记住宽度。 */
+  resizable?: boolean
+  /** 过滤态 → 请求参数的序列化;缺省产出 `{ filters: [{ field, logic, conditions }] }`。 */
+  filterSerializer?: (state: FilterState) => Record<string, any>
+}
+```
+
+**替换为:**
+
+```ts
+  activeRowKey?: string | number | null
+  /** 所有数据列可拖拽调整列宽;列上写 resizable 可单独覆盖。配合 storageKey 记住宽度。 */
+  resizable?: boolean
+  /** 行拖拽排序(sortablejs 懒加载,仅开启时才加载);松手后发 @row-drag-sort。默认 false。 */
+  rowDraggable?: boolean
+  /** 行拖拽的把手选择器(只有按住它才能拖);缺省整行可拖。 */
+  dragHandle?: string
+  /** 过滤态 → 请求参数的序列化;缺省产出 `{ filters: [{ field, logic, conditions }] }`。 */
+  filterSerializer?: (state: FilterState) => Record<string, any>
+}
+```
+
+**`src/useColumns.ts` 查找(整段,原样)(第 1 / 3 处):**
+
+```ts
+export function headerIconFloor(hasFilter: boolean, hasSorter: boolean): number {
+  if (!hasFilter && !hasSorter) return 0
+  return 12 + 44 + (hasFilter ? 30 : 0) + (hasSorter ? 21 : 0) + 16
+}
+
+export function isSpecialColumn<T>(c: SmartTableColumn<T>): c is SmartTableSpecialColumn<T> {
+```
+
+**替换为:**
+
+```ts
+export function headerIconFloor(hasFilter: boolean, hasSorter: boolean): number {
+  if (!hasFilter && !hasSorter) return 0
+  return 12 + 44 + (hasFilter ? 30 : 0) + (hasSorter ? 21 : 0) + 16
+}
+
+/**
+ * 列设置「至少保留一列」(N11,原型一致):隐藏 key 这一列之后,设置里还得剩一列是显示的。
+ * 只看设置里能管的列(hideInSetting 的列用户碰不到,不算);已经隐藏的 / 不存在的键不受限。
+ */
+export function canHideColumn(items: ReadonlyArray<{ key: string; show: boolean }>, key: string): boolean {
+  const target = items.find((i) => i.key === key)
+  if (!target || !target.show) return true
+  return items.some((i) => i.key !== key && i.show)
+}
+
+export function isSpecialColumn<T>(c: SmartTableColumn<T>): c is SmartTableSpecialColumn<T> {
+```
+
+**`src/useColumns.ts` 查找(整段,原样)(第 2 / 3 处):**
+
+```ts
+  density: ComputedRef<Density>
+  setDensity: (d: Density) => void
+  settingItems: ComputedRef<SettingItem[]>
+  toggleShow: (key: string, show: boolean) => void
+  moveCheck: (from: number, to: number) => void
+  setFixed: (key: string, fixed?: 'left' | 'right') => void
+  resetSettings: () => void
+```
+
+**替换为:**
+
+```ts
+  density: ComputedRef<Density>
+  setDensity: (d: Density) => void
+  settingItems: ComputedRef<SettingItem[]>
+  /** 返回是否生效:隐藏最后一个显示的列会被拒绝(返回 false,状态不变);显示永远允许。 */
+  toggleShow: (key: string, show: boolean) => boolean
+  moveCheck: (from: number, to: number) => void
+  setFixed: (key: string, fixed?: 'left' | 'right') => void
+  resetSettings: () => void
+```
+
+**`src/useColumns.ts` 查找(整段,原样)(第 3 / 3 处):**
+
+```ts
+    }, 300)
+  }
+
+  function toggleShow(key: string, show: boolean) {
+    persist(effectiveChecks.value.map((c) => (c.key === key ? { ...c, show } : c)))
+  }
+
+  function moveCheck(from: number, to: number) {
+```
+
+**替换为:**
+
+```ts
+    }, 300)
+  }
+
+  function toggleShow(key: string, show: boolean): boolean {
+    if (!show && !canHideColumn(effectiveChecks.value, key)) return false
+    persist(effectiveChecks.value.map((c) => (c.key === key ? { ...c, show } : c)))
+    return true
+  }
+
+  function moveCheck(from: number, to: number) {
+```
+
+- [ ] **Step 4: 跑,确认通过**
+
+Run: `npm test && npm run typecheck`
+Expected: `Test Files  24 passed (24)`、`Tests  404 passed (404)`(393 + 11:`ColumnSettings.test.ts` 4、`types.test.ts` 2、`useColumns.test.ts` +4、`SmartTable.test.ts` +1);typecheck 无输出;无 `[Vue warn]`。
+
+- [ ] **Step 5: 浏览器验证(对照页 vs 原型)**
+
+Run: `node_modules/.bin/vite --port 5173`,打开 `/prototype.html?m=3`(1440 × 900),点工具栏最右的「列设置」,控制台粘贴:
+```js
+(async () => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+  const boxes = () => [...document.querySelectorAll('.smart-table-colset .n-checkbox')]
+  const out = { items: boxes().length }
+  for (let i = 0; i < out.items; i++) {
+    const on = boxes().find((b) => b.classList.contains('n-checkbox--checked') && !b.classList.contains('n-checkbox--disabled'))
+    if (!on) break
+    on.click()
+    await sleep(150)
+  }
+  out.checkedLeft = boxes().filter((b) => b.classList.contains('n-checkbox--checked')).length
+  out.lastDisabled = boxes().filter((b) => b.classList.contains('n-checkbox--checked'))[0].classList.contains('n-checkbox--disabled')
+  out.thTexts = [...document.querySelectorAll('thead th')].map((t) => t.innerText.trim())
+  out.hint = !!document.querySelector('.smart-table-colset [role="status"]')
+  return out
+})()
+```
+Expected(库侧;原型第 1 批同样操作的结果):`items` = `7`(物料编码 … 单据日期,「操作」`hideInSetting` 不在列表里);逐个取消后 `checkedLeft` = `1`、`lastDisabled` = `true`(只剩的那一列「单据日期」勾选框禁用,点它没有任何反应)、`thTexts` = `["", "单据日期", "操作"]`(勾选列 + 剩下的数据列 + 操作列;原型多一个序号列);**没有任何提示文字 / toast**(`[role="status"]` 不存在);再勾回任意一列 → 「单据日期」的勾选框立刻恢复可点。
+(编程式兜底在单测里覆盖:`toggleShow('c', false)` 隐藏最后一个显示的列返回 `false`、状态不变。)
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add src/useColumns.ts src/ColumnSettings.vue src/types.ts tests/ColumnSettings.test.ts tests/types.test.ts tests/useColumns.test.ts tests/SmartTable.test.ts
+git commit -m "feat: 列设置至少保留一列(只剩一列时勾选框禁用,toggleShow 兜底拒绝);SmartTableProps 补 rowDraggable / dragHandle(N11)" -m "有意改动 tests/SmartTable.test.ts「密度写入端」夹具:单列 → 2 列(单列夹具里取消 name 会被拒绝,断言会空转)。2.1.1 允许全部取消列,CHANGELOG 记 B 级。" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
 ### Task 14: 收尾 —— 版本号、CHANGELOG、README、规格核对、最终验证(`3.0.0-beta.1`)
 
 > 只做「发布前的最后一公里」。**不 `npm publish`。**
 > 规格 `docs/smart-naive-table-spec.md` 已在设计定稿时改成「目标状态」,本计划实施中凡与规格不一致的地方,**以实现为准回写规格**(规格是实现的依据,必须与代码一致)。
-> CHANGELOG 里 B1 / B4 / B8 / B12 与 `fillHeight` 的口径已按 Task 7 / Task 12 / Task 12b 的定稿写(官方嵌套每页选择器、吸收列 `dk` 方案、`fillHeight`);改 Task 7 / 12 / 12b 时这里要同步。
+> CHANGELOG 里 B1 / B4 / B8 / B12 与 `fillHeight` 的口径已按 Task 7 / Task 12 / Task 12b 的定稿写(官方嵌套每页选择器、吸收列 `dk` 方案、`fillHeight`);改 Task 7 / 12 / 12b 时这里要同步。**Task 13b–13g(对齐设计原型)改了 2.1.1 已有的外观,CHANGELOG 里加了一节「外观调整」(旧 → 新 + 回退方式),B7 一行与「新增」一节也相应补了几句;改 Task 13c–13g 时这里要同步。**
 
 **Files:**
 - Modify: `package.json`(+ `package-lock.json`)、`CHANGELOG.md`、`README.md`、`README.en.md`、`docs/smart-naive-table-spec.md`
@@ -7004,11 +11209,24 @@ Expected: 输出 `v3.0.0-beta.1`;`package.json` 与 `package-lock.json` 的 `ver
 | **分页外观**(B4) | 页码序列 → 官方 `simple`(输入框 / 总页数);每页条数选择器是**嵌在 `suffix` 里的官方 `NPagination`(`displayOrder: ['size-picker']`)**,选项文案自动跟 `NConfigProvider` 的 locale(中文「100 / 页」,不需要新 label);`pagination.pageSizes` 里的 `{ label, value }` 原样保留;当前每页条数不在 `pageSizes` 里时自动并入选项。**窄档(库根节点宽 < 600px)不画每页选择器**。**`simple` 下官方不渲染 `showQuickJumper` / `pageSlot`,传了也不再生效** | `pagination: { simple: false }`(回到页码序列,走官方 `showSizePicker` / `pageSizes`) |
 | **静态数据模式不显示刷新**(B5) | 显示(点了无效)→ 隐藏。实例方法 `refresh()` 保留 | 无(本来就无效) |
 | **表头图标悬停才显示**(B6) | 排序箭头 / 漏斗常驻 → 悬停该列表头或键盘聚焦时淡入;正在排序 / 已筛选 / 面板打开的列常驻;触屏(主输入设备无悬停,`@media (hover: none)`,与原型一致)淡显常驻。漏斗现在可被 Tab 聚焦。图标间距:标题 → 漏斗 8px、漏斗 → 排序箭头 6px、表头右内边距 16px。点漏斗不再靠 `stopPropagation` 防排序(改用官方 `data-data-table-filter`),宿主挂在表头 / 祖先上的 click 监听现在能收到漏斗上的点击 | 暂无开关 |
-| **列头过滤面板**(B7) | 单条件 / 勾选 → **多条件编辑**(≤ 5 条,≥ 2 条出现且 / 或);options 列底部有「高级条件」。**默认可选操作符不变**(仍是 2.1.1 的 8 个:文本 包含 / 不包含 / 等于 / 不等于;数字、日期 等于 / 不等于 / 大于 / 大于等于 / 小于 / 小于等于;字典 等于 / 不等于),新操作符需在列上 `filter.actions` 显式开启。面板支持键盘(打开时焦点进入面板、Esc 关闭并还焦点、下拉展开时 Esc 只收下拉、Tab 在面板内循环)与 ARIA(`role="dialog"`)。**自定义面板 `filter.render` 也有变化:面板打开期间按 Esc 会关闭它(不管焦点在面板里还是仍在漏斗按钮上),且打开时不会自动聚焦** | 无 |
+| **列头过滤面板**(B7) | 单条件 / 勾选 → **多条件编辑**(≤ 5 条,≥ 2 条出现且 / 或);options 列底部有「高级条件」。**默认可选操作符不变**(仍是 2.1.1 的 8 个:文本 包含 / 不包含 / 等于 / 不等于;数字、日期 等于 / 不等于 / 大于 / 大于等于 / 小于 / 小于等于;字典 等于 / 不等于),新操作符需在列上 `filter.actions` 显式开启。面板支持键盘(打开时焦点进入面板、Esc 关闭并还焦点、下拉展开时 Esc 只收下拉、Tab 在面板内循环)与 ARIA(`role="dialog"`)。**自定义面板 `filter.render` 也有变化:面板打开期间按 Esc 会关闭它(不管焦点在面板里还是仍在漏斗按钮上),且打开时不会自动聚焦**。面板排布对齐设计原型:首列第 1 行是「条件」引导标签、第 2 行起是且 / 或下拉(取代行下方的分段按钮)、4 列网格、「添加条件」是带加号的深色文字按钮、底部「重置 / 确认」居中分布;在窄容器里面板会水平夹进视口,不再被裁出屏幕 | 无 |
 | **拖过列宽后的余量**(B8) | 补一列占位列 → 由**最后一个可见、非 `fixed`、`resizable !== false` 的数据列**吸收。**表头 DOM 不再有占位列**(列数恒等于声明的列数);钉住后这一列不写 `width`(弹性),下限是它声明的宽度 / `minWidth`;**⚠ 已知代价:吸收余量的那一列没有拖拽把手**(**即使还没拖过列宽、表格还没钉住时也没有**;开了 `resizable` 的表格里,最后一个可拖的非固定列在任何时候都没有把手;要调它的宽度,拖它左邻列的把手)。全部列都 `fixed` / 都不可拖时,最后一列写显式宽度 `max(下限, 容器宽 − 其余列宽 − 拖拽增量)`。拖过的列后来变成吸收列(隐藏最后一列 / 调顺序 / 设固定)时表格会重挂一次(Naive 没有清除拖拽宽度的入口),该次挂载内的横向滚动位置和本地拖拽状态会重置 | 给那一列写 `resizable: false`(让它不参与吸收,吸收列顺延到前一列;比如固定在右侧的「操作」列天然不参与) |
 | **筛选后的分页**(B9) | 库远程回第 1 页(有意偏离官方默认 `'current'`,**保持不变**);现在宿主显式传官方 `paginationBehaviorOnFilter` 就照官方 | 传官方 `paginationBehaviorOnFilter` |
 | **卡片内边距**(B11) | 2.1.1 内容区 **20 / 24 / 20**(上 / 左右 / 下;官方 medium,无 header 时 `padding-top` 取 `--n-padding-bottom`)→ **四边 16px**(`size="small"` + 库内卡片自己的 `paddingSmall` 覆盖,不影响宿主全局主题) | `cardProps: { size: 'medium' }`(新增,见下) |
 | **可拖拽列的拖拽下限**(B12,只影响开了 `resizable` 的用户) | 固定 60px → 带图标的列取 `max(resizeMinWidth, 图标下限)`:仅排序 93、仅过滤 102、两者 123(吸收列没有把手,见 B8) | 列上显式写 `minWidth` |
+
+### 外观调整(对齐设计原型;2.1.1 已有外观的变化)
+
+| 变更 | 旧 → 新 | 回退方式 |
+|---|---|---|
+| **卡片标题** | 字重 600、颜色 `textColor2` → **字重 500(`fontWeightStrong`)、`textColor1`**(与官方卡片标题一致) | `#title` 插槽里自己写 `<span style="font-weight: 600">…</span>`(span 的内联样式盖过标题自己的) |
+| **工具栏间距** | 右侧所有按钮间距 4px → **业务组(宿主 `#toolbar-right` 的按钮 + 「更多」)8px、内置图标组 4px、两组之间 12px** | 业务组内:宿主用 `<n-space :size="4">` 包住自己的按钮;两组之间的 12px 无法回退(**无**,纯排布) |
+| **内置图标按钮的图标** | 刷新 / 密度 / 列设置的图标 18px → **16px** | 宿主 CSS `.smart-table-toolbar-icons .n-button { --n-icon-size: 18px !important }` |
+| **表头漏斗** | `NButton` 26 × 22、颜色 `textColor1`(比排序箭头深得多),悬停 / 面板打开整个图标变深 → **原生按钮 22 × 22、闲置色 = 表头图标色(与排序箭头同灰)、悬停 / 打开只加底色、已筛选才变主色** | 无(B12 的拖拽下限按 22px 计算) |
+| **过滤列标题** | 列被拖窄时标题折成两行(表头被撑高、图标被挤歪)→ **标题单行、放不下省略**(漏斗和箭头始终完整)。DOM:标题文字多包了一层 `span.smart-table-th-text`;只有排序箭头(没有过滤)的表头不变 | 宿主 CSS `.smart-table .smart-table-th-text { white-space: normal; overflow: visible }` |
+| **单选过滤列**(`filter: { multiple: false }`) | 用复选框模拟单选 → **官方 `NRadio`**(与官方 `NDataTable` 的单选过滤一致) | 无 |
+| **列设置** | 允许把列全部取消(表头只剩勾选 / 操作列)→ **只剩一列可见时那一列的勾选框禁用**;`useColumns().toggleShow` 同样拒绝隐藏最后一个显示的列(返回 `false`) | 无(没有数据列的表格没有意义) |
+| **搜索区「展开 / 收起」**(缺陷修复) | 文字按钮比同排「搜索 / 重置」上移 6px、矮 20px → **同高、垂直居中** | 无(缺陷) |
 
 ### 缺陷修复(C 级)
 
@@ -7022,13 +11240,14 @@ Expected: 输出 `v3.0.0-beta.1`;`package.json` 与 `package-lock.json` 的 `ver
 
 - **多列排序**:列上写官方 `sorter: { multiple: n }`(**数值大者优先,与点击顺序无关**)。远程参数:单列不变;多列仍带最高优先级列的 `sortField` / `sortOrder`,**另加 `sorts: [{ field, order }…]`**(`order` 为 `'asc' | 'desc'`)。实例方法 `sort(columnKey?, order = 'ascend')`、`clearSorter()`(沿用官方 `DataTableInst` 的签名:不传 `columnKey` = `clearSorter()`;会通知宿主的 `onUpdate:sorter`,载荷形状与官方一致)。排序态不持久化。
 - **`FilterAction` 由 8 个扩到 15 个**:新增 `isNull` `isNotNull` `like` `startsWith` `endsWith` `in` `notIn`。**列头面板的默认可选操作符不变**,只有宿主在列上显式写 `filter.actions` 时才会出现这些操作符,所以后端只会在宿主显式开启后才收到它们。语义:`isNull`/`isNotNull` 不需要值(空 = `null`/`undefined`/空白串/空数组,`0`/`false` 不算空;**值为空也不会被当成「没填」丢弃**);`startsWith`/`endsWith` 忽略大小写;`like` 是 SQL `LIKE`(`%` 任意长度、`_` 单字符,整串匹配、忽略大小写);`in`/`notIn` 的值是数组;**未知操作符一律按不匹配处理(fail-closed)**。**`in` 经勾选面板回写会变成若干 `equal` 取「或」——语义相同、序列化形状不同。** 新增导出:`NO_VALUE_ACTIONS`、`isValuelessAction`、`actionValueKind`、`isOptionsRepresentable`。
-- **`filterChips`**:已生效条件 chips(默认 `false`):点击重开该列面板、× 删一条、超一行折成 `+N`、行末「清除全部 / 恢复默认」(有列声明了 `defaultValue` 时是后者,语义不变);过滤态里有、列声明里已没有的键也会显示(点击不开面板,× 可清)。
+- **`filterChips`**:已生效条件 chips(默认 `false`):点击重开该列面板、× 删一条、超一行折成 `+N`、行末按钮紧跟 chips:有列声明了 `defaultValue` 的表,过滤态**偏离默认**时出现「恢复默认」(语义不变);没有默认值的表,**≥ 2 个 chip** 时出现「清除全部」;过滤态里有、列声明里已没有的键也会显示(点击不开面板,× 可清)。
 - **`toolbar.more`**:「更多」菜单(官方 `NDropdown` 的 `options` 原样透传),选中后发 `moreSelect(key, option)` 事件;不传 / 空数组 / 只有分隔线时不显示。库不内置导出 / 导入。
 - **`fillHeight`**(默认 `false`):官方 `flex-height` + `virtual-scroll` + `min-row-height` 三件套:表体在卡片内滚动、分页条贴底、每页 100 / 1000 行时 DOM 里只有十几行。**父容器必须有确定高度**(`height: 600px` / `calc(100vh - …)` / 定高的 flex 列),否则表体塌成 0(库带了 `min-height: 160` 兜底);`min-row-height` 随密度取 40(紧凑)/ 48(舒适),宿主改了 `themeOverrides` 导致行高变化时,在 `<SmartTable>` 上写官方的 `min-row-height` 覆盖(宿主 attrs 优先)。**开启时忽略宿主传的 `max-height`(表体高度由父容器决定),并在控制台警告一次。****不开时**:点翻页 / 改每页条数后,若卡片顶部已滚出视口上沿,自动滚回卡片顶部(只在需要时滚)。
 - **全局 `defaultPageSize`**:`createSmartTableDefaults({ defaultPageSize })`(纯新增,优先级见 B1)。
 - **`cardProps`**:库渲染的卡片(表格卡片、模式 1 的搜索卡片)的官方 NCard 属性,合并在库默认 `size="small"` + 16px 内边距覆盖之后;`themeOverrides` 逐键合并。
 - **`zhCNLabels`**:完整的中文 labels(含 2.1.1 已有的键与 3.0 新增的键),纯数据零依赖,中文宿主直接 `:labels="zhCNLabels"`。**3.0 新增的 label 键全部可选**,2.1.1 宿主写的完整 labels 对象不会报类型错误,缺的键取英文默认。
-- 新 labels:`more`、`filterActiveCount`、`filterAddCondition`、`filterRemoveCondition`、`filterLogicAnd`、`filterLogicOr`、`filterAdvanced`、`filterSimple`、`filterClearAll`、`filterRestoreDefault`、`filterIsNull`、`filterIsNotNull`、`filterLike`、`filterStartsWith`、`filterEndsWith`、`filterIn`、`filterNotIn`、`filterNoValue`。
+- 新 labels:`more`、`filterActiveCount`、`filterAddCondition`、`filterRemoveCondition`、`filterLogicAnd`、`filterLogicOr`、`filterAdvanced`、`filterSimple`、`filterClearAll`、`filterRestoreDefault`、`filterIsNull`、`filterIsNotNull`、`filterLike`、`filterStartsWith`、`filterEndsWith`、`filterIn`、`filterNotIn`、`filterNoValue`、`filterConditionLead`、`filterCannotCollapse`(后两个是列头面板里的「条件」引导标签与「含勾选无法表达的条件」提示)。
+- **`SmartTableProps` 补上 `rowDraggable` / `dragHandle`**(`SmartTable` 一直有这两个 prop,导出的类型里漏了,宿主按类型写 props 对象会报多余属性);`useColumns().toggleShow` 现在返回 `boolean`(是否生效)。
 - 新类型导出:`SortItem`、`ToolbarMoreOption`、`ActionValueKind`;`saveState` 的 `density` 形参放宽成 `Density | undefined`(`undefined` = 不写该字段,纯放宽)。
 
 ### 类型层面变更
@@ -7094,6 +11313,7 @@ Expected: 两个文件都有改动,行数相近;`grep -nE "pageSize\"?: 10\b|\[1
 - 漏斗 Tab 可聚焦(2.1.1 里是 `:focusable="false"`)、面板键盘 / ARIA 的实际行为(下拉展开时 Esc 只收下拉、自定义面板不自动聚焦,但面板打开时 Esc 会关,焦点在漏斗上也行);
 - `sort()` / `clearSorter()` 的签名与转发行为;`defaultSortOrder` 只在首次 setup 读一次;
 - `useSmartTable` 这个无 UI 的导出 hook 的默认 `defaultPageSize` 仍是 10,不随 B1 改变;
+- 对齐设计原型(Task 13b–13g)落地的数值:工具栏标题 500 / `textColor1`、业务组 8 / 图标组 4 / 组间 12、图标按钮 16px、漏斗 22 × 22 与灰色、角标绝对定位、列头面板的 4 列网格(56 / 112 / 1fr / 28)与「条件」/ 且或下拉首列、chips 22px 行高与行末按钮规则、`clampShift` 的 8px 边距、列设置勾选框禁用;规格 §5.2 / §5.3 / §5.7 里写的数字与实现不一致处以实现为准回写;
 - 文件头部「状态」一行:设计定稿;**P0 已按本计划实现**,`3.0.0-beta.1` 待发布;P1 / P2 另出计划。
 
 - [ ] **Step 5: 最终验证(要贴真实输出)**
@@ -7107,7 +11327,7 @@ git check-ignore dist
 git status --short
 ```
 Expected:
-- `npm test`:全部通过,`Test Files  N passed (N)`、`Tests  M passed (M)`(Task 14 不加测试,等于 Task 13 的累计:`Test Files  20 passed (20)`、`Tests  336 passed (336)`;**把真实数字写进最终报告**)。
+- `npm test`:全部通过,`Test Files  N passed (N)`、`Tests  M passed (M)`(Task 14 不加测试,等于 Task 13g 的累计:`Test Files  24 passed (24)`、`Tests  404 passed (404)`;**把真实数字写进最终报告**)。
 - `npm run typecheck`:无输出。
 - `npm run build`:构建成功,并且 d.ts 生成**没有类型错误**(`vite.config.ts` 配置了 `afterDiagnostic`,有错会让构建失败)。
 - `git check-ignore dist`:输出 `dist`(被忽略,**不要提交构建产物**)。若没有输出,说明 `dist/` 被跟踪了——停下来问用户再决定,不要自行提交。
@@ -7164,3 +11384,12 @@ git commit -m "chore: 3.0.0-beta.1 版本号、CHANGELOG 与 README;回写规格
 | 窄档搜索「输入框 + 筛选抽屉」(2.6a) | **P1** | 随模式 2 |
 | P1:模式 2 UI、`#batch`、放大、把手视觉(高度 70%、热区 11px / 触屏 24px、引导线、150ms 吞 click、拖动收起气泡)、B12 后半 | **不在本计划** | 另出 `…-v3-p1.md` |
 | P2:`cardOnNarrow` | **不在本计划** | 另出 `…-v3-p2.md` |
+| L0-1 / L0-2 工具栏标题、分组与间距、「更多」medium、图标 16px | 13c | 原型 `.st-title` / `.tb-actions` / `.tb-icons` / `.tb-right`;2.1.1 外观变化 → CHANGELOG「外观调整」 |
+| L0-7 搜索区「展开」垂直居中 | 13c | 缺陷修复味道;`n-space align="center"` + 文字按钮高度 / 内边距 |
+| L0-3 / L0-4 漏斗 22px、灰、绝对定位角标;过滤列标题单行省略 | 13d | G6;B12 的 102 / 123 按 22px |
+| L0-5 列头面板排布、单选过滤 NRadio | 13e | 原型 `.hpop`;官方 `FilterMenu.mjs:118-141`;新增可选 labels `filterConditionLead` / `filterCannotCollapse` |
+| L0-9 面板夹进视口 | 13e | `clampShift`;窄档抽屉仍 **P2** |
+| L0-6 chips 外观与行末按钮规则 | 13f | `filtersAtDefaults`;原型 `hfClearShown` |
+| N11 列设置至少保留一列;`SmartTableProps` 补 `rowDraggable` / `dragHandle` | 13g | 原型第 1 批:勾选框禁用;`toggleShow` 兜底 |
+| 原型对照页 `/prototype.html` | 13b | 之后逐项对比的工具;库做不到的留空 |
+| L0-8 窄档分页项 40px | **P2** | 随 `cardOnNarrow` 的窄档尺寸,不在本计划 |

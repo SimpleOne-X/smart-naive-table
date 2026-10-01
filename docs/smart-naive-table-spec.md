@@ -2,7 +2,7 @@
 
 > **这份文档只写「当前结论」**:要做什么、默认值、API、落地必须满足的要求、验证状态。不含推翻过程。**本文描述的是 P0 落地后的目标状态**(含 2026-09-30 第二轮评审 D1–D13 的全部决定)。
 > 决策过程、备选方案与理由见 [`smart-naive-table-design.md`](./smart-naive-table-design.md)(下称「设计文档」,括号里的 `x.y` 指它的小节;第二轮评审见其第 10 节)。**两份冲突时以本文为准,并回去修正设计文档。**
-> 状态:设计定稿,`src/` 尚未改动。P0 实现计划见 [`superpowers/plans/2026-09-30-smart-table-v3-p0.md`](./superpowers/plans/2026-09-30-smart-table-v3-p0.md)(按第二轮评审修订中,**与本文冲突处以本文为准**);P1 / P2 计划未出。基线库版本 2.1.1,目标 **3.0.0**(已定,设计文档 8.4)。
+> 状态:设计定稿,`src/` 尚未改动。P0 实现计划见 [`superpowers/plans/2026-09-30-smart-table-v3-p0.md`](./superpowers/plans/2026-09-30-smart-table-v3-p0.md)(按第二轮评审修订中,**与本文冲突处以本文为准**);P1 / P2 计划未出。基线库版本 2.1.1,目标 **3.0.0**(已定,设计文档 8.4)。**对齐阶段**:库的外观要与设计原型 `docs/smart-naive-table-design.html` 一模一样(用户目标 G0;原则 G3:外观以原型为准改库、功能取并集、与官方冲突改原型);P0 里属于「库实现与原型外观不一致」的项由计划 Task 13b–13g 落地,逐项对比工具是 `/prototype.html`(真实库复刻原型模块 1–4,不进发布包)。
 > 优先级:**P0** 阻塞 `3.0.0-beta.1`;**P1** beta 期间补齐、正式版前必须齐;**P2** 建议推到 3.1(设计文档 8.5)。
 > spike S1–S4 已于 2026-09-30 完成(实测与代码见设计文档 9.6 与 `docs/spike/s5`–`s8`);本文里依赖它们的机制细节已按实测定稿,不再有待定占位。
 
@@ -35,6 +35,23 @@
 | B11 | 卡片内边距 | `size="medium"` 内容区 **20 / 24 / 20**(上 / 左右 / 下;无 header 的卡片内容 `padding-top` 取 `--n-padding-bottom`,`card/src/styles/index.cssr.mjs:79-80`)→ **四边 16px**。2.1.1 库里**没有**窄档 12/16(那是原型样式) | `cardProps: { size: 'medium' }`(§4) | P0 | 5.4 |
 | B12 | 列宽拖拽下限(只影响开了 `resizable` 的用户) | 固定 60px → 带图标的列取 `max(60, 图标 + 标题最小宽)`(可排序列约 123、仅可过滤列约 102;按 §5.7 的图标布局算)。**前半(下限)P0**;**后半**(表头 `th` 改 `overflow:visible` + 递减 `z-index`、把手骑线,**要在带 `fixed` 列的表上再验证**)归 **P1**,随把手视觉任务(§5.6) | 无 | P0 / P1 | 3.11 |
 
+### 1.1 外观对齐(对齐设计原型;不占 B 编号,同样进 CHANGELOG「外观调整」)
+
+计划 Task 13c–13g 把库的外观对齐设计原型。**改变了 2.1.1 已有外观 / 行为的 8 项**如下(每项带回退方式;chips、「更多」、角标等是 P0 新增,不算变更):
+
+| 变更 | 旧 → 新 | 回退方式 | P | 落点 |
+|---|---|---|---|---|
+| 卡片标题 | 600 / `textColor2` → **500(`fontWeightStrong`)/ `textColor1`** | `#title` 插槽里自己包 `<span style="font-weight: 600">` | P0 | §5.2 |
+| 工具栏间距 | 全部 4px → **业务组 8 / 图标组 4 / 组间 12** | 业务组内宿主用 `<n-space :size="4">`;组间 12 无 | P0 | §5.2 |
+| 内置图标按钮的图标 | 18px → **16px** | 宿主 CSS `--n-icon-size: 18px !important` | P0 | §5.2 |
+| 表头漏斗 | `NButton` 26 × 22、`textColor1`、悬停 / 打开整个图标变深 → **原生按钮 22 × 22、闲置灰(`thIconColor`)、悬停 / 打开只加底色、已筛选主色** | 无 | P0 | §5.3 |
+| 过滤列标题 | 拖窄时折行撑高表头 → **单行、放不下省略** | 宿主 CSS `.smart-table-th-text { white-space: normal; overflow: visible }` | P0 | §5.3 / §5.7 |
+| 单选过滤列(`multiple: false`) | 复选框模拟 → **官方 `NRadio`** | 无 | P0 | §5.3 |
+| 列设置 | 可全部取消 → **只剩一列可见时那一列勾选框禁用**,`toggleShow` 兜底拒绝 | 无 | P0 | §5.2 |
+| 搜索区「展开 / 收起」(缺陷修复) | 上移 6px、矮 20px → **同排居中同高** | 无 | P0 | §5.1 |
+
+**不做**:L0-8 窄档分页项 40px(归 P2,随 `cardOnNarrow` 的窄档尺寸);窄档抽屉 / 卡片 / 「操作 ▾」(P2);模式 2、批量栏、放大、把手视觉(P1)。
+
 ## 2 缺陷修复(C 级,共 5 项:C1、C2、C3、C5、C6,全部 P0;每个**先写复现测试,再修**)
 
 > C6 是 spike 之后补登记的(第二轮评审 E5)。C4(`activeConditions` 丢弃无值算子)**不在此列**:2.1.1 的 `FilterAction` 里没有 `isNull`,这个缺陷在 2.1.1 不可达,改记为 §3 的「新增」(无值算子是 15 个操作符的前置改动)。编号 C4 空缺,不复用。
@@ -57,12 +74,13 @@
 | 新导出(`src/index.ts`) | `NO_VALUE_ACTIONS`、`isValuelessAction`、`actionValueKind`、`isOptionsRepresentable`、`zhCNLabels`;须在对应任务里**真正加进 `index.ts`**,CHANGELOG 的「新增导出」才成立 | P0 | 10 |
 | 已生效条件 chips | `filterChips?: boolean`(P0 默认 `false`,显式开启才有;「模式 2 默认开」是 B10,随 P1);`NTag`,超一行折成「+N」 | P0 | 3.2 |
 | 「更多」菜单 | `toolbar.more?: DropdownMixedOption[]`(官方 `NDropdown` options 透传);事件 `moreSelect(key, option)`;不传 / 空数组 / 只有分隔线不出现 | P0 | 7.3 |
-| 新 labels | **新增键全部声明为可选**(`?:`),2.1.1 已有的键保持必填;`defaultLabels` 给出全部键的英文默认,库内部合并后用 `Required<SmartTableLabels>`;新增导出 **`zhCNLabels`**(完整中文,含 2.1.1 已有键与新键,零依赖),README 中文示例改用它。**P0 新增的 18 个键**(与计划各 Task 一致):操作符名 `filterIsNull` / `filterIsNotNull` / `filterLike` / `filterStartsWith` / `filterEndsWith` / `filterIn` / `filterNotIn`、无值占位 `filterNoValue`;「更多」`more`;漏斗角标 `filterActiveCount`(含 `{n}`);多条件面板 `filterAddCondition` / `filterRemoveCondition` / `filterLogicAnd` / `filterLogicOr` / `filterAdvanced` / `filterSimple`;chips `filterClearAll` / `filterRestoreDefault`。**不新增 `pageSizeSuffix`**(每页条数选择器用官方嵌套,文案自动跟 locale)。面板按钮沿用已有的 `filterConfirm` / `filterReset`,面板 `aria-label` 用列标题 + 已有的 `filter`。P1 的 labels(批量栏 `selectedCount` / `clearSelection`、放大 / 还原等)由 P1 计划补 | P0 | 3.3 / 2.12 / 7.2 / 7.3 / 10 |
+| 新 labels | **新增键全部声明为可选**(`?:`),2.1.1 已有的键保持必填;`defaultLabels` 给出全部键的英文默认,库内部合并后用 `Required<SmartTableLabels>`;新增导出 **`zhCNLabels`**(完整中文,含 2.1.1 已有键与新键,零依赖),README 中文示例改用它。**P0 新增的 20 个键**(与计划各 Task 一致):操作符名 `filterIsNull` / `filterIsNotNull` / `filterLike` / `filterStartsWith` / `filterEndsWith` / `filterIn` / `filterNotIn`、无值占位 `filterNoValue`;「更多」`more`;漏斗角标 `filterActiveCount`(含 `{n}`);多条件面板 `filterAddCondition` / `filterRemoveCondition` / `filterLogicAnd` / `filterLogicOr` / `filterAdvanced` / `filterSimple`;chips `filterClearAll` / `filterRestoreDefault`;列头面板 `filterConditionLead`(第 1 行条件前的「条件」引导标签)/ `filterCannotCollapse`(高级条件含勾选表达不了的条件时「返回」禁用的提示)。**不新增 `pageSizeSuffix`**(每页条数选择器用官方嵌套,文案自动跟 locale)。面板按钮沿用已有的 `filterConfirm` / `filterReset`,面板 `aria-label` 用列标题 + 已有的 `filter`。P1 的 labels(批量栏 `selectedCount` / `clearSelection`、放大 / 还原等)由 P1 计划补 | P0 | 3.3 / 2.12 / 7.2 / 7.3 / 10 |
 | 全局默认页大小 | `SmartTableDefaults.defaultPageSize?: number`(纯新增,B1 的回退入口);`SmartTable` 的 `defaultPageSize` prop 的 Vue 默认值改为 `undefined`,在 computed 里解析(§5.5) | P0 | 10 |
 | 存储回退密度 | `loadState(key, fallbackDensity?)`(公开导出,签名向后兼容):存储里没有 density 字段时回退到 `fallbackDensity`(缺省仍是内置默认);`useColumns` 传宿主解析后的 `defaultDensity`。否则写死的回退值会盖过宿主值(B2) | P0 | 5.2 / 10 |
 | 卡片透传 | `cardProps?: Partial<CardProps>`,合并在库默认 `size="small"` + `themeOverrides` **之后**,作用于库渲染的所有卡片(表格卡片,以及模式 1 的搜索卡片;实现时核对 `SearchForm.vue:145` 的卡片从哪里拿配置)。B11 的回退入口 | P0 | 10 |
 | 撑满父容器高度 | `fillHeight?: boolean`,默认 false;内部映射官方 `flex-height`(`DataTable.d.ts:126`)+ `virtual-scroll` + `min-row-height`(= `ceil(真实行高)`:默认主题下紧凑 `small` 40 / 舒适 `medium` 48;官方默认 28 会让滚到底最后一行看不全;宿主 attrs 的 `minRowHeight` 优先),并传较小的官方 `min-height` 兜底(如 160)。根、卡片、卡片内容区、`NDataTable` 逐层列布局 `flex: 1 1 auto; min-height: 0`。`flex-height` 与 `virtual-scroll` **必须同时传**(只传后者不虚拟化)。**宿主须给根元素的父容器确定高度**(`height: 600px` / `calc(100vh - …)` / 自己是有定高的 flex 列),否则表体塌成 0(只有官方 `min-height` 能兜底)——文档写明 | **P0**(最小实现,原在 P1) | 2.11 / 9.6 / 10 |
 | 翻页后回到卡片顶部 | 不开 `fillHeight` 时:**点翻页的当下**(`onUpdatePage` / 跳转输入 / 页码点击的回调里,不等数据回来)判断——卡片顶部已在滚动容器上沿之上(`top < scroll-margin-top`,宿主的固定顶栏用 CSS `scroll-margin-top` 留位)才 `card.scrollIntoView({ block: 'start', behavior: 'instant' })`;卡片可见时不动。滚动容器要沿祖先找出实际的 `overflow: auto / scroll` 元素再比 `top`(宿主 `scroll-behavior: smooth` 下 `instant` 仍立即到位)。开了 `fillHeight` 不需要这段(表体在卡片内滚动,官方翻页回顶 `use-scroll.mjs:207`) | P0 | 9.6 / 10 |
+| 类型补全 | `SmartTableProps`(`types.ts`)补上 `rowDraggable?: boolean` / `dragHandle?: string`(`SmartTable.vue:84-85` 一直有这两个 prop,导出的类型里漏了,宿主按类型写 props 对象会报多余属性);`useColumns().toggleShow` 返回 `boolean`(是否生效,§5.2 列设置) | P0 | — |
 | 触屏兜底 | `@media (hover: none)`(与设计原型一致;**不加** `any-pointer: coarse`,带触屏的 Windows 笔记本它也为 true,会让鼠标用户的图标常显):未激活箭头 / 漏斗 `opacity .5` 常驻(**P0 只做图标淡显**)。触屏 24px 拖拽热区归 P1(§5.6) | P0 | 3.9 |
 | 模式 2 条件构造器 | `search: { container: 'table' }`;窄档「输入框 + 筛选抽屉」(2.6a) | P1 | 1 / 2.6a |
 | 批量栏 | 插槽 `#batch="{ checkedRowKeys, clear }"`;「已选 N 项 / 取消选择」库内置;**三个条件全满足才出现**:有 selection 列、传了插槽、宿主绑了 `checked-row-keys`(没绑就没有批量栏);不暴露 `checkedRows` | P1 | 2.5a / 2.12 |
@@ -83,14 +101,18 @@
 - 多条件:同字段多条可「且 / 或」(`FilterValue.logic`,**每字段一个值**,改任一条联动全部);**跨字段固定「且」**。
 - 比较符按字段类型(text / number / date / select)分发,换字段后不再适用要自动重置;无值算子(`isNull` / `isNotNull`)集中导出常量,`activeConditions`、面板、构造器、chips 都读它。
 - 模式 2 宽档严格 1:1(左半搜索、右半按钮 + 图标);值输入框最小 100px。
-- 「搜索」是次级(描边)按钮,回车也触发;主色实心留给宿主的「新增」。窄档无「搜索」按钮(回车,`enterkeyhint: 'search'`);枚举字段选完即生效。
+- 「搜索」是次级(描边)按钮,回车也触发;主色实心留给宿主的「新增」。
+- **操作区对齐(L0-7)**:卡片内「搜索 / 重置 / 展开 · 收起」同排垂直居中、同高(`n-space align="center"`);官方文字按钮的 `--n-height` 是 `initial`(没有固定高度和内边距,实测 28 × 14,会比同排 34px 的按钮上移 6px),所以「展开」按钮自己取主题 `heightMedium`、左右内边距 4px。窄档无「搜索」按钮(回车,`enterkeyhint: 'search'`);枚举字段选完即生效。
 - 模式 2 的数据通路(只写 `search` 的列如何派生 `FilterDef`、请求形状、`container` × `layout` 优先级)见 §10 未决清单。
 
 ### 5.2 工具栏
 - 顺序:标题 · (搜索区)· **宿主业务按钮(`#toolbar-right`)· 「更多」** · 放大(P1)· 刷新 · 列设置。标题始终保留(超宽省略)。「更多」放在业务按钮组末尾、内置图标之前(已定)。
+- **标题(L0-1)**:16px、`fontWeightStrong`(500)、`textColor1`(与官方卡片标题一致),走 `useThemeVars()`(库自己的元素不依赖 `NCard` 的 `--n-*` 变量)。2.1.1 是 600 / `textColor2`(§1.1)。
+- **分组与间距(L0-2)**:右侧两组并排:**业务组**(宿主 `#toolbar-right` 的按钮 + 「更多」,间距 8)与**图标组**(刷新 / 密度 / 列设置 `#settings`,间距 4),两组之间 12(原型 `.tb-actions` / `.tb-icons` / `.tb-right`);空组不画(否则空容器多一个 12px 间距)。图标按钮 28px 圆形、**图标 16px**(官方 small 圆形按钮默认 18px,经 `abstract` 的 `NConfigProvider` 覆盖 `iconSizeSmall`,不多包 DOM,`#settings` 里的列设置按钮同样生效)。容器宽 390 / 560 / 720 / 1024 下工具栏 `scrollWidth ≤ clientWidth` 仍成立(实测 332 / 502 / 662 / 650)。
 - **刷新**:`toolbar.refresh !== false && isRemote`;静态模式不显示。
+- **列设置「至少保留一列」(N11)**:只剩一个已勾选的列时,那一列的勾选框**禁用**(原型第 1 批的做法,没有 toast / 提示文字);纯函数 `canHideColumn(items, key)`(只看设置里能管的列,`hideInSetting` 的列不算;已隐藏 / 不存在的键不受限)被 `ColumnSettings.vue`(禁用)与 `useColumns.toggleShow`(兜底拒绝,返回 `false`、状态不变;显示永远允许)共用。2.1.1 允许全部取消(§1.1)。
 - **密度按钮**:默认不显示(B3)。`defaultDensity` **响应式**;没有密度按钮时**忽略存储里的 density**(格式与 `VERSION` 不动),宿主的个人设置才生效。
-- **「更多」**(P0):文字按钮 + 下箭头,默认描边、永不主色;**不用「…」图标**(模式 2 条件行已有「»」叫「更多条件」)。菜单选项高 34px、选中后收起、Esc / 点外部收起、与放大 / 列设置气泡互斥;批量栏出现时随工具栏一起被替换。窄档 44px 选项高归 P2。**库不内置导出 / 导入**(官方 `downloadCsv` 只导当前页,`keepOriginalData` 反而忽略过滤;官方 `getFilteredAndSortedData()`(`DataTable.mjs:281`)返回已过滤已排序的**全部行**,但远程模式库手里只有当前页,同样不等于「当前查询的全部结果」),只出菜单外壳。
+- **「更多」**(P0):文字按钮 + 下箭头(默认 medium 34px,与宿主业务按钮同高;chevron 12px、`iconColor`、右内边距 12px),默认描边、永不主色;**不用「…」图标**(模式 2 条件行已有「»」叫「更多条件」)。菜单选项高 34px、选中后收起、Esc / 点外部收起、与放大 / 列设置气泡互斥;批量栏出现时随工具栏一起被替换。窄档 44px 选项高归 P2。**库不内置导出 / 导入**(官方 `downloadCsv` 只导当前页,`keepOriginalData` 反而忽略过滤;官方 `getFilteredAndSortedData()`(`DataTable.mjs:281`)返回已过滤已排序的**全部行**,但远程模式库手里只有当前页,同样不等于「当前查询的全部结果」),只出菜单外壳。
 - **放大**(P1,`toolbar.maximize`):图标「四角括号」;`position: fixed` 铺满 + **`Teleport to="body"`**;层级 `z-index` **默认 1999**(低于 naive 浮层 2000+,所以列头气泡仍盖在它上面)且**必须可配置**(宿主顶栏可能更高;API 形态见 §10 未决)。图标:放大 = 括号向外,还原 = 向内。
 - **批量栏**(P1):原地替换工具栏那一行,与工具栏行**共用同一 `min-height`**(勾选不让表格跳动);勾选态读宿主绑的 `checked-row-keys`(库不持有)。
 - **对外图标**:只写文档、不加 API;宿主的自定义按钮放插槽里自己选图标。
@@ -99,18 +121,20 @@
 ### 5.3 过滤(列头漏斗)
 - **漏斗仍由库放在标题内**(`useColumns.ts:464`,DOM 与 2.1.1 一致);面板用官方 `NPopover`(`trigger: 'click'`、`placement: 'bottom'`)。窄容器换底部 `NDrawer`(气泡与抽屉同一份内容,只换容器)**归 P2**,P0 / P1 窄容器同样用 `NPopover`。
 - **点漏斗不触发排序**:官方有现成的跳过标记——`TableParts/Header.mjs:107-108` `if (happensIn(e, "dataTableFilter") || …) return`,漏斗触发器加 `data-data-table-filter` 属性即可(官方优先;spike S3 实测 sort=0,没有该属性则触发排序)。**去掉触发器的 `@click.stop`**:它会吞掉宿主挂在 `th` / 祖先上的 click 监听(实测 hostClicks=0),去掉后宿主的监听能收到漏斗点击——**这是行为变化,写进 CHANGELOG**。面板容器上的 `@click.stop`(只挡面板内部 click 冒泡)可保留。
-- 面板内容(条件列):「比较符 + 值 + 删除」行、「添加条件」(**上限 5 条**)、≥ 2 条才出现「且 / 或」;宽度 `min(400px, 100vw − 16px)`;底部「重置」(默认,**立即生效并关闭**,语义 = 恢复该列 `defaultValue`,无则清空,与现行 `ColumnFilter.vue` 的 `defaultValue ?? null` 一致)+「确认」(primary),文案**沿用已发布的 labels `filterReset` / `filterConfirm`,英文默认保持 `Reset` / `OK`**(官方 locale 的 `confirm` / `clear` 经公开 API 取不到:`useLocale` 只在内部 `_mixins` 导出),中文宿主用 `zhCNLabels`。面板内改的是**草稿**,确认才提交,Esc / 点外部丢弃;值输入回车 = 确认。**提交时丢弃「无值的有值类条件」**(只选了比较符没填值;无值算子放行);**换比较符后若值的形状不再适用(数组 / 标量 / 无值)清空值**,不做猜测性转换。
-- **options 列**:默认勾选;底部「高级条件」展开同一份多条件编辑。**不丢信息**:新增纯函数 `isOptionsRepresentable(value)`(`filter.ts`,可单测,从 `index.ts` 导出)——所有有效条件均为 `equal` 且(`logic === 'or'` 或仅一条),或恰好一条 `in`,才可用勾选无损表达;否则打开时自动展开高级条件原样显示。勾选形态提交写 `equal` 取「或」(序列化不变)。**一条 `in` 经勾选面板回写会变成若干 `equal` 取「或」**:语义相同、序列化形状变,CHANGELOG 必须写明。面板测试要含 `type: 'select'` 且值为 `isNull` 的用例。
+- 面板内容(条件列):每行 **4 列网格 `56px 112px 1fr 28px`(间距 8、行距 12)**:首列(**第 1 行是「条件」引导标签**,12px、`textColor3`、居中;**第 2 行起是且 / 或下拉**,选哪个都改整组的连接方式,取代行下方的分段按钮)、比较符、值、删除(删除列恒占位,所以 1 行与多行的值输入同宽);「添加条件」(**上限 5 条**;**官方 `NButton` small 档**文字按钮:高 28〔主题 `heightSmall`〕/ 字 14 / 内边距 0 10px / 图标 18,与同一面板里 small 的值控件一致〔`button/styles/_common.mjs`〕,带加号,**深色 `textColor2`,不是主色**;窄档抽屉的 large 档属 P2);面板 padding 0、正文 `12px 12px 0`、footer `padding: 8px 12px` + 上分隔线;宽度 `min(400px, 100vw − 16px)`;底部 `space-evenly` 的 tiny 按钮「重置」(默认,**立即生效并关闭**,语义 = 恢复该列 `defaultValue`,无则清空,与现行 `ColumnFilter.vue` 的 `defaultValue ?? null` 一致)+「确认」(primary),文案**沿用已发布的 labels `filterReset` / `filterConfirm`,英文默认保持 `Reset` / `OK`**(官方 locale 的 `confirm` / `clear` 经公开 API 取不到:`useLocale` 只在内部 `_mixins` 导出),中文宿主用 `zhCNLabels`。面板内改的是**草稿**,确认才提交,Esc / 点外部丢弃;值输入回车 = 确认。**提交时丢弃「无值的有值类条件」**(只选了比较符没填值;无值算子放行);**换比较符后若值的形状不再适用(数组 / 标量 / 无值)清空值**,不做猜测性转换。
+- **options 列**:默认勾选;底部「高级条件」展开同一份多条件编辑。**不丢信息**:新增纯函数 `isOptionsRepresentable(value)`(`filter.ts`,可单测,从 `index.ts` 导出)——所有有效条件均为 `equal` 且(`logic === 'or'` 或仅一条),或恰好一条 `in`,才可用勾选无损表达;否则打开时自动展开高级条件原样显示。勾选形态提交写 `equal` 取「或」(序列化不变)。**一条 `in` 经勾选面板回写会变成若干 `equal` 取「或」**:语义相同、序列化形状变,CHANGELOG 必须写明。面板测试要含 `type: 'select'` 且值为 `isNull` 的用例。**排布(L0-5)**:选项间距 12(行高 22.4 → 间隔 34.4)、最高 240 滚动、面板最小宽 168;底部入口「高级条件 ▾」,展开后「返回列表 ▴」(靠右),高级条件含勾选表达不了的条件时「返回」禁用并给出原因提示(label `filterCannotCollapse`)。**单选列(`filter.multiple: false`)用官方 `NRadioGroup` / `NRadio`**(`HeaderButton/FilterMenu.mjs:118-141`;2.1.1 用复选框模拟),没有「全选」,已有 `equal` 条件时对应 radio 选中。
 - **键盘 / 焦点 / 可访问性**(真实 `NPopover` 不管键盘,设计文档 9.1;写法已由 spike S3 在真实浏览器实测,设计文档 9.6):
-  - 打开后焦点移到第一个可编辑控件;**宿主自定义面板(`def.render`)跳过自动聚焦**(不抢焦点),面板打开期间 Esc 仍关闭:焦点在面板内、或还停在漏斗按钮上都生效(**漏斗触发器在面板打开期间也处理 Esc**:关闭、丢草稿、焦点留在漏斗;否则焦点留在触发器时 keydown 到不了面板上的捕获监听)——CHANGELOG 写明(不是「行为不变」)。
+  - 打开后焦点移到**第一个可聚焦控件**(与原型第 1 批一致,不是值输入框);**宿主自定义面板(`def.render`)跳过自动聚焦**(不抢焦点),面板打开期间 Esc 仍关闭:焦点在面板内、或还停在漏斗按钮上都生效(**漏斗触发器在面板打开期间也处理 Esc**:关闭、丢草稿、焦点留在漏斗;否则焦点留在触发器时 keydown 到不了面板上的捕获监听)——CHANGELOG 写明(不是「行为不变」)。
   - 面板容器 `tabindex="-1"` 即可——鼠标点面板空白处天然聚焦容器,随后 Esc 正常(**不需要 mousedown 处理**);容器需要 `outline:none` 或自己的聚焦样式。不设 `tabindex` 时点空白后焦点落 body、Esc 无反应(实测)。
   - **面板内有展开的 `NSelect` / `NDatePicker` 下拉时,面板忽略 Esc,且 Esc 必须在 capture 阶段监听**(面板根上 `@keydown.capture`):官方这两者按 Esc 关自己的下拉时只调私有的 `markEventEffectPerformed`、不 `stopPropagation`(`select/src/Select.mjs:620-625`、`date-picker/src/DatePicker.mjs:320-331`),而冒泡阶段它们已先把自己关掉——实测「无条件 close」与「冒泡 + `@update:show` 展开标志」两种写法都会把整个面板关掉(草稿丢失),只有 capture 阶段 + 展开计数能做到「只关菜单、面板与草稿仍在」。展开计数用**计数器**(面板里多行、每行有 2 个下拉控件),在每个 `NSelect` / `NDatePicker`(含比较符下拉)上监听 `@update:show`,面板开合时清零;计数 > 0 时放行,否则 `stopPropagation` + 关闭。teleport 出去的日历面板内部有焦点时按 Esc 什么都不发生(官方行为,不会误关面板)。
   - 轻量焦点循环:Tab 离开最后一个可聚焦控件回到第一个,Shift+Tab 反之(`role="dialog"` 的常规做法;不丢草稿)。
   - Esc(无下拉展开时)关闭、丢草稿、焦点还给漏斗;漏斗触发器上的 Esc 同样处理(面板开着时),覆盖自定义面板焦点仍在漏斗的情形。
   - 漏斗按钮 `aria-haspopup="dialog"`、`aria-expanded`、`aria-label`(含「已筛选 N 条」);面板容器 `role="dialog"` + `aria-label`(列标题 + labels 文案,**渲染期求值**)。均走 labels。
   - 必补测试:「select 展开时 Esc 只关菜单、面板仍在、草稿仍在」「Tab / Shift+Tab 循环」。
+- **不出屏(L0-9)**:`NPopover placement="bottom"` 把面板居中在漏斗上,触发器靠近视口边缘时(390 宽下 400px 的面板左缘 `x = −69`)会被裁出屏幕;公开的 `NPopover` 没有夹取开关 → 量 `NPopover` 的定位容器(vueuc `.v-binder-follower-content`:只有定位平移、**没有进场动画的缩放**,量面板自己会量错)的位置,用纯函数 `clampShift(left, width, viewport, margin = 8)` 算水平平移加在面板自己的 `transform` 上;窗口缩放 / 任意祖先滚动(`capture`)时重算;放不下(比视口 − 16 还宽)时贴左边距。**窄档改用底部抽屉仍归 P2**,在那之前窄容器至少不裁内容。
+- **漏斗按钮(L0-3 / L0-4,G6)**:原生 `<button>` **22 × 22**、图标 15px(B12 的下限 102 / 123 按它算);闲置色 = `thIconColor`(与排序箭头同灰),悬停 / 面板打开**只加** `thButtonColorHover` 底(不变色),已筛选才变 `thIconColorActive`;颜色 / 底色 / 圆角取表头子树里的 `--n-th-icon-color` / `--n-th-button-color-hover` / `--n-th-icon-color-active` / `--n-border-radius`。**条数角标绝对定位**(`top: -3px; right: -5px; min-width: 12px; height: 12px; font: 500 10px/12px`),在按钮里面、不占宽、不撑宽 / 撑高表头,`aria-hidden`。**过滤列的标题文字**单独包一层 `span.smart-table-th-text`(`useColumns`),单行、放不下省略;列被拖到 B12 的下限时「物料编码」这类 4 字标题只剩 48px,折成两行会把表头从 39.4 撑到 61.8px、图标被挤歪——B12 的下限保证的是图标簇放得下,标题让位。
 - 漏斗激活态 = 库自己的 `isFilterActive`,颜色取官方主题变量 `thIconColorActive`;同列 > 1 条加条数角标,**样式 = 纯数字**,文字色取 `useThemeVars().baseColor`(亮 `#FFF` / 暗 `#000`)经 `:style` 绑定(写死 `#fff` 暗色下叠在主色 `#63e2b7` 上约 1.4:1,不可读)。**不用**官方 `renderFilterMenu`:用 `renderFilter` 时触发器虽不带绝对定位 class(`HeaderButton/FilterButton.mjs:112-121`),但 DOM 顺序仍是「标题容器(含排序箭头)→ FilterButton」(`TableParts/Header.mjs:219-226`),做不出「标题 → 漏斗 → 箭头」(设计文档 3.10)。
-- **chips**(`filterChips`,P0 默认关):`NTag` `round` `closable` `size="small"`;点击重开对应列面板,× 删这一条;行末按钮:表里有任何列声明 `defaultValue` 时「恢复默认」(`clearFilters()`,语义不变),否则「清除全部」;超过一行折成「+N」,点它在气泡里展开,`+N` 让位后**重测一次**,避免 `+N` 自己折到第二行;**连「首个 chip + `+N`」都放不下时只显示 `+N`**(全部 chip 进气泡),`+N` 始终在第一行;同字段第 2 条起「或」加前缀。chips 是工具栏下方独立一行,批量栏只替换工具栏那一行。**孤儿键**:state 里有、列声明里已不存在的过滤键也要生成 chip(标题回退为 key,点击不开面板,× 可清;否则它仍进远程请求参数却看不见也清不掉),「清除全部」同样渲染。chips `role="button"`、`tabindex="0"`,Enter / Space 等同点击。需补 SmartTable 层测试。
+- **chips**(`filterChips`,P0 默认关):`NTag` `round` `closable` `size="small"` **`type="primary"`**(22px 高、间距 `8px 12px`、行下方 12px;孤儿 chip 与「+N」保持默认灰);点击重开对应列面板,× 删这一条;**行末按钮紧跟在 chips 后面**(不靠最右):表里有列声明了生效的 `defaultValue` 时,**只在过滤态偏离默认时**出现「恢复默认」(`clearFilters()`,语义不变;纯函数 `filtersAtDefaults(defs, state)` 逐列比较,只比生效的条件,孤儿键有生效条件算偏离),没有默认值时 **≥ 2 个 chip** 才出现「清除全部」(1 个 chip 自己的 × 就够了);超过一行折成「+N」,点它在气泡里展开,`+N` 让位后**重测一次**,避免 `+N` 自己折到第二行;**连「首个 chip + `+N`」都放不下时只显示 `+N`**(全部 chip 进气泡),`+N` 始终在第一行;同字段第 2 条起「或」加前缀。chips 是工具栏下方独立一行,批量栏只替换工具栏那一行。**孤儿键**:state 里有、列声明里已不存在的过滤键也要生成 chip(标题回退为 key,点击不开面板,× 可清;否则它仍进远程请求参数却看不见也清不掉),「清除全部」同样渲染。chips `role="button"`、`tabindex="0"`,Enter / Space 等同点击。需补 SmartTable 层测试。
 - `filterSerializer` 默认格式不变(`{ filters: [{ field, logic, conditions }] }`);新 action 取值**只在宿主显式开启(列上 `filter.actions`、模式 2 构造器)时才会出现**,老配置的后端不会收到(D1);保留自有 `setFilter(key, FilterValue)`(官方 `filters()` 表达不了条件)。
 - 筛选后分页:宿主显式传官方 `paginationBehaviorOnFilter` 就照官方;没传保持库现状(远程回第 1 页;**本地模式 / 静态数据等同官方夹页 = `'current'`**)。理由见 B9。
 
@@ -157,7 +181,7 @@
 
 ### 5.7 密度与表头图标
 - 默认 `compact`,映射官方 `size`:舒适 = `medium`、紧凑 = `small`。行高舒适 45 / 紧凑 37。
-- 图标顺序 **标题 → 漏斗 → 排序箭头**。**P0**:间距 8 / 6px 与表头右内边距 16px(纯 CSS;B12 的下限 93 / 102 / 123 就是按这个布局算的。现状是漏斗 `margin-left:4px`、`.smart-table-th gap:2px`);闲置 `opacity: 0`(仍占位,不回流),悬停该列表头 / `:focus-within` 淡入(0.15s);常驻例外:正在排序的列箭头、已筛选的列漏斗、面板打开的那一列漏斗。用官方类名 `.n-data-table-th .n-data-table-sorter` 写 CSS 即可(已验证)。
+- 图标顺序 **标题 → 漏斗 → 排序箭头**;漏斗按钮 22 × 22(§5.3)。**P0**:间距 8 / 6px 与表头右内边距 16px(纯 CSS;B12 的下限 93 / 102 / 123 就是按这个布局算的。现状是漏斗 `margin-left:4px`、`.smart-table-th gap:2px`);闲置 `opacity: 0`(仍占位,不回流),悬停该列表头 / `:focus-within` 淡入(0.15s);常驻例外:正在排序的列箭头、已筛选的列漏斗、面板打开的那一列漏斗。用官方类名 `.n-data-table-th .n-data-table-sorter` 写 CSS 即可(已验证)。
 - 落地 CSS 要求:① 常驻例外的选择器优先级**不得低于**隐藏规则(例:隐藏规则 `.smart-table :deep(.n-data-table-th .smart-table-filter-trigger)` 是 (0,4,0),例外规则要写成 `.smart-table :deep(.n-data-table-th .smart-table-filter-trigger--active)` 同级或更高,否则已筛选 / 面板打开的漏斗不常驻);触屏兜底里同理;② 排序箭头的过渡写成 `transition: opacity .15s, color .3s var(--n-bezier)`(只写 `opacity` 会覆盖 Naive 自带的 `color` 过渡)。
 
 ### 5.8 窄档卡片(P2,`cardOnNarrow`)
@@ -197,6 +221,7 @@
    - **B8**:表头 DOM 不再有占位列;**吸收余量的那一列没有拖拽把手**(新代价;**即使还没拖过列宽、表格还没钉住时也没有**);**给列写 `resizable: false` 可让它不参与吸收**(吸收列顺延到前一列);
    - **B4**:simple 下 `showQuickJumper` / `pageSlot` 不再生效;每页条数选择器是官方嵌套 `NPagination`(文案跟 `NConfigProvider` locale);
    - **C6**:宿主 `@update:sorter` 此前点一次表头被调两次,现在只调一次;
+   - **外观调整**(§1.1,对齐设计原型;2.1.1 已有外观的变化,每项带回退方式):卡片标题 600 → 500 / `textColor2` → `textColor1`、工具栏间距 4 → 业务组 8 / 图标组 4 / 组间 12、内置图标 18 → 16px、漏斗 26 × 22 深色 → 22 × 22 灰色、过滤列标题折行 → 单行省略、单选过滤复选框 → `NRadio`、列设置最后一列勾选框禁用、搜索区「展开」居中(缺陷修复);B7 一行补「面板排布对齐原型、窄容器不出屏」;新增节补 `filterConditionLead` / `filterCannotCollapse` 两个 label 与 `SmartTableProps` 的 `rowDraggable` / `dragHandle`;
    - **漏斗点击**:去掉触发器的 `@click.stop` 后,宿主挂在表头祖先上的 click 监听现在能收到漏斗点击(行为变化);
    - `fillHeight` 文档写明「父容器必须有确定高度」,且开启时忽略并警告宿主的 `max-height`;
    - 「新增」一节含原 C4(无值算子);新增导出(`NO_VALUE_ACTIONS`、`isValuelessAction`、`actionValueKind`、`isOptionsRepresentable`、`zhCNLabels`)须与 `index.ts` 一致;新增 `SmartTableDefaults.defaultPageSize`、`cardProps`、`fillHeight`;
@@ -213,6 +238,7 @@
 - 列宽(真实浏览器,**必须覆盖**):拖非吸收列、(吸收列无把手,确认不可拖)、隐藏最后一列、先拖 B 再让 B 成为吸收列(应重挂一次)、全部 fixed、含 `fixed:'right'` 操作列、未 fixed 且 `resizable:false` 的操作列;拖拽过程中其余列不动、被拖列 1:1 跟手、无溢出。
 - `fillHeight`:父容器定高下填满、分页条在底部可见、DOM 行数远小于每页行数、滚到底最后一行完整可见(`min-row-height` 取 `ceil(真实行高)`);不开时翻页回卡片顶部(只在卡片顶部已滚出视口时滚)。
 - 容器宽 390 / 560 / 720 / 1024 下工具栏 `scrollWidth ≤ clientWidth` 且控件 `right ≤ 内容区右边界`;分页在真实浏览器里渲染、选择器、翻页。
+- **对照原型(Task 13b–13g)**:`/prototype.html` 与原型 `design.html` 同视口(1440 × 900,浅 / 深)同一套 DOM 读数一致:工具栏(标题 `16px | 500 | rgb(31,34,37)`、更多 72 × 34、间距 8 / 12 / 4、图标 16px)、漏斗(22 × 22 / 15 / 灰 / 角标 12 × 12 在 `dx 15 / dy −3`)、列头面板(400 × 123 / 400 × 163、网格读数)、chips(22px、`56 × 22` 的清除按钮紧跟)、搜索区「展开」与同排居中、列设置只剩一列时勾选框禁用、390 宽面板 `left = 8` 不出屏;**扣掉原型 `.n-btn` 的 1px 真实边框造成的 2px 宽度差**(官方 `NButton` 的边框不占布局,按 G3 应改原型)。
 - 落地后**另建基于真实组件的视觉基线**(`docs/baseline/` 只是原型的)。
 
 ## 8 YAGNI —— 明确不做
@@ -229,6 +255,7 @@
 - 多条件面板(B7)在真实 `NPopover` 里的整体表现;「更多」菜单的方向键(依赖官方 `NDropdown` 的 `keyboard`,只确认属性存在);批量栏里「更多」不显示(只读了代码)。
 - 卡片模式(P2)、批量栏在真实 `NDataTable` 上(`fillHeight` 已由 S4 覆盖)。
 - B9 保持库现状(remote 回第 1 页,本地等同官方夹页),需在文档与 CHANGELOG 里写明。
+- **对照页宿主层暂未复刻原型第 1 批新增的场景**(属 G4 后续批次,**不在 P0 做**,另写「对齐补充计划」):序号列与固定列、语义色状态标签 / 金额两位小数千分位、搜索区的 `NDatePicker` 范围 / `NSwitch` / `search.render` 自定义控件与「默认本月」、「更多 → 导出」真下载 CSV、「我负责的」`#toolbar` 快捷过滤、负责人的 `filter.render` 自定义面板、删除的 `NPopconfirm`。
 
 ## 10 P1 未决清单(第二轮评审登记,本轮不解决,供 P1 计划用)
 
