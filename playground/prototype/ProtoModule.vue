@@ -30,16 +30,22 @@ const COLS = [
   { key: 'bizDate', label: '单据日期', w: 112 },
 ]
 
-/* ---- 原型 H_CFG:模块 3 = sorter: true(单列互斥);模块 4 = sorter: { multiple: n } + 日期列 defaultSortOrder ---- */
+/* ---- 原型 H_CFG:模块 3 = sorter: true(单列互斥);模块 4 = sorter: { multiple: n } + 日期列 defaultSortOrder
+   单据状态(status)也可排,multiple: 4(原型 H_CFG.sort.sorters.status,字典顺序见 fetcher.ts 的 STATUS_RANK,不是 label 拼音)---- */
 const SORTERS: Record<string, Record<string, any>> = {
   filter: { no: true, amount: true, bizDate: true },
-  sort: { dept: { multiple: 3 }, amount: { multiple: 2 }, bizDate: { multiple: 1 } },
+  sort: { status: { multiple: 4 }, dept: { multiple: 3 }, amount: { multiple: 2 }, bizDate: { multiple: 1 } },
 }
 const sorterOf = (key: string) => (hdr ? SORTERS[props.mod][key] : undefined)
 
 /* 原型 hdrColW:模块 3 / 4 的列宽要放得下「标题 + 漏斗 + 箭头」 */
-const colW = (c: (typeof COLS)[number]) =>
-  hdr ? Math.max(c.w, 12 + Math.ceil(c.label.length * 14.5) + 30 + (sorterOf(c.key) ? 21 : 0) + 16) : c.w
+const hdrColW = (c: (typeof COLS)[number]) =>
+  Math.max(c.w, 12 + Math.ceil(c.label.length * 14.5) + 30 + (sorterOf(c.key) ? 21 : 0) + 16)
+/* 原型 colMin(N6):模块 3 / 4 的初始列宽不能低于自己的拖拽下限,否则一开始拖就跳一下。
+   下限 = 库的 headerIconFloor(useColumns.ts:28-35)同一套算法:左内边距 12 + 标题占位 44(两个字)+ 漏斗簇 30(模块 3 / 4 列头恒有过滤)
+   + 箭头簇 21(可排序时)+ 右内边距 16;与库的 resizeMinWidth 下限(60)取大者——这两个数恒 ≥ 60,下面直接按 102 / 123 算。*/
+const colMin = (c: (typeof COLS)[number]) => (sorterOf(c.key) ? 123 : 102)
+const colW = (c: (typeof COLS)[number]) => (hdr ? Math.max(hdrColW(c), colMin(c)) : c.w)
 
 /* ---- 原型 OPS_BY_TYPE:15 个操作符按字段类型分发;库默认只给 8 个,宿主在列上写 filter.actions 才出现新的 ---- */
 const ACT: Record<'text' | 'number' | 'date' | 'select', FilterAction[]> = {
@@ -108,7 +114,7 @@ const columns: SmartTableColumn<Row>[] = [
   {
     key: 'actions',
     title: '操作',
-    width: 112,
+    width: 120, // 原型 ACTS_W(N9):「编辑 / 删除」两个文字按钮放得下,112 会被省略号截断
     resizable: false, // 原型:操作列没有拖拽把手、也不吸收余量
     hideInSetting: true,
     render: (row: Row) =>

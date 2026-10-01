@@ -4,6 +4,11 @@
 import { matchFilterValue, type PageResult, type SerializedFilter, type SmartTableParams } from '../../src/index'
 import { DATA, FIELD_DEFS, type Row } from './data'
 
+/** 原型 STATUS_RANK(design.html:1781):模块 4「按单据状态排序」是字典顺序,不是 label 的拼音。 */
+const STATUS_RANK: Record<string, number> = { 已审核: 0, 未审核: 1, 已关闭: 2 }
+const sortVal = (r: Row, field: string): unknown =>
+  field === 'status' && r.status in STATUS_RANK ? STATUS_RANK[r.status] : r[field as keyof Row]
+
 function cmp(a: unknown, b: unknown) {
   const na = Number(a), nb = Number(b)
   if (!Number.isNaN(na) && !Number.isNaN(nb) && a !== '' && b !== '') return na === nb ? 0 : na > nb ? 1 : -1
@@ -32,13 +37,14 @@ export async function fetchRows(params: SmartTableParams): Promise<PageResult<Ro
       rows = rows.filter((r) => matchFilterValue({ logic: f.logic, conditions: f.conditions }, r[f.field as keyof Row]))
     }
   }
-  // 排序:多列用 params.sorts(高优先级在前),单列用 sortField / sortOrder;比较器照原型 computeRows
+  // 排序:多列用 params.sorts(高优先级在前),单列用 sortField / sortOrder;比较器照原型 sortRows
+  // (status 字段按 STATUS_RANK 字典顺序比,其余按数值 / zh 本地化字符串比)
   const sorts: Array<{ field: string; order: 'asc' | 'desc' }> | undefined =
     params.sorts ?? (params.sortField ? [{ field: params.sortField, order: params.sortOrder }] : undefined)
   if (sorts?.length) {
     rows = rows.slice().sort((a, b) => {
       for (const s of sorts) {
-        const x = a[s.field as keyof Row], y = b[s.field as keyof Row]
+        const x = sortVal(a, s.field), y = sortVal(b, s.field)
         const c = typeof x === 'number' ? x - (y as number) : String(x).localeCompare(String(y), 'zh')
         if (c) return s.order === 'asc' ? c : -c
       }
