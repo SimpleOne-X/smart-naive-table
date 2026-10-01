@@ -4,6 +4,12 @@
 // 「+N」渲染出来后自己也占位,若它折到了第二行就再让出一个位置(shrinkForMore),直到稳定;
 // 容器宽度变了再量一次(只在宽度变化时重量,否则测量时行高变化会触发死循环)。
 // 键盘:chip 是 role="button" tabindex="0",Enter / Space 等同点击;「孤儿」chip(列已不存在)没有面板可开,点击是空操作,× 照常清除。
+// 「+N」键盘可开(Fix round 1):NPopover 的 trigger="click" 只认真实 click 事件(naive-ui 源码
+// popover/src/Popover.mjs 的 click 分支只挂 onClick),role="button" 的 div 上按 Enter / Space
+// 浏览器不会自动转成 click —— 这里改成受控 show(v-model:show),键盘直接翻状态而不是伪造 click。
+// 打开后把焦点移到气泡内第一个 chip,让 Tab 能从那里继续走完剩下的隐藏 chip(与 ColumnFilter.vue
+// 的 focusFirst 同一套思路:panelRef 从 null 变非 null 时聚焦,因为内容是 displayDirective="if" 的
+// teleport 内容,show 变 true 的那一刻还不在 DOM 里)。
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type PropType } from 'vue'
 import { NButton, NPopover, NTag } from 'naive-ui'
 import type { SmartTableLabels } from './types'
@@ -38,6 +44,23 @@ function onChipKeydown(e: KeyboardEvent, c: ChipItem) {
     openChip(c)
   }
 }
+
+/* ---- 「+N」气泡:受控 show,键盘可开,开启后聚焦气泡内第一个 chip ---- */
+
+const moreOpen = ref(false)
+const moreContentRef = ref<HTMLElement | null>(null)
+
+function onMoreKeydown(e: KeyboardEvent) {
+  if (e.target !== e.currentTarget) return
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault()
+    moreOpen.value = true
+  }
+}
+
+watch(moreContentRef, (el) => {
+  if (el && moreOpen.value) void nextTick(() => el.querySelector<HTMLElement>('.smart-table-chip')?.focus())
+})
 
 async function recompute() {
   measuring.value = true
@@ -98,16 +121,24 @@ onBeforeUnmount(() => observer?.disconnect())
       >
         {{ c.text }}
       </n-tag>
-      <n-popover v-if="hidden.length" trigger="click" placement="bottom-start">
+      <n-popover v-if="hidden.length" v-model:show="moreOpen" trigger="click" placement="bottom-start">
         <template #trigger>
-          <n-tag class="smart-table-chip smart-table-chip--more" role="button" tabindex="0" round size="small">
+          <n-tag
+            class="smart-table-chip smart-table-chip--more"
+            role="button"
+            tabindex="0"
+            round
+            size="small"
+            @keydown="onMoreKeydown"
+          >
             +{{ hidden.length }}
           </n-tag>
         </template>
-        <div class="smart-table-chips__more">
+        <div ref="moreContentRef" class="smart-table-chips__more">
           <n-tag
             v-for="c in hidden"
             :key="c.key + ':' + c.index"
+            class="smart-table-chip"
             :class="{ 'smart-table-chip--orphan': c.orphan }"
             role="button"
             tabindex="0"

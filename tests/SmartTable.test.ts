@@ -1160,4 +1160,56 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
     expect(document.body.querySelector('.smart-table-filter')).not.toBeNull()
     wrapper.unmount()
   })
+
+  it('[Fix round 1] 「+N」可用键盘(Enter/Space)打开 —— NPopover 的 trigger="click" 不认键盘;打开后焦点落到气泡内第一个 chip', async () => {
+    // jsdom 的 offsetTop 恒为 0,真实折叠算法量不到布局(组件头部注释已说明),所以这里按 chip 文案
+    // 伪造 offsetTop(不碰组件代码):第一个 chip 在第一行、其余两个折到下一行、「+N」自己与第一行同高 ——
+    // 这与真实浏览器量出来的形状等价,让真正的 recompute()/countFitting/shrinkForMore 走到「+N 可见」分支,
+    // 而不是绕开测量直接摆内部状态。
+    const chipCols = [
+      { key: 'c0', title: 'c0', filter: true },
+      { key: 'c1', title: 'c1', filter: true },
+      { key: 'c2', title: 'c2', filter: true },
+    ] as SmartTableColumn<unknown>[]
+    const offsetTopSpy = vi
+      .spyOn(HTMLElement.prototype, 'offsetTop', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        // NTag 内容是 `<span class="n-tag__content"> +N</span>`,「+」前面带一个空格,trim 后再判断
+        const t = (this.textContent ?? '').trim()
+        if (t.startsWith('+')) return 0 // 「+N」自己和第一行同高,不需要再让位
+        return t.startsWith('c0') ? 0 : 30 // 第一个 chip 第一行,其余折到下一行
+      })
+    try {
+      const wrapper = mount(SmartTable, {
+        props: { columns: chipCols, data: rows, rowKey: 'id', filterChips: true },
+        attachTo: document.body,
+      })
+      inst(wrapper).setFilter('c0', value('contains', 'x0'))
+      inst(wrapper).setFilter('c1', value('contains', 'x1'))
+      inst(wrapper).setFilter('c2', value('contains', 'x2'))
+      await nextTick()
+      await flushPromises()
+      await nextTick()
+
+      const more = wrapper.find('.smart-table-chip--more')
+      expect(more.exists()).toBe(true)
+      expect(more.text()).toBe('+2')
+      expect(more.attributes('role')).toBe('button')
+      expect(more.attributes('tabindex')).toBe('0')
+
+      await more.trigger('keydown', { key: 'Enter' })
+      await flushPromises()
+      await nextTick()
+
+      const popoverChips = Array.from(
+        document.body.querySelectorAll<HTMLElement>('.smart-table-chips__more .smart-table-chip'),
+      )
+      expect(popoverChips).toHaveLength(2) // c1、c2 折进了气泡
+      expect(document.activeElement).toBe(popoverChips[0])
+
+      wrapper.unmount()
+    } finally {
+      offsetTopSpy.mockRestore()
+    }
+  })
 })
