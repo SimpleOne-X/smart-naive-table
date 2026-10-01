@@ -278,6 +278,8 @@ export interface SmartTableProps<T = any> {
   search?: false | SearchFormConfig
   /** false 关掉全部表头过滤(即使列声明了 filter);缺省跟随全局 filterable。 */
   filter?: boolean
+  /** 在工具栏下方显示「已生效条件」chips(点击重开该列面板、× 删一条、行末清除 / 恢复默认);默认 false。 */
+  filterChips?: boolean
   /** false 隐藏右侧工具按钮。 */
   toolbar?: false | ToolbarConfig
   /** 表格卡片标题(也可用 #title 插槽)。 */
@@ -448,6 +450,10 @@ export interface SmartTableLabels {
   /** options 列底部展开多条件编辑的入口 / 收起回勾选列表的入口。 */
   filterAdvanced?: string
   filterSimple?: string
+  /** chips 行末按钮(filterChips):没有列声明 defaultValue 时的文案。 */
+  filterClearAll?: string
+  /** chips 行末按钮(filterChips):有列声明生效的 defaultValue 时的文案。 */
+  filterRestoreDefault?: string
 }
 
 /* ======================== 持久化存储结构 ======================== */

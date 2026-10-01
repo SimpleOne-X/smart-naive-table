@@ -7,6 +7,7 @@ import {
   nextTick,
   onBeforeUnmount,
   onMounted,
+  reactive,
   readonly,
   toValue,
   useAttrs,
@@ -25,12 +26,13 @@ import type {
   SmartTableDataColumn,
   SmartTableFetcher,
   SmartTableLabels,
+  SmartTableOption,
   SearchFormConfig,
   SortItem,
   ToolbarConfig,
 } from './types'
 import { cleanParams, useSmartTable } from './useSmartTable'
-import { useOptions } from './useOptions'
+import { optionLabel, useOptions } from './useOptions'
 import {
   deriveFilterDefs,
   deriveInitParams,
@@ -41,6 +43,7 @@ import {
   type FilterDef,
 } from './useColumns'
 import { applyFilters } from './filter'
+import { buildChips, hasActiveDefaults, removeChipCondition } from './filterChips'
 import { mergeCardProps } from './cardStyle'
 import { mergePageSizes, resolveDefaultPageSize } from './pageSize'
 import { collectSorters, deriveInitSorts, normalizeSorterEvent, sortToParams, sortTransition } from './sorts'
@@ -51,6 +54,7 @@ import SearchForm from './SearchForm.vue'
 import Toolbar from './Toolbar.vue'
 import ColumnSettings from './ColumnSettings.vue'
 import ColumnFilter from './ColumnFilter.vue'
+import FilterChips from './FilterChips.vue'
 import { ref } from 'vue'
 import { useRowDrag } from './useRowDrag'
 
@@ -67,6 +71,7 @@ const props = defineProps({
   pagination: { type: [Boolean, Object] as PropType<false | Partial<PaginationProps>>, default: undefined },
   search: { type: [Boolean, Object] as PropType<false | SearchFormConfig>, default: undefined },
   filter: { type: Boolean, default: undefined },
+  filterChips: { type: Boolean, default: undefined },
   toolbar: { type: [Boolean, Object] as PropType<false | ToolbarConfig>, default: undefined },
   title: { type: String, default: undefined },
   cardProps: { type: Object as PropType<Partial<CardProps>>, default: undefined },
@@ -270,6 +275,35 @@ function clearSorter() {
   notifyHostSorter(null)
 }
 
+/* ---- 已生效条件 chips ---- */
+
+// P0:默认关;模式 2(条件构造器)落地后才会默认开
+const chipsEnabled = computed(() => props.filterChips === true)
+
+/** 字典列的 chip 显示 label 而不是 value;孤儿键(没有列声明,def 为 undefined)没有字典,按原值显示。 */
+function optionLabelOf(def: FilterDef | undefined, value: unknown): string {
+  if (!def) return String(value ?? '')
+  const flat = (opts: SmartTableOption[]): SmartTableOption[] =>
+    opts.flatMap((o) => (o.children?.length ? flat(o.children) : [o]))
+  const hit = flat(options.getOptions(def.optionsKey)).find((o) => o.value === value)
+  return hit ? optionLabel(hit) : String(value ?? '')
+}
+
+const chipItems = computed(() =>
+  chipsEnabled.value ? buildChips(filterDefs.value as FilterDef[], filters.state.value, mergedLabels.value, optionLabelOf) : [],
+)
+const chipsHaveDefaults = computed(() => hasActiveDefaults(filterDefs.value as FilterDef[]))
+
+/** 点 chip = 请求重开该列面板:给对应 ColumnFilter 递增 openRequest。被隐藏的列没有漏斗,递增了也是空操作。 */
+const openTick = reactive<Record<string, number>>({})
+function onChipOpen(key: string) {
+  openTick[key] = (openTick[key] ?? 0) + 1
+}
+function onChipRemove(key: string, index: number) {
+  const v = filters.getFilter(key)
+  if (v) filters.setFilter(key, removeChipCondition(v, index))
+}
+
 /**
  * 表头漏斗:由 useColumns 在列标题后调用。放在这里而不是 useColumns 内,
  * 是为了让 useColumns 保持纯 TS(不 import SFC),node 环境下仍可直接单测。
@@ -283,6 +317,7 @@ function renderColumnFilter(def: FilterDef<T>) {
     getOptions: options.getOptions,
     isLoadingOptions: options.isLoading,
     dateValueFormat: defaults.dateValueFormat,
+    openRequest: openTick[def.key] ?? 0,
     'onUpdate:value': (v: FilterValue | null) => filters.setFilter(def.key, v),
   })
 }
@@ -737,6 +772,16 @@ defineExpose({
           />
         </template>
       </Toolbar>
+
+      <FilterChips
+        v-if="chipItems.length"
+        :items="chipItems"
+        :labels="mergedLabels"
+        :has-defaults="chipsHaveDefaults"
+        @open="onChipOpen"
+        @remove="onChipRemove"
+        @clear="filters.clearFilters"
+      />
 
       <!-- single-line:false = 单元格竖线。Naive 的 bordered 只画外框,格子线归 single-line 管。
            绑在 v-bind="attrs" 前,宿主写 :single-line="true" 可覆盖回单线样式。 -->

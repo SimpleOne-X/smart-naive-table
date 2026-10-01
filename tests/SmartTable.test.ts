@@ -2,10 +2,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
-import { NCard, NDataTable, NPagination } from 'naive-ui'
+import { NCard, NDataTable, NPagination, NTag } from 'naive-ui'
 import SmartTable from '../src/SmartTable.vue'
 import ColumnSettings from '../src/ColumnSettings.vue'
 import Toolbar from '../src/Toolbar.vue'
+import FilterChips from '../src/FilterChips.vue'
 import { FILLER_COLUMN_KEY } from '../src/useColumns'
 import { saveState } from '../src/storage'
 import { SMART_TABLE_DEFAULTS } from '../src/config'
@@ -1034,6 +1035,129 @@ describe('SmartTable 点漏斗不触发排序(Q-6:官方 data-data-table-filter)
     await wrapper.find('.smart-table-filter-trigger').trigger('click')
     expect(spy).toHaveBeenCalled()
     document.body.removeEventListener('click', spy)
+    wrapper.unmount()
+  })
+})
+
+describe('SmartTable 已生效条件 chips(filterChips)', () => {
+  const cols = [
+    { key: 'name', title: '姓名', filter: true },
+    { key: 'dept', title: '部门', filter: true },
+  ] as SmartTableColumn<unknown>[]
+  const value = (action: string, v: unknown) => ({ logic: 'and' as const, conditions: [{ action: action as never, value: v }] })
+  const inst = (w: ReturnType<typeof mount>) =>
+    w.vm as unknown as { setFilter: (k: string, v: unknown) => void; filters: Record<string, unknown> }
+
+  it('默认不显示 chips(P0:需显式 filterChips: true)', async () => {
+    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id' } })
+    inst(wrapper).setFilter('name', value('contains', 'a'))
+    await nextTick()
+    expect(wrapper.findComponent(FilterChips).exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('filterChips: true:有条件才出现;每个条件一个 chip;× 只删这一条', async () => {
+    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true } })
+    expect(wrapper.findComponent(FilterChips).exists()).toBe(false) // 无条件不占位
+    inst(wrapper).setFilter('name', value('contains', 'a'))
+    inst(wrapper).setFilter('dept', value('equal', 'x'))
+    await nextTick()
+    const chips = wrapper.findComponent(FilterChips)
+    expect(chips.findAll('.smart-table-chip').map((c) => c.text())).toEqual(['姓名 Contains a', '部门 Equals x'])
+    chips.findAllComponents(NTag)[0].vm.$emit('close')
+    await nextTick()
+    expect(Object.keys(inst(wrapper).filters)).toEqual(['dept'])
+    wrapper.unmount()
+  })
+
+  it('行末按钮:没有列声明 defaultValue → 「Clear all」;点击清空全部', async () => {
+    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true } })
+    inst(wrapper).setFilter('name', value('contains', 'a'))
+    await nextTick()
+    const btn = wrapper.find('.smart-table-chips__clear')
+    expect(btn.text()).toBe('Clear all')
+    await btn.trigger('click')
+    expect(inst(wrapper).filters).toEqual({})
+    wrapper.unmount()
+  })
+
+  it('行末按钮:有列声明了 defaultValue → 「Restore defaults」,点击恢复默认而不是清空', async () => {
+    const withDefault = [{ key: 'name', title: '姓名', filter: { defaultValue: value('contains', 'seed') } }] as SmartTableColumn<unknown>[]
+    const wrapper = mount(SmartTable, { props: { columns: withDefault, data: rows, rowKey: 'id', filterChips: true } })
+    inst(wrapper).setFilter('name', value('contains', 'changed'))
+    await nextTick()
+    const btn = wrapper.find('.smart-table-chips__clear')
+    expect(btn.text()).toBe('Restore defaults')
+    await btn.trigger('click')
+    expect(inst(wrapper).filters.name).toEqual(value('contains', 'seed'))
+    wrapper.unmount()
+  })
+
+  it('[Q-7] 列声明里已不存在的过滤键(孤儿):chip 仍显示,标题回退成键;点击不报错;× 能清掉', async () => {
+    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true } })
+    inst(wrapper).setFilter('ghost', value('equal', 'x'))
+    await nextTick()
+    const chips = wrapper.findComponent(FilterChips)
+    expect(chips.findAll('.smart-table-chip').map((c) => c.text())).toEqual(['ghost Equals x'])
+    await expect(chips.find('.smart-table-chip').trigger('click')).resolves.toBeUndefined() // 没有面板可开,空操作
+    chips.findAllComponents(NTag)[0].vm.$emit('close')
+    await nextTick()
+    expect(inst(wrapper).filters).toEqual({})
+    wrapper.unmount()
+  })
+
+  it('[Q-7] 孤儿键仍会进远程请求参数 —— 所以它必须看得见,「清除全部」也要渲染并能清掉它', async () => {
+    const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 2 }))
+    const wrapper = mount(SmartTable, { props: { columns: cols, fetcher, rowKey: 'id', filterChips: true } })
+    await flushPromises()
+    inst(wrapper).setFilter('ghost', value('equal', 'x'))
+    await flushPromises()
+    expect(JSON.stringify(fetcher.mock.calls.at(-1)![0])).toContain('ghost')
+    const btn = wrapper.find('.smart-table-chips__clear')
+    expect(btn.exists()).toBe(true)
+    await btn.trigger('click')
+    await flushPromises()
+    expect(JSON.stringify(fetcher.mock.calls.at(-1)![0])).not.toContain('ghost')
+    wrapper.unmount()
+  })
+
+  it('[Q-7] chips 可键盘操作:role=button、tabindex=0;Enter 等同点击(打开对应列的面板)', async () => {
+    const wrapper = mount(SmartTable, {
+      props: { columns: cols, data: rows, rowKey: 'id', filterChips: true },
+      attachTo: document.body,
+    })
+    inst(wrapper).setFilter('name', value('contains', 'a'))
+    await nextTick()
+    const chip = wrapper.find('.smart-table-chip')
+    expect(chip.attributes('role')).toBe('button')
+    expect(chip.attributes('tabindex')).toBe('0')
+    await chip.trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+    expect(document.body.querySelector('.smart-table-filter')).not.toBeNull()
+    wrapper.unmount()
+  })
+
+  it('[Review Focus 5] 指向已隐藏的列:chip 仍显示、点击不报错、× 仍能清掉那个条件', async () => {
+    const hiddenCols = [{ key: 'name', title: '姓名', filter: true, hide: true }, { key: 'dept', title: '部门' }] as SmartTableColumn<unknown>[]
+    const wrapper = mount(SmartTable, { props: { columns: hiddenCols, data: rows, rowKey: 'id', filterChips: true } })
+    inst(wrapper).setFilter('name', value('contains', 'a'))
+    await nextTick()
+    const chips = wrapper.findComponent(FilterChips)
+    expect(chips.findAll('.smart-table-chip')).toHaveLength(1)
+    await expect(chips.find('.smart-table-chip').trigger('click')).resolves.toBeUndefined() // 没有可开的面板,空操作
+    chips.findAllComponents(NTag)[0].vm.$emit('close')
+    await nextTick()
+    expect(inst(wrapper).filters).toEqual({})
+    wrapper.unmount()
+  })
+
+  it('点击 chip → 对应列的 ColumnFilter 收到 openRequest 递增', async () => {
+    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true }, attachTo: document.body })
+    inst(wrapper).setFilter('name', value('contains', 'a'))
+    await nextTick()
+    wrapper.findComponent(FilterChips).vm.$emit('open', 'name')
+    await flushPromises()
+    expect(document.body.querySelector('.smart-table-filter')).not.toBeNull()
     wrapper.unmount()
   })
 })
