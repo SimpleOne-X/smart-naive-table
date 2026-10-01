@@ -286,6 +286,11 @@ export interface SmartTableProps<T = any> {
   title?: string
   /** 库渲染的所有卡片(表格卡片、模式 1 的搜索卡片)的官方 NCard 属性,合并在库默认 size="small" + 16px 内边距覆盖之后。回退 2.1.1 外观:{ size: 'medium' }。 */
   cardProps?: Partial<CardProps>
+  /**
+   * 铺满父容器:表体在卡片内滚动(官方 flex-height + virtual-scroll),分页条贴底;默认 false(整页长滚动)。
+   * **父容器必须有确定高度**(否则表体塌成 0,库带了 min-height: 160 兜底)。不开时翻页后若卡片顶部已滚出视口,会滚回卡片顶部。
+   */
+  fillHeight?: boolean
   /** 列设置 + 密度的 localStorage 持久化键;缺省不持久化。 */
   storageKey?: string
   defaultDensity?: Density // 默认 'compact';响应式(没有密度按钮时它就是当前值)

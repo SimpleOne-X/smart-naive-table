@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { NCard, NDataTable, NPagination, NTag } from 'naive-ui'
@@ -1295,5 +1295,126 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
     } finally {
       offsetTopSpy.mockRestore()
     }
+  })
+})
+
+describe('SmartTable fillHeight(D5)', () => {
+  const base = { columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[], data: rows, rowKey: 'id' }
+  const tableProps = (w: ReturnType<typeof mount>) => w.findComponent(NDataTable).props() as Record<string, any>
+
+  // vueuc 的 VirtualList(官方 virtual-scroll)在 setup 里读 window.matchMedia,jsdom 没有 → 开了 fillHeight 的用例都会抛 TypeError
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }))
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('默认关闭:表格不带 flex-height / virtual-scroll,根节点没有 smart-table--fill', () => {
+    const wrapper = mount(SmartTable, { props: base })
+    expect(tableProps(wrapper).flexHeight).toBe(false)
+    expect(tableProps(wrapper).virtualScroll).toBe(false)
+    expect(wrapper.classes()).not.toContain('smart-table--fill')
+    wrapper.unmount()
+  })
+
+  it('fillHeight:官方 flex-height + virtual-scroll 一起传,min-row-height 随密度(紧凑 40 / 舒适 48),带兜底 min-height,根节点加 --fill', () => {
+    const compact = mount(SmartTable, { props: { ...base, fillHeight: true } }) // 默认紧凑
+    expect(tableProps(compact)).toMatchObject({ flexHeight: true, virtualScroll: true, minRowHeight: 40, minHeight: 160 })
+    expect(compact.classes()).toContain('smart-table--fill')
+    compact.unmount()
+    const comfortable = mount(SmartTable, { props: { ...base, fillHeight: true, defaultDensity: 'comfortable' } })
+    expect(tableProps(comfortable).minRowHeight).toBe(48)
+    comfortable.unmount()
+  })
+
+  it('宿主 attrs 的官方 min-row-height / min-height 优先于库的取值', () => {
+    const wrapper = mount(SmartTable, { props: { ...base, fillHeight: true }, attrs: { 'min-row-height': 60, minHeight: 300 } })
+    expect(tableProps(wrapper)).toMatchObject({ minRowHeight: 60, minHeight: 300 })
+    wrapper.unmount()
+  })
+})
+
+describe('SmartTable fillHeight 与 max-height(F8)', () => {
+  const base = { columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[], data: rows, rowKey: 'id' }
+  const tableProps = (w: ReturnType<typeof mount>) => w.findComponent(NDataTable).props() as Record<string, any>
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }))
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('fillHeight 开启时忽略宿主的 max-height / maxHeight 并警告一次;关闭时照常透传', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const mine = () => warn.mock.calls.filter((c) => String(c[0]).includes('max-height'))
+    const on = mount(SmartTable, { props: { ...base, fillHeight: true }, attrs: { maxHeight: 300 } })
+    expect(tableProps(on).maxHeight).toBeUndefined()
+    expect(mine()).toHaveLength(1)
+    on.unmount()
+    const kebab = mount(SmartTable, { props: { ...base, fillHeight: true }, attrs: { 'max-height': 300 } })
+    expect(tableProps(kebab).maxHeight).toBeUndefined()
+    expect(mine()).toHaveLength(2) // 每个实例警告一次(同一实例里 computed 重复求值不重复警告)
+    kebab.unmount()
+    const off = mount(SmartTable, { props: base, attrs: { maxHeight: 300 } })
+    expect(tableProps(off).maxHeight).toBe(300)
+    expect(mine()).toHaveLength(2) // 关闭 fillHeight 时照常透传,不警告
+    off.unmount()
+  })
+})
+
+describe('SmartTable 翻页后滚回卡片顶部(E4:只在不开 fillHeight 时)', () => {
+  const base = { columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[], data: rows, rowKey: 'id' }
+  let cardTop = 0
+  const pagerProps = (w: ReturnType<typeof mount>) =>
+    w.findComponent(NDataTable).props('pagination') as unknown as { onUpdatePage: (p: number) => void; suffix: (i: Record<string, number>) => { props: Record<string, any> } }
+
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) // 同上:fillHeight 用例要挂 VirtualList
+    cardTop = 0
+    Element.prototype.scrollIntoView = vi.fn()
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      return { top: this.classList.contains('smart-table-card') ? cardTop : 0 } as DOMRect
+    })
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    // @ts-expect-error jsdom 没有 scrollIntoView,测试里临时装了一个
+    delete Element.prototype.scrollIntoView
+  })
+
+  it('翻页时卡片顶部已滚出视口上沿 → 滚回卡片顶部;还在视口内 → 不滚', () => {
+    const wrapper = mount(SmartTable, { props: base, attachTo: document.body })
+    cardTop = 50
+    pagerProps(wrapper).onUpdatePage(2)
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+    cardTop = -200
+    pagerProps(wrapper).onUpdatePage(3)
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'instant' })
+    wrapper.unmount()
+  })
+
+  it('远程模式同样在点击当下滚(不等数据回来);改每页条数也算翻页', async () => {
+    const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 500 }))
+    const wrapper = mount(SmartTable, { props: { columns: base.columns, fetcher, rowKey: 'id' }, attachTo: document.body })
+    await flushPromises()
+    cardTop = -200
+    pagerProps(wrapper).onUpdatePage(2)
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1)
+    pagerProps(wrapper).suffix({ page: 1, pageSize: 100, pageCount: 5, itemCount: 500, startIndex: 0, endIndex: 99 }).props.onUpdatePageSize(500)
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+
+  it('开了 fillHeight:不滚窗口,改为把表体滚回顶部(官方 scrollTo)', () => {
+    const wrapper = mount(SmartTable, { props: { ...base, fillHeight: true }, attachTo: document.body })
+    const scrollTo = vi.spyOn(wrapper.findComponent(NDataTable).vm as unknown as { scrollTo: (o: unknown) => void }, 'scrollTo').mockImplementation(() => {}) // 不放行到真实现:jsdom 的元素没有 scrollTo
+    cardTop = -200
+    pagerProps(wrapper).onUpdatePage(2)
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
+    wrapper.unmount()
   })
 })

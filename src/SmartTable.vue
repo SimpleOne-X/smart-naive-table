@@ -4,6 +4,7 @@
 import {
   computed,
   h,
+  mergeProps,
   nextTick,
   onBeforeUnmount,
   onMounted,
@@ -49,6 +50,7 @@ import { collectSorters, deriveInitSorts, normalizeSorterEvent, sortToParams, so
 import { useFilters } from './useFilters'
 import { mergeLabels } from './labels'
 import { useSmartTableDefaults } from './config'
+import { keepCardTopVisible } from './scrollToCard'
 import SearchForm from './SearchForm.vue'
 import Toolbar from './Toolbar.vue'
 import ColumnSettings from './ColumnSettings.vue'
@@ -74,6 +76,7 @@ const props = defineProps({
   toolbar: { type: [Boolean, Object] as PropType<false | ToolbarConfig>, default: undefined },
   title: { type: String, default: undefined },
   cardProps: { type: Object as PropType<Partial<CardProps>>, default: undefined },
+  fillHeight: { type: Boolean, default: false },
   storageKey: { type: String, default: undefined },
   defaultDensity: { type: String as PropType<Density>, default: undefined },
   labels: { type: Object as PropType<Partial<SmartTableLabels>>, default: undefined },
@@ -450,6 +453,57 @@ const rowKeyFn = computed(() => {
 
 const tableSize = computed(() => (columnsApi.density.value === 'compact' ? 'small' : 'medium'))
 
+/**
+ * fillHeight(D5):官方 flex-height + virtual-scroll 必须一起传;min-row-height 必须 ≥ 真实行高(取 ceil),
+ * 官方默认 28 会让滚到底最后一行看不全。默认主题下真实行高 small 39.4 / medium 47.4 → 40 / 48。
+ * 兜底 min-height 160:父容器没给定高时表体至少能看见几行。与宿主 attrs 合并时宿主优先(见下面的 tableAttrs)。
+ */
+const fillProps = computed(() =>
+  props.fillHeight
+    ? {
+        flexHeight: true,
+        virtualScroll: true,
+        minRowHeight: tableSize.value === 'small' ? 40 : 48,
+        minHeight: 160,
+        style: { flex: '1 1 auto', minHeight: 0 },
+      }
+    : {},
+)
+/**
+ * 给 <n-data-table> 的合并属性:fillHeight 的默认值在前、宿主透传的 attrs 在后(宿主优先)。
+ * Vue 模板里不能写两个 v-bind(`Duplicate attribute`),所以用 mergeProps 合并;它对 style / class / 事件会合并而不是覆盖。
+ * forwardedAttrs 在下面才声明,这里只在 computed 里读它,渲染时才求值,不会触发「声明前使用」。
+ */
+// fillHeight 下表体高度由父容器决定,宿主传的 max-height / maxHeight 会和 flex-height 打架:不透传,警告一次(规格 §4)
+let warnedMaxHeight = false
+const tableAttrs = computed(() => {
+  const host = { ...forwardedAttrs.value } as Record<string, unknown>
+  if (props.fillHeight) {
+    for (const k of ['maxHeight', 'max-height']) {
+      if (!(k in host)) continue
+      delete host[k]
+      if (!warnedMaxHeight) {
+        warnedMaxHeight = true
+        console.warn('[smart-naive-table] fillHeight 开启时表体高度由父容器决定,已忽略 max-height;请给父容器设定高。')
+      }
+    }
+  }
+  return mergeProps(fillProps.value, host)
+})
+
+/**
+ * 翻页 / 改每页条数后(点击当下,不等数据回来):开了 fillHeight → 表体自己在卡片里滚,把它滚回顶部;
+ * 没开 → 卡片顶部已滚出视口上沿才滚回卡片顶部(只在需要时滚)。
+ */
+function onPageChanged() {
+  if (props.fillHeight) {
+    tableRef.value?.scrollTo({ top: 0 })
+    return
+  }
+  const card = rootRef.value?.querySelector<HTMLElement>('.smart-table-card')
+  if (card) keepCardTopVisible(card)
+}
+
 // NDataTable 的 data 形参是 RowData[](Record 索引),泛型 T 无索引签名,此处收窄。
 // 静态模式的过滤在这里落地(远程模式走 fetcher 参数,由后端过滤)。
 const tableData = computed(() => {
@@ -524,10 +578,12 @@ const mergedPagination = computed<false | PaginationProps>(() => {
   const onSizeBypass = isRemote.value
     ? // 远程:与 2.1.1 一致 —— 宿主给了自己的处理函数就由宿主接管,否则走 useSmartTable(回第 1 页重查)
       (n: number) => {
+        onPageChanged() // E4:改每页条数也算翻页,当下(不等数据回来)判断是否要滚回卡片顶部 / 表体复位
         callAll(user.onUpdatePageSize ?? table.onPageSize, n)
         notifyPageSizeListeners(user, n)
       }
     : (n: number) => {
+        onPageChanged()
         applyLocalSize(n)
         notifyPageSizeListeners(user, n)
       }
@@ -556,10 +612,22 @@ const mergedPagination = computed<false | PaginationProps>(() => {
       page: pagination.page,
       pageSize: pagination.pageSize,
       itemCount: pagination.itemCount,
-      onUpdatePage: table.onPage,
-      onUpdatePageSize: table.onPageSize,
       ...user,
       ...tail,
+      // onUpdatePage / onUpdatePageSize 放在 ...user / ...tail 之后(而不是像 2.1.1 的写法排在它们之前被 spread 覆盖掉):
+      // 保证宿主即使传了自己的分页回调,onPageChanged()(E4,翻页后滚回卡片顶部 / fillHeight 下表体复位)也始终会跑;
+      // 真正的分页动作仍按「宿主给了自己的处理函数就由宿主接管」的语义转发(callAll + ?? 兜底),不是库跳过宿主自己接管。
+      onUpdatePage: (p: number) => {
+        onPageChanged()
+        callAll(user.onUpdatePage ?? table.onPage, p) // 与 2.1.1 一致:宿主给了自己的处理函数就由宿主接管
+      },
+      // 不复用 onSizeBypass(它额外调用 notifyPageSizeListeners):这里走的是 NDataTable 原生 pagination.onUpdatePageSize
+      // 入口,官方 mergedOnUpdatePageSize(use-table-data.mjs)自己就会按 pagination 级 + table 级共 5 种拼写转发,
+      // 再调 notifyPageSizeListeners 会把 attrs 的 3 种拼写重复通知一遍(Fix round 2 修过的同一类回归,remote 同样适用)。
+      onUpdatePageSize: (n: number) => {
+        onPageChanged()
+        callAll(user.onUpdatePageSize ?? table.onPageSize, n)
+      },
     }
   }
   return {
@@ -570,6 +638,7 @@ const mergedPagination = computed<false | PaginationProps>(() => {
     ...tail,
     onUpdatePage: (p: number) => {
       localPage.value = p
+      onPageChanged()
       callAll(user.onUpdatePage, p)
     },
     // 「走 NDataTable 原生链路」入口:simple:false 时宿主看到的是 NDataTable 自己渲染的官方选择器,
@@ -727,7 +796,12 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="rootRef" class="smart-table" :class="{ 'smart-table--pinned-cols': colsPinned }" :style="rootStyle">
+  <div
+    ref="rootRef"
+    class="smart-table"
+    :class="{ 'smart-table--pinned-cols': colsPinned, 'smart-table--fill': props.fillHeight }"
+    :style="rootStyle"
+  >
     <SearchForm
       v-if="props.search !== false && searchDefs.length > 0"
       :fields="searchDefs"
@@ -794,7 +868,7 @@ defineExpose({
         :size="tableSize"
         :scroll-x="autoScrollX"
         :single-line="false"
-        v-bind="forwardedAttrs"
+        v-bind="tableAttrs"
         :row-props="mergedRowProps"
         :table-layout="mergedTableLayout"
         :on-unstable-column-resize="onColumnResize"
@@ -912,5 +986,23 @@ defineExpose({
    :deep 打进内层 n-data-table 的 td —— 包内处理,消费端不必自己写 :deep。 */
 .smart-table :deep(.smart-table-row--active > td) {
   background-color: var(--smart-table-active-row-bg, rgba(99, 102, 241, 0.08));
+}
+/* fillHeight:根 → 卡片 → 卡片内容区 逐层 flex 列 + flex:1 1 auto + min-height:0;表格自己的 flex 由 fillProps.style 给。
+   父容器必须有确定高度(docs / CHANGELOG 写明)。 */
+.smart-table--fill {
+  height: 100%;
+  min-height: 0;
+}
+.smart-table--fill > .smart-table-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.smart-table--fill .smart-table-card :deep(.n-card-content) {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 </style>
