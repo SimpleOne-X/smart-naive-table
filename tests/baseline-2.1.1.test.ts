@@ -1,0 +1,120 @@
+// @vitest-environment jsdom
+// 2.1.1 行为的「特征测试」:锁住后面要被有意翻转的默认值。
+// 每条标题里的 [Bn] / [Cn] = 由哪个任务翻转。翻转时在同一个提交里改断言,
+// 并在提交说明里写明这是有意的默认行为变更(见计划 Global Constraints)。
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { NDataTable } from 'naive-ui'
+import SmartTable from '../src/SmartTable.vue'
+import Toolbar from '../src/Toolbar.vue'
+import { BUILTIN_DEFAULTS } from '../src/config'
+import { saveState } from '../src/storage'
+import { defaultLabels } from '../src/labels'
+
+const rows = [
+  { id: 1, name: 'alice' },
+  { id: 2, name: 'bob' },
+]
+
+afterEach(() => localStorage.clear())
+
+describe('2.1.1 特征:内置默认值', () => {
+  it('[B1][B2] 内置兜底:每页 [10,20,50]、密度 comfortable', () => {
+    expect(BUILTIN_DEFAULTS.pageSizes).toEqual([10, 20, 50])
+    expect(BUILTIN_DEFAULTS.density).toBe('comfortable')
+  })
+})
+
+describe('2.1.1 特征:分页', () => {
+  it('[B1][B4] 静态模式:默认每页 10、可选 [10,20,50]、带官方每页选择器、非 simple', () => {
+    const wrapper = mount(SmartTable, { props: { columns: [{ key: 'name', title: 'Name' }], data: rows, rowKey: 'id' } })
+    const p = wrapper.findComponent(NDataTable).props('pagination') as Record<string, unknown>
+    expect(p.defaultPageSize).toBe(10)
+    expect(p.pageSizes).toEqual([10, 20, 50])
+    expect(p.showSizePicker).toBe(true)
+    expect(p.simple).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('[B1] 远程模式:首次请求 pageSize = 10', async () => {
+    const fetcher = vi.fn(async () => ({ items: rows, total: 2 }))
+    const wrapper = mount(SmartTable, { props: { columns: [{ key: 'name', title: 'Name' }], fetcher, rowKey: 'id' } })
+    await flushPromises()
+    expect(fetcher).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 10 }))
+    wrapper.unmount()
+  })
+})
+
+describe('2.1.1 特征:密度', () => {
+  it('[B2] 默认舒适(表格 size = medium);存过 compact 的用户读到 compact(small)', () => {
+    const plain = mount(SmartTable, { props: { columns: [{ key: 'name', title: 'Name' }], data: rows, rowKey: 'id' } })
+    expect(plain.findComponent(NDataTable).props('size')).toBe('medium')
+    plain.unmount()
+
+    saveState('baseline-density', 'compact', [{ key: 'name', show: true }])
+    const stored = mount(SmartTable, {
+      props: { columns: [{ key: 'name', title: 'Name' }], data: rows, rowKey: 'id', storageKey: 'baseline-density' },
+    })
+    expect(stored.findComponent(NDataTable).props('size')).toBe('small')
+    stored.unmount()
+  })
+})
+
+describe('2.1.1 特征:工具栏', () => {
+  it('[B3] 默认同时有「刷新」与「密度」两个图标按钮', () => {
+    const wrapper = mount(Toolbar, { props: { labels: defaultLabels, config: {}, density: 'comfortable' } })
+    const html = wrapper.html()
+    expect(html).toContain('aria-label="Refresh"')
+    expect(html).toContain('aria-label="Density"')
+    wrapper.unmount()
+  })
+})
+
+describe('2.1.1 特征:排序', () => {
+  const sortCols = [
+    { key: 'a', title: 'A', sorter: true },
+    { key: 'b', title: 'B', sorter: true },
+  ]
+
+  it('单列点击 → 远程参数 { sortField, sortOrder: asc|desc }(本行为在 3.0 保持不变)', async () => {
+    const fetcher = vi.fn(async () => ({ items: rows, total: 2 }))
+    const wrapper = mount(SmartTable, { props: { columns: sortCols, fetcher, rowKey: 'id' } })
+    await flushPromises()
+    const onSorter = wrapper.findComponent(NDataTable).props('onUpdate:sorter') as (s: unknown) => void
+    onSorter({ columnKey: 'a', order: 'ascend', sorter: true })
+    await flushPromises()
+    expect(fetcher).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, sortField: 'a', sortOrder: 'asc' }))
+    wrapper.unmount()
+  })
+
+  it('[C2] defaultSortOrder 被受控 sortOrder 盖掉:首次请求没有任何排序参数', async () => {
+    const fetcher = vi.fn(async () => ({ items: rows, total: 2 }))
+    const wrapper = mount(SmartTable, {
+      props: { columns: [{ key: 'a', title: 'A', sorter: true, defaultSortOrder: 'descend' }], fetcher, rowKey: 'id' },
+    })
+    await flushPromises()
+    const first = (fetcher.mock.calls[0] as unknown[])[0] as Record<string, unknown>
+    expect(first).not.toHaveProperty('sortField')
+    wrapper.unmount()
+  })
+
+  it('[C1] 多列排序被截成单列:只带第一列,没有 sorts', async () => {
+    const fetcher = vi.fn(async () => ({ items: rows, total: 2 }))
+    const multiCols = [
+      { key: 'a', title: 'A', sorter: { compare: () => 0, multiple: 2 } },
+      { key: 'b', title: 'B', sorter: { compare: () => 0, multiple: 1 } },
+    ]
+    const wrapper = mount(SmartTable, { props: { columns: multiCols, fetcher, rowKey: 'id' } })
+    await flushPromises()
+    const onSorter = wrapper.findComponent(NDataTable).props('onUpdate:sorter') as (s: unknown) => void
+    onSorter([
+      { columnKey: 'a', order: 'ascend', sorter: multiCols[0].sorter },
+      { columnKey: 'b', order: 'descend', sorter: multiCols[1].sorter },
+    ])
+    await flushPromises()
+    const last = (fetcher.mock.calls.at(-1) as unknown[])[0] as Record<string, unknown>
+    expect(last).toMatchObject({ sortField: 'a', sortOrder: 'asc' })
+    expect(last).not.toHaveProperty('sorts')
+    wrapper.unmount()
+  })
+})
