@@ -1157,6 +1157,7 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
   it('行末按钮:没有列声明 defaultValue → 「Clear all」;点击清空全部', async () => {
     const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true } })
     inst(wrapper).setFilter('name', value('contains', 'a'))
+    inst(wrapper).setFilter('dept', value('equal', 'x')) // 有意改动(L0-6):「清除全部」≥ 2 个 chip 才出现,原来只设 1 个条件
     await nextTick()
     const btn = wrapper.find('.smart-table-chips__clear')
     expect(btn.text()).toBe('Clear all')
@@ -1195,6 +1196,7 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
     const wrapper = mount(SmartTable, { props: { columns: cols, fetcher, rowKey: 'id', filterChips: true } })
     await flushPromises()
     inst(wrapper).setFilter('ghost', value('equal', 'x'))
+    inst(wrapper).setFilter('ghost2', value('equal', 'y')) // 有意改动(L0-6):「清除全部」≥ 2 个 chip 才出现,原来只有 1 个孤儿键
     await flushPromises()
     expect(JSON.stringify(fetcher.mock.calls.at(-1)![0])).toContain('ghost')
     const btn = wrapper.find('.smart-table-chips__clear')
@@ -1202,6 +1204,64 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
     await btn.trigger('click')
     await flushPromises()
     expect(JSON.stringify(fetcher.mock.calls.at(-1)![0])).not.toContain('ghost')
+    wrapper.unmount()
+  })
+
+  it('[L0-6] 1 个条件时没有「清除全部」(chip 自己的 × 就够了);≥ 2 个才出现', async () => {
+    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true } })
+    inst(wrapper).setFilter('name', value('contains', 'a'))
+    await nextTick()
+    expect(wrapper.find('.smart-table-chips__clear').exists()).toBe(false)
+    inst(wrapper).setFilter('dept', value('equal', 'x'))
+    await nextTick()
+    expect(wrapper.find('.smart-table-chips__clear').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('[L0-6] 有默认值的表:只在偏离默认时出现「Restore defaults」(1 个 chip 也出现);回到默认就消失', async () => {
+    const withDefault = [{ key: 'name', title: '姓名', filter: { defaultValue: value('contains', 'seed') } }] as SmartTableColumn<unknown>[]
+    const wrapper = mount(SmartTable, { props: { columns: withDefault, data: rows, rowKey: 'id', filterChips: true } })
+    await nextTick()
+    expect(wrapper.findAll('.smart-table-chip')).toHaveLength(1) // 初始过滤态 = 默认值,有 1 个 chip
+    expect(wrapper.find('.smart-table-chips__clear').exists()).toBe(false) // 没偏离:不出现
+    inst(wrapper).setFilter('name', value('contains', 'changed'))
+    await nextTick()
+    expect(wrapper.findAll('.smart-table-chip')).toHaveLength(1)
+    expect(wrapper.find('.smart-table-chips__clear').text()).toBe('Restore defaults') // 偏离:1 个 chip 也出现
+    await wrapper.find('.smart-table-chips__clear').trigger('click')
+    await nextTick()
+    expect(wrapper.find('.smart-table-chips__clear').exists()).toBe(false) // 回到默认:又消失
+    wrapper.unmount()
+  })
+
+  it('[L0-6] 有默认值的表上用户又加了别的列的条件:算偏离,「Restore defaults」出现(它会清掉那些、恢复默认)', async () => {
+    const mixed = [
+      { key: 'name', title: '姓名', filter: { defaultValue: value('contains', 'seed') } },
+      { key: 'dept', title: '部门', filter: true },
+    ] as SmartTableColumn<unknown>[]
+    const wrapper = mount(SmartTable, { props: { columns: mixed, data: rows, rowKey: 'id', filterChips: true } })
+    await nextTick()
+    inst(wrapper).setFilter('dept', value('equal', 'x'))
+    await nextTick()
+    expect(wrapper.find('.smart-table-chips__clear').text()).toBe('Restore defaults')
+    await wrapper.find('.smart-table-chips__clear').trigger('click')
+    await nextTick()
+    expect(Object.keys(inst(wrapper).filters)).toEqual(['name'])
+    wrapper.unmount()
+  })
+
+  it('[L0-6] chip 是主色(NTag type=primary)、可点;孤儿 chip(没有面板可开)是默认灰;「清除全部」紧跟在 chips 后面', async () => {
+    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true } })
+    inst(wrapper).setFilter('name', value('contains', 'a'))
+    inst(wrapper).setFilter('ghost', value('equal', 'x'))
+    await nextTick()
+    const tags = wrapper.findComponent(FilterChips).findAllComponents(NTag)
+    expect(tags).toHaveLength(2)
+    expect(tags[0].props('type')).toBe('primary')
+    expect(tags[1].props('type')).toBe('default')
+    const root = wrapper.find('.smart-table-chips').element
+    expect(root.children[0].classList.contains('smart-table-chips__list')).toBe(true)
+    expect(root.children[1].classList.contains('smart-table-chips__clear')).toBe(true)
     wrapper.unmount()
   })
 

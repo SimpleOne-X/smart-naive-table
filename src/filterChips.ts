@@ -90,3 +90,24 @@ export function shrinkForMore(visible: number, firstTop: number, moreTop: number
 export function hasActiveDefaults(defs: FilterDef[]): boolean {
   return defs.some((d) => !!d.defaultValue && isFilterActive(d.defaultValue))
 }
+
+/** 一列的过滤值归一成可比较的形状:无生效条件 → null;只有 1 条时 logic 恒为 and(它在单条时没有意义)。 */
+function canon(value: FilterValue | null | undefined): string {
+  const conds = activeConditions(value)
+  if (!conds.length) return ''
+  return JSON.stringify({ logic: conds.length > 1 ? value!.logic : 'and', conditions: conds.map((c) => [c.action, c.value ?? null]) })
+}
+
+/**
+ * 当前过滤态是不是就等于各列声明的默认值(只比生效的条件):没有默认值的列要求没有生效条件,孤儿键有生效条件就算偏离。
+ * chips 行末按钮据此决定要不要出现(原型一致):有默认值的表,**偏离**默认才出现「恢复默认」;
+ * 没有默认值的表则看 chip 个数(≥ 2 才出现「清除全部」)。
+ */
+export function filtersAtDefaults(defs: FilterDef[], state: FilterState): boolean {
+  const keys = new Set([...Object.keys(state), ...defs.map((d) => d.key)])
+  const defaultOf = new Map(defs.map((d) => [d.key, d.defaultValue]))
+  for (const k of keys) {
+    if (canon(state[k]) !== canon(defaultOf.get(k))) return false
+  }
+  return true
+}

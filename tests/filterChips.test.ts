@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildChips, countFitting, hasActiveDefaults, removeChipCondition, shrinkForMore } from '../src/filterChips'
+import { buildChips, countFitting, filtersAtDefaults, hasActiveDefaults, removeChipCondition, shrinkForMore } from '../src/filterChips'
 import { defaultLabels } from '../src/labels'
 import type { FilterDef } from '../src/useColumns'
 import type { FilterState, FilterValue } from '../src/types'
@@ -104,5 +104,30 @@ describe('hasActiveDefaults', () => {
     expect(hasActiveDefaults([def({ key: 'a' }), def({ key: 'b', defaultValue: v('and', ['equal', 1]) })])).toBe(true)
     expect(hasActiveDefaults([def({ key: 'a', defaultValue: v('and', ['equal', '']) })])).toBe(false)
     expect(hasActiveDefaults([])).toBe(false)
+  })
+})
+
+describe('filtersAtDefaults(过滤态是否就是默认值)', () => {
+  const withDefault = [def({ key: 'a', defaultValue: v('and', ['equal', 'x']) }), def({ key: 'b' })]
+
+  it('没有任何默认值、也没有条件 → 是默认态', () => {
+    expect(filtersAtDefaults([def({ key: 'a' })], {})).toBe(true)
+  })
+
+  it('没有默认值但有生效条件 → 偏离', () => {
+    expect(filtersAtDefaults([def({ key: 'a' })], { a: v('and', ['contains', '1']) })).toBe(false)
+  })
+
+  it('有默认值:状态恰好等于默认 → 是;被清掉 / 改了值 / 多了别的列的条件 / 多了孤儿键 → 偏离', () => {
+    expect(filtersAtDefaults(withDefault, { a: v('and', ['equal', 'x']) })).toBe(true)
+    expect(filtersAtDefaults(withDefault, {})).toBe(false)
+    expect(filtersAtDefaults(withDefault, { a: v('and', ['equal', 'y']) })).toBe(false)
+    expect(filtersAtDefaults(withDefault, { a: v('and', ['equal', 'x']), b: v('and', ['contains', '1']) })).toBe(false)
+    expect(filtersAtDefaults(withDefault, { a: v('and', ['equal', 'x']), ghost: v('and', ['equal', '1']) })).toBe(false)
+  })
+
+  it('空条件(无生效)不算条件;单条时 logic 不同也算相同', () => {
+    expect(filtersAtDefaults(withDefault, { a: v('and', ['equal', 'x']), b: v('and', ['contains', '']) })).toBe(true)
+    expect(filtersAtDefaults(withDefault, { a: { logic: 'or', conditions: [{ action: 'equal', value: 'x' }] } })).toBe(true)
   })
 })

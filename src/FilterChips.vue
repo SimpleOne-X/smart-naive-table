@@ -4,6 +4,7 @@
 // 「+N」渲染出来后自己也占位,若它折到了第二行就再让出一个位置(shrinkForMore),直到稳定;
 // 容器宽度变了再量一次(只在宽度变化时重量,否则测量时行高变化会触发死循环)。
 // 键盘:chip 是 role="button" tabindex="0",Enter / Space 等同点击;「孤儿」chip(列已不存在)没有面板可开,点击是空操作,× 照常清除。
+// 外观(设计原型 .chips / .chip):主色可点的 NTag small(22px 高)、间距 8px 12px、行下方 12px、「清除全部」紧跟在 chips 后面;孤儿 chip 与「+N」保持默认灰。
 // 「+N」键盘可开(Fix round 1):NPopover 的 trigger="click" 只认真实 click 事件(naive-ui 源码
 // popover/src/Popover.mjs 的 click 分支只挂 onClick),role="button" 的 div 上按 Enter / Space
 // 浏览器不会自动转成 click —— 这里改成受控 show(v-model:show),键盘直接翻状态而不是伪造 click。
@@ -19,7 +20,12 @@ const props = defineProps({
   items: { type: Array as PropType<ChipItem[]>, required: true },
   labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true },
   hasDefaults: { type: Boolean, default: false },
+  /** 当前过滤态已经等于各列声明的默认值(有默认值的表上,此时不需要「恢复默认」)。 */
+  atDefaults: { type: Boolean, default: false },
 })
+
+// 行末按钮出现的规则(原型一致):有默认值的表 = 偏离默认才出现「恢复默认」(1 个 chip 也出现);没有默认值的表 = ≥ 2 个 chip 才出现「清除全部」
+const showAction = computed(() => (props.hasDefaults ? !props.atDefaults : props.items.length > 1))
 
 const emit = defineEmits<{
   open: [key: string]
@@ -115,6 +121,7 @@ onBeforeUnmount(() => observer?.disconnect())
         round
         closable
         size="small"
+        :type="c.orphan ? 'default' : 'primary'"
         @click="openChip(c)"
         @keydown="(e: KeyboardEvent) => onChipKeydown(e, c)"
         @close="emit('remove', c.key, c.index)"
@@ -145,6 +152,7 @@ onBeforeUnmount(() => observer?.disconnect())
             round
             closable
             size="small"
+            :type="c.orphan ? 'default' : 'primary'"
             @click="openChip(c)"
             @keydown="(e: KeyboardEvent) => onChipKeydown(e, c)"
             @close="emit('remove', c.key, c.index)"
@@ -154,25 +162,27 @@ onBeforeUnmount(() => observer?.disconnect())
         </div>
       </n-popover>
     </div>
-    <n-button class="smart-table-chips__clear" text size="tiny" @click="emit('clear')">
+    <n-button v-if="showAction" class="smart-table-chips__clear" text size="tiny" @click="emit('clear')">
       {{ hasDefaults ? labels.filterRestoreDefault : labels.filterClearAll }}
     </n-button>
   </div>
 </template>
 
 <style scoped>
+/* 清除按钮紧跟在 chips 后面(原型是同一个 wrap 行里的下一个元素);list 按内容收缩而不是撑满,放不下时 chips 在 list 里折行(测量用),
+   最终显示的是一行 + 「+N」。行与表格之间 12px。 */
 .smart-table-chips {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 0 0 8px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 .smart-table-chips__list {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  flex: 1 1 auto;
+  gap: 8px 12px;
+  flex: 0 1 auto;
   min-width: 0;
 }
 .smart-table-chip {
@@ -191,6 +201,8 @@ onBeforeUnmount(() => observer?.disconnect())
 }
 .smart-table-chips__clear {
   flex: none;
-  align-self: center;
+  /* 官方文字按钮没有固定高度和内边距(--n-height 是 initial):与 chip 同高 22px、左右内边距 4px(原型 .chips .clear) */
+  height: 22px;
+  padding: 0 4px;
 }
 </style>

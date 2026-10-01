@@ -43,7 +43,7 @@ import {
   type FilterDef,
 } from './useColumns'
 import { applyFilters } from './filter'
-import { buildChips, hasActiveDefaults, removeChipCondition } from './filterChips'
+import { buildChips, filtersAtDefaults, hasActiveDefaults, removeChipCondition } from './filterChips'
 import { mergeCardProps } from './cardStyle'
 import { mergePageSizes, resolveDefaultPageSize } from './pageSize'
 import { collectSorters, deriveInitSorts, normalizeSorterEvent, sortToParams, sortTransition } from './sorts'
@@ -307,6 +307,7 @@ const chipItems = computed(() =>
   chipsEnabled.value ? buildChips(filterDefs.value as FilterDef[], filters.state.value, mergedLabels.value, optionLabelOf) : [],
 )
 const chipsHaveDefaults = computed(() => hasActiveDefaults(filterDefs.value as FilterDef[]))
+const chipsAtDefaults = computed(() => filtersAtDefaults(filterDefs.value as FilterDef[], filters.state.value))
 
 /** 点 chip = 请求重开该列面板:给对应 ColumnFilter 递增 openRequest。被隐藏的列没有漏斗,递增了也是空操作。 */
 const openTick = reactive<Record<string, number>>({})
@@ -860,6 +861,7 @@ defineExpose({
         :items="chipItems"
         :labels="mergedLabels"
         :has-defaults="chipsHaveDefaults"
+        :at-defaults="chipsAtDefaults"
         @open="onChipOpen"
         @remove="onChipRemove"
         @clear="filters.clearFilters"
