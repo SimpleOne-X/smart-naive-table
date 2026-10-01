@@ -1,5 +1,5 @@
 import type { Ref, VNodeChild, MaybeRefOrGetter } from 'vue'
-import type { DataTableBaseColumn, DataTableInst, DropdownProps, PaginationProps } from 'naive-ui'
+import type { CardProps, DataTableBaseColumn, DataTableInst, DropdownProps, PaginationProps } from 'naive-ui'
 // naive-ui 只出现在类型位置;运行时 hooks(useSmartTable/useTableCrud/useOptions)不 import 它。
 
 /* ======================== 数据契约 ======================== */
@@ -282,6 +282,8 @@ export interface SmartTableProps<T = any> {
   toolbar?: false | ToolbarConfig
   /** 表格卡片标题(也可用 #title 插槽)。 */
   title?: string
+  /** 库渲染的所有卡片(表格卡片、模式 1 的搜索卡片)的官方 NCard 属性,合并在库默认 size="small" + 16px 内边距覆盖之后。回退 2.1.1 外观:{ size: 'medium' }。 */
+  cardProps?: Partial<CardProps>
   /** 列设置 + 密度的 localStorage 持久化键;缺省不持久化。 */
   storageKey?: string
   defaultDensity?: Density // 默认 'compact';响应式(没有密度按钮时它就是当前值)

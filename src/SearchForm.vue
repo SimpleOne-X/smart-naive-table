@@ -18,6 +18,7 @@ import {
   NSwitch,
 } from 'naive-ui'
 import type { SelectMixedOption } from 'naive-ui/es/select/src/interface'
+import type { CardProps } from 'naive-ui'
 import type { SmartTableLabels, SmartTableOption, SearchFormConfig } from './types'
 import type { SearchDef } from './useColumns'
 import { optionLabel } from './useOptions'
@@ -31,6 +32,7 @@ const props = defineProps({
   dateValueFormat: { type: String, default: 'yyyy-MM-dd' },
   getOptions: { type: Function as PropType<(key: string) => SmartTableOption[]>, required: true },
   isLoadingOptions: { type: Function as PropType<(key: string) => boolean>, required: true },
+  cardProps: { type: Object as PropType<Partial<CardProps>>, default: () => ({}) },
 })
 
 const emit = defineEmits<{
@@ -142,7 +144,7 @@ function renderField(f: SearchDef): VNodeChild {
   </n-form>
 
   <!-- grid(默认):独立卡片 + n-grid -->
-  <n-card v-else :bordered="true" class="smart-table-search">
+  <n-card v-else :bordered="true" class="smart-table-search" v-bind="cardProps">
     <n-form
       :show-feedback="false"
       :label-placement="config.labelPlacement ?? 'left'"

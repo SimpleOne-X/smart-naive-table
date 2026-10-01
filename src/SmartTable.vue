@@ -16,7 +16,7 @@ import {
   type Slots,
 } from 'vue'
 import { NCard, NDataTable, NPagination } from 'naive-ui'
-import type { DataTableInst, DropdownOption, PaginationInfo, PaginationProps } from 'naive-ui'
+import type { CardProps, DataTableInst, DropdownOption, PaginationInfo, PaginationProps } from 'naive-ui'
 import type {
   Density,
   FilterState,
@@ -41,6 +41,7 @@ import {
   type FilterDef,
 } from './useColumns'
 import { applyFilters } from './filter'
+import { mergeCardProps } from './cardStyle'
 import { mergePageSizes, resolveDefaultPageSize } from './pageSize'
 import { collectSorters, deriveInitSorts, normalizeSorterEvent, sortToParams, sortTransition } from './sorts'
 import { useFilters } from './useFilters'
@@ -68,6 +69,7 @@ const props = defineProps({
   filter: { type: Boolean, default: undefined },
   toolbar: { type: [Boolean, Object] as PropType<false | ToolbarConfig>, default: undefined },
   title: { type: String, default: undefined },
+  cardProps: { type: Object as PropType<Partial<CardProps>>, default: undefined },
   storageKey: { type: String, default: undefined },
   defaultDensity: { type: String as PropType<Density>, default: undefined },
   labels: { type: Object as PropType<Partial<SmartTableLabels>>, default: undefined },
@@ -122,6 +124,7 @@ const attrs = useAttrs()
 const defaults = useSmartTableDefaults()
 
 const isRemote = computed(() => !!props.fetcher)
+const mergedCardProps = computed(() => mergeCardProps(props.cardProps))
 // 三层合并:内置 < 全局默认(defaults.labels,渲染期 toValue 解引用保持 locale 响应)< 实例 prop
 const mergedLabels = computed(() => mergeLabels(props.labels, toValue(defaults.labels)))
 
@@ -705,9 +708,10 @@ defineExpose({
       :is-loading-options="options.isLoading"
       @search="onSearch"
       @reset="onReset"
+      :card-props="mergedCardProps"
     />
 
-    <n-card :bordered="true" class="smart-table-card">
+    <n-card :bordered="true" class="smart-table-card" v-bind="mergedCardProps">
       <Toolbar
         v-if="showToolbar"
         :title="props.title"

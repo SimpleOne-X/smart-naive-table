@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
-import { NDataTable, NPagination } from 'naive-ui'
+import { NCard, NDataTable, NPagination } from 'naive-ui'
 import SmartTable from '../src/SmartTable.vue'
 import ColumnSettings from '../src/ColumnSettings.vue'
 import Toolbar from '../src/Toolbar.vue'
@@ -945,5 +945,56 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
       expect(fetcher.mock.calls.at(-1)![0]).toMatchObject({ page: 3 })
       wrapper.unmount()
     })
+  })
+})
+
+describe('SmartTable 卡片内边距(B11)与 cardProps(D10)', () => {
+  const cols = [{ key: 'name', title: 'Name', search: true }] as SmartTableColumn<unknown>[]
+  const mountCards = (extra: Record<string, unknown> = {}) =>
+    mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', ...extra } })
+  const cards = (w: ReturnType<typeof mount>) => w.findAllComponents(NCard)
+
+  it('表格卡片用官方 size="small" + 只作用于它自己的 paddingSmall 覆盖(四边 16px)', () => {
+    const wrapper = mountCards({ search: false })
+    const card = wrapper.findComponent(NCard)
+    expect(card.props('size')).toBe('small')
+    expect(card.props('themeOverrides')).toEqual({ paddingSmall: '16px 16px 16px' })
+    wrapper.unmount()
+  })
+
+  it('模式 1 的搜索卡片同样是 small + 16px(两张卡片一致)', () => {
+    const wrapper = mountCards()
+    expect(cards(wrapper)).toHaveLength(2)
+    for (const c of cards(wrapper)) {
+      expect(c.props('size')).toBe('small')
+      expect(c.props('themeOverrides')).toEqual({ paddingSmall: '16px 16px 16px' })
+    }
+    wrapper.unmount()
+  })
+
+  it('cardProps 回退旧外观:{ size: "medium" } 同时作用于表格卡片与搜索卡片', () => {
+    const wrapper = mountCards({ cardProps: { size: 'medium' } })
+    expect(cards(wrapper).map((c) => c.props('size'))).toEqual(['medium', 'medium'])
+    wrapper.unmount()
+  })
+
+  it('cardProps.themeOverrides 逐键合并:宿主只改圆角,库的 paddingSmall 覆盖仍在', () => {
+    const wrapper = mountCards({ cardProps: { themeOverrides: { borderRadius: '2px' } } })
+    for (const c of cards(wrapper)) {
+      expect(c.props('themeOverrides')).toEqual({ paddingSmall: '16px 16px 16px', borderRadius: '2px' })
+    }
+    wrapper.unmount()
+  })
+
+  it('cardProps 里的其它官方属性(如 bordered)也能透传', () => {
+    const wrapper = mountCards({ cardProps: { bordered: false } })
+    expect(cards(wrapper).map((c) => c.props('bordered'))).toEqual([false, false])
+    wrapper.unmount()
+  })
+
+  it('inline 布局的搜索区没有卡片:只剩表格卡片', () => {
+    const wrapper = mountCards({ search: { layout: 'inline' } })
+    expect(cards(wrapper)).toHaveLength(1)
+    wrapper.unmount()
   })
 })
