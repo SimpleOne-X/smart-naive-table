@@ -19,28 +19,27 @@ const rows = [
 afterEach(() => localStorage.clear())
 
 describe('2.1.1 特征:内置默认值', () => {
-  it('[B1] 内置兜底:每页 [10,20,50];[B2 已翻转] 密度 compact', () => {
-    expect(BUILTIN_DEFAULTS.pageSizes).toEqual([10, 20, 50])
+  it('[B1 已翻转] 内置兜底:每页 [100,500,1000];[B2 已翻转] 密度 compact', () => {
+    expect(BUILTIN_DEFAULTS.pageSizes).toEqual([100, 500, 1000])
     expect(BUILTIN_DEFAULTS.density).toBe('compact')
   })
 })
 
-describe('2.1.1 特征:分页', () => {
-  it('[B1][B4] 静态模式:默认每页 10、可选 [10,20,50]、带官方每页选择器、非 simple', () => {
+describe('3.0 分页(B1 / B4 已翻转)', () => {
+  it('静态模式:默认每页 100、simple、带每页选择器(suffix)', () => {
     const wrapper = mount(SmartTable, { props: { columns: [{ key: 'name', title: 'Name' }], data: rows, rowKey: 'id' } })
     const p = wrapper.findComponent(NDataTable).props('pagination') as Record<string, unknown>
-    expect(p.defaultPageSize).toBe(10)
-    expect(p.pageSizes).toEqual([10, 20, 50])
-    expect(p.showSizePicker).toBe(true)
-    expect(p.simple).toBeUndefined()
+    expect(p.pageSize).toBe(100)
+    expect(p.simple).toBe(true)
+    expect(typeof p.suffix).toBe('function')
     wrapper.unmount()
   })
 
-  it('[B1] 远程模式:首次请求 pageSize = 10', async () => {
+  it('远程模式:首次请求 pageSize = 100', async () => {
     const fetcher = vi.fn(async () => ({ items: rows, total: 2 }))
     const wrapper = mount(SmartTable, { props: { columns: [{ key: 'name', title: 'Name' }], fetcher, rowKey: 'id' } })
     await flushPromises()
-    expect(fetcher).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 10 }))
+    expect(fetcher).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 100 }))
     wrapper.unmount()
   })
 })

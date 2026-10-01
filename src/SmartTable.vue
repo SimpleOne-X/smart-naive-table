@@ -15,7 +15,7 @@ import {
   type PropType,
   type Slots,
 } from 'vue'
-import { NCard, NDataTable } from 'naive-ui'
+import { NCard, NDataTable, NPagination } from 'naive-ui'
 import type { DataTableInst, DropdownOption, PaginationInfo, PaginationProps } from 'naive-ui'
 import type {
   Density,
@@ -41,6 +41,7 @@ import {
   type FilterDef,
 } from './useColumns'
 import { applyFilters } from './filter'
+import { mergePageSizes, resolveDefaultPageSize } from './pageSize'
 import { collectSorters, deriveInitSorts, normalizeSorterEvent, sortToParams, sortTransition } from './sorts'
 import { useFilters } from './useFilters'
 import { mergeLabels } from './labels'
@@ -61,7 +62,7 @@ const props = defineProps({
   rowKey: { type: [String, Function] as PropType<string | ((row: T) => string | number)>, default: 'id' },
   params: { type: Object as PropType<Record<string, any>>, default: undefined },
   immediate: { type: Boolean, default: true },
-  defaultPageSize: { type: Number, default: 10 },
+  defaultPageSize: { type: Number, default: undefined },
   pagination: { type: [Boolean, Object] as PropType<false | Partial<PaginationProps>>, default: undefined },
   search: { type: [Boolean, Object] as PropType<false | SearchFormConfig>, default: undefined },
   filter: { type: Boolean, default: undefined },
@@ -124,6 +125,18 @@ const isRemote = computed(() => !!props.fetcher)
 // 三层合并:内置 < 全局默认(defaults.labels,渲染期 toValue 解引用保持 locale 响应)< 实例 prop
 const mergedLabels = computed(() => mergeLabels(props.labels, toValue(defaults.labels)))
 
+// 初始每页条数(D4):首次 setup 时解析一次。远程模式它就是首个请求的 pageSize(也解决了 pagination.pageSize 与首个请求不一致);
+// 本地模式它是 localPageSize 的初值(解决 pagination.defaultPageSize 被受控 pageSize 盖掉)。
+const userPagination = typeof props.pagination === 'object' ? props.pagination : undefined
+const initialPageSize = resolveDefaultPageSize({
+  prop: props.defaultPageSize,
+  pageSize: userPagination?.pageSize,
+  defaultPageSize: userPagination?.defaultPageSize,
+  pageSizes: userPagination?.pageSizes,
+  globalDefaultPageSize: defaults.defaultPageSize,
+  globalPageSizes: defaults.pageSizesGiven ? defaults.pageSizes : undefined,
+})
+
 /* ---- 搜索项与数据核 ---- */
 
 const searchDefs = computed(() => deriveSearchDefs(props.columns))
@@ -149,8 +162,17 @@ const filterDefs = computed(() => (filterEnabled.value ? deriveFilterDefs(props.
 const filters = useFilters<T>({
   defs: () => filterDefs.value,
   onChange: (key, value, state) => {
-    // 过滤条件变了,当前页码大概率已越界 —— 与搜索一致回第 1 页
-    if (isRemote.value) void table.search()
+    // 筛选后的分页行为:宿主显式传了官方 paginationBehaviorOnFilter 就照官方;没传保持库现状
+    // (远程回第 1 页;本地不动,页码由 Naive 夹回合法范围)。这是对官方默认值 'current' 的有意偏离,只发生在 remote。
+    const behavior = (attrs.paginationBehaviorOnFilter ?? attrs['pagination-behavior-on-filter']) as
+      | 'first'
+      | 'current'
+      | undefined
+    if (isRemote.value) void (behavior === 'current' ? table.load() : table.search())
+    else if (behavior === 'first') {
+      localPage.value = 1
+      tableRef.value?.page(1)
+    }
     emit('filterChange', key, value, state)
   },
 })
@@ -167,7 +189,7 @@ const table = useSmartTable<T>(
     initParams: deriveInitParams(searchDefs.value),
     extraParams: () => ({ ...(props.params ?? {}), ...sortToParams(sortState.value), ...filterToParams() }),
     immediate: isRemote.value && props.immediate,
-    defaultPageSize: props.defaultPageSize,
+    defaultPageSize: initialPageSize,
     onError: (e) => emit('error', e),
   },
 )
@@ -349,6 +371,9 @@ function onResetSettings() {
 // 也改成受控(那是更大的行为变更,这里只需要「重挂不掉页」)。
 const localPage = ref(1)
 
+// 本地模式的每页条数:官方 simple 分页自己没有选择器,库用嵌套的官方 NPagination 画的选择器要能改它,所以用受控的 pageSize
+const localPageSize = ref(initialPageSize)
+
 onBeforeUnmount(() => {
   window.removeEventListener('mouseup', endResize)
   window.removeEventListener('blur', endResize)
@@ -386,14 +411,52 @@ const paginationPrefix = computed(() =>
   slots['pagination-prefix'] ? (info: unknown) => slots['pagination-prefix']!(info) : undefined,
 )
 
+/** 官方回调可能是函数也可能是数组(Naive 允许 MaybeArray),逐个调用。 */
+function callAll(handler: unknown, ...args: unknown[]) {
+  for (const fn of Array.isArray(handler) ? handler : [handler]) if (typeof fn === 'function') fn(...args)
+}
+
 const mergedPagination = computed<false | PaginationProps>(() => {
   if (props.pagination === false) return false
   const user = props.pagination ?? {}
-  const base: Partial<PaginationProps> = {
-    showSizePicker: defaults.showSizePicker,
-    pageSizes: defaults.pageSizes,
-    prefix: paginationPrefix.value,
+  // 3.0 起默认官方 simple;传 { simple: false } 回到页码序列(此时走官方 showSizePicker / pageSizes)
+  const simple = user.simple ?? true
+  const showSizePicker = user.showSizePicker ?? defaults.showSizePicker // D3 #1:单表的 false 也要认
+  const current = user.pageSize ?? (isRemote.value ? pagination.pageSize : localPageSize.value)
+  // D3 #2 / #6:保留 { label, value } 对象;并入当前值(官方在当前值不在选项里时显示裸值)
+  const sizes = mergePageSizes(user.pageSizes ?? defaults.pageSizes, current)
+
+  // 改每页条数的处理函数:外层分页(非 simple 时)与内层嵌套选择器共用同一个
+  const onSize = isRemote.value
+    ? // 远程:与 2.1.1 一致 —— 宿主给了自己的处理函数就由宿主接管,否则走 useSmartTable(回第 1 页重查)
+      (n: number) => callAll(user.onUpdatePageSize ?? table.onPageSize, n)
+    : (n: number) => {
+        localPageSize.value = n
+        // 改每页条数回第 1 页(与远程一致)。官方外层本地分页只会静默夹页、不发 onUpdatePage,
+        // 所以库里记页码的 localPage 要自己置 1,并同步表格的页码
+        localPage.value = 1
+        tableRef.value?.page(1)
+        callAll(user.onUpdatePageSize, n) // D3 #3:转发宿主的回调
+      }
+
+  const base: Partial<PaginationProps> = { simple, prefix: paginationPrefix.value }
+  // simple 下官方不渲染每页选择器(Pagination.mjs:665):在官方 suffix 里嵌一个只渲染 size-picker 的官方 NPagination(E2)。
+  // 窄档(会折行)、宿主自带 suffix、关了选择器时都不画。不传 onUpdatePage:受控下内层夹页永远不会触发。
+  if (simple && showSizePicker && !narrowPager.value && !user.suffix) {
+    base.suffix = (info) =>
+      h(NPagination, {
+        displayOrder: ['size-picker'],
+        showSizePicker: true,
+        pageSizes: sizes,
+        pageSize: info.pageSize,
+        itemCount: info.itemCount,
+        page: info.page,
+        onUpdatePageSize: onSize,
+      })
   }
+  // 非 simple 回退:走官方 showSizePicker / pageSizes。pageSizes 放在 ...user 之后,免得宿主原值盖掉并入了当前值的版本(D3 #6)
+  const tail: Partial<PaginationProps> = simple ? {} : { showSizePicker, pageSizes: sizes }
+
   if (isRemote.value) {
     return {
       ...base,
@@ -403,20 +466,20 @@ const mergedPagination = computed<false | PaginationProps>(() => {
       onUpdatePage: table.onPage,
       onUpdatePageSize: table.onPageSize,
       ...user,
+      ...tail,
     }
   }
   return {
     ...base,
-    defaultPageSize: props.defaultPageSize,
+    pageSize: localPageSize.value,
     defaultPage: localPage.value,
     ...user,
+    ...tail,
     onUpdatePage: (p: number) => {
       localPage.value = p
-      // Naive 的 onUpdatePage 允许传数组(多个监听器合并),宿主理论上也可能这么传
-      const hostHandler = user.onUpdatePage
-      if (Array.isArray(hostHandler)) hostHandler.forEach((fn) => fn(p))
-      else hostHandler?.(p)
+      callAll(user.onUpdatePage, p)
     },
+    onUpdatePageSize: onSize,
   }
 })
 
@@ -447,6 +510,10 @@ const dragDelta = ref(0)
 
 /** 表格包含块(Naive 的横向滚动容器)的可见宽度,由下方 measureHost 维护。 */
 const hostWidth = ref(0)
+
+/** 库根节点宽度(ResizeObserver 维护)。< 600 视为窄档:分页不画每页选择器(卡片内宽 ≤ 340 时它会折行)。0 = 还没量到,按非窄档处理。 */
+const rootWidth = ref(0)
+const narrowPager = computed(() => rootWidth.value > 0 && rootWidth.value < 600)
 
 /**
  * 列宽之和小于容器时的富余宽度,交给一列占位列独自吃掉(见 withFillerColumn):
@@ -526,6 +593,7 @@ let observedBody: HTMLElement | null = null
  * 这个元素会随 tableKey 重建,所以每次测量顺手把 ResizeObserver 挪到当前这个上。
  */
 function measureHost() {
+  rootWidth.value = rootRef.value?.clientWidth ?? 0
   const body = rootRef.value?.querySelector<HTMLElement>('.n-data-table-base-table-body') ?? null
   if (resizeObserver && body !== observedBody) {
     if (observedBody) resizeObserver.unobserve(observedBody)
@@ -538,6 +606,7 @@ function measureHost() {
 onMounted(() => {
   // SSR / 测试环境可能没有 ResizeObserver:量一次就走,占位列退化成不补(与本次改动前一致)
   if (typeof ResizeObserver !== 'undefined') resizeObserver = new ResizeObserver(() => measureHost())
+  if (resizeObserver && rootRef.value) resizeObserver.observe(rootRef.value)
   measureHost()
 })
 

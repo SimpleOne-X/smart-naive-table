@@ -2,12 +2,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
-import { NDataTable } from 'naive-ui'
+import { NDataTable, NPagination } from 'naive-ui'
 import SmartTable from '../src/SmartTable.vue'
 import ColumnSettings from '../src/ColumnSettings.vue'
 import Toolbar from '../src/Toolbar.vue'
 import { FILLER_COLUMN_KEY } from '../src/useColumns'
 import { saveState } from '../src/storage'
+import { SMART_TABLE_DEFAULTS } from '../src/config'
 import type { SmartTableColumn } from '../src/types'
 
 // sortablejs 是懒加载的运行时依赖;这里换成假的,只观察「有没有绑、绑到了哪个 tbody」
@@ -660,5 +661,209 @@ describe('SmartTable 工具栏接线(B5 / more)', () => {
     wrapper.findComponent(Toolbar).vm.$emit('moreSelect', 'export', more[0])
     expect(wrapper.emitted('moreSelect')).toEqual([['export', more[0]]])
     wrapper.unmount()
+  })
+})
+
+describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
+  const base = { columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[], rowKey: 'id' }
+  const many = Array.from({ length: 50 }, (_, i) => ({ id: i + 1, name: `n${i + 1}` }))
+  type PagerProps = {
+    simple?: boolean
+    pageSize?: number
+    showSizePicker?: boolean
+    pageSizes?: unknown[]
+    suffix?: (info: Record<string, number>) => { type: unknown; props: Record<string, any> }
+    onUpdatePage?: (p: number) => void
+  }
+  const pagerProps = (w: ReturnType<typeof mount>) => w.findComponent(NDataTable).props('pagination') as PagerProps
+  /** 渲染 suffix,拿到内层官方 NPagination 的 vnode */
+  const picker = (w: ReturnType<typeof mount>, pageSize = 100) =>
+    pagerProps(w).suffix!({ page: 1, pageSize, pageCount: 1, itemCount: 2, startIndex: 0, endIndex: 1 })
+  const sizeValues = (vnode: { props: Record<string, any> }) =>
+    (vnode.props.pageSizes as Array<number | { value: number }>).map((s) => (typeof s === 'number' ? s : s.value))
+
+  it('B1 / B4:静态模式默认每页 100、simple;每页选择器是官方嵌套 NPagination,只渲染 size-picker', () => {
+    const wrapper = mount(SmartTable, { props: { ...base, data: rows } })
+    const p = pagerProps(wrapper)
+    expect(p.simple).toBe(true)
+    expect(p.pageSize).toBe(100)
+    expect(p.showSizePicker).toBeUndefined() // 官方 simple 不渲染选择器,所以外层不设
+    const v = picker(wrapper)
+    expect(v.type).toBe(NPagination)
+    expect(v.props).toMatchObject({ displayOrder: ['size-picker'], showSizePicker: true, pageSize: 100, itemCount: 2, page: 1 })
+    expect(v.props.pageSizes).toEqual([100, 500, 1000])
+    wrapper.unmount()
+  })
+
+  it('[Review Focus 2] 当前 pageSize 不在 pageSizes 里(宿主传 pageSize: 10)→ 传给内层的 pageSizes 并入当前值', () => {
+    const wrapper = mount(SmartTable, { props: { ...base, data: rows, pagination: { pageSize: 10 } } })
+    expect(sizeValues(picker(wrapper, 10))).toEqual([10, 100, 500, 1000])
+    wrapper.unmount()
+  })
+
+  it('[D3 #2] 宿主 pagination.pageSizes 里的 { label, value } 对象原样保留,不被当非数字项丢掉', () => {
+    const obj = { label: '每页 50 条', value: 50 }
+    const wrapper = mount(SmartTable, { props: { ...base, data: rows, pagination: { pageSizes: [20, obj] } } })
+    expect(picker(wrapper, 20).props.pageSizes).toEqual([20, obj])
+    wrapper.unmount()
+  })
+
+  it('[D3 #1] 宿主单表 pagination.showSizePicker: false → simple 下也不画每页选择器', () => {
+    const wrapper = mount(SmartTable, { props: { ...base, data: rows, pagination: { showSizePicker: false } } })
+    expect(pagerProps(wrapper).suffix).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('全局 showSizePicker: false → 不画每页选择器;宿主自带 suffix 时库不覆盖', () => {
+    const w1 = mount(SmartTable, {
+      props: { ...base, data: rows },
+      global: { provide: { [SMART_TABLE_DEFAULTS as symbol]: { showSizePicker: false } } },
+    })
+    expect(pagerProps(w1).suffix).toBeUndefined()
+    w1.unmount()
+    const mine = () => 'mine'
+    const w2 = mount(SmartTable, { props: { ...base, data: rows, pagination: { suffix: mine } } })
+    expect(pagerProps(w2).suffix).toBe(mine)
+    w2.unmount()
+  })
+
+  it('pagination: { simple: false } → 回到页码序列,走官方 showSizePicker / pageSizes,不画 suffix', () => {
+    const wrapper = mount(SmartTable, { props: { ...base, data: rows, pagination: { simple: false } } })
+    const p = pagerProps(wrapper)
+    expect(p.simple).toBe(false)
+    expect(p.showSizePicker).toBe(true)
+    expect(p.pageSizes).toEqual([100, 500, 1000])
+    expect(p.suffix).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('[D3 #6] simple: false 回退时当前 pageSize 不在 pageSizes 里 → 官方选择器的选项也并入当前值', () => {
+    const wrapper = mount(SmartTable, { props: { ...base, data: rows, pagination: { simple: false, pageSize: 15 } } })
+    expect(pagerProps(wrapper).pageSizes).toEqual([15, 100, 500, 1000])
+    wrapper.unmount()
+  })
+
+  it('远程模式:首次请求 pageSize = 100;内层选择器改 500 → 回第 1 页按 500 重查', async () => {
+    const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 2 }))
+    const wrapper = mount(SmartTable, { props: { ...base, fetcher } })
+    await flushPromises()
+    expect(fetcher.mock.calls[0][0]).toMatchObject({ page: 1, pageSize: 100 })
+    picker(wrapper).props.onUpdatePageSize(500)
+    await flushPromises()
+    expect(fetcher.mock.calls.at(-1)![0]).toMatchObject({ page: 1, pageSize: 500 })
+    wrapper.unmount()
+  })
+
+  it('[D3 #5] 远程模式宿主传 pagination.pageSize: 10:首个请求就是 10(分页条与请求一致)', async () => {
+    const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 2 }))
+    const wrapper = mount(SmartTable, { props: { ...base, fetcher, pagination: { pageSize: 10 } } })
+    await flushPromises()
+    expect(fetcher.mock.calls[0][0]).toMatchObject({ page: 1, pageSize: 10 })
+    expect(pagerProps(wrapper).pageSize).toBe(10)
+    wrapper.unmount()
+  })
+
+  it('[D3 #3] 本地模式:内层选择器改 500 → 表格 pageSize 变 500、回第 1 页,并转发宿主的 onUpdatePageSize', async () => {
+    const onSize = vi.fn()
+    const wrapper = mount(SmartTable, { props: { ...base, data: many, pagination: { onUpdatePageSize: onSize } } })
+    picker(wrapper).props.onUpdatePageSize(500)
+    await nextTick()
+    expect(pagerProps(wrapper).pageSize).toBe(500)
+    expect(onSize).toHaveBeenCalledWith(500)
+    wrapper.unmount()
+  })
+
+  it('[D3 #4] 本地模式宿主 pagination.defaultPageSize: 20:50 行只显示 20 行(不被受控 pageSize 盖成 100)', async () => {
+    const wrapper = mount(SmartTable, { props: { ...base, data: many, pagination: { defaultPageSize: 20 } } })
+    await nextTick()
+    expect(pagerProps(wrapper).pageSize).toBe(20)
+    expect(wrapper.findAll('tbody tr')).toHaveLength(20)
+    wrapper.unmount()
+  })
+
+  it('[D4] 回退「一行」:宿主只写 pagination.pageSizes [10,20,50](没写 defaultPageSize)→ 首个请求 10', async () => {
+    const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 2 }))
+    const wrapper = mount(SmartTable, { props: { ...base, fetcher, pagination: { pageSizes: [10, 20, 50] } } })
+    await flushPromises()
+    expect(fetcher.mock.calls[0][0]).toMatchObject({ pageSize: 10 })
+    wrapper.unmount()
+  })
+
+  it('[D4] 全局 pageSizes [10,20,50] 同样;全局 defaultPageSize: 30 压过 pageSizes[0];实例 default-page-size 最高', async () => {
+    const first = async (defaults: Record<string, unknown>, props: Record<string, unknown> = {}) => {
+      const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 2 }))
+      const w = mount(SmartTable, {
+        props: { ...base, fetcher, ...props },
+        global: { provide: { [SMART_TABLE_DEFAULTS as symbol]: defaults } },
+      })
+      await flushPromises()
+      w.unmount()
+      return (fetcher.mock.calls[0][0] as Record<string, unknown>).pageSize
+    }
+    expect(await first({ pageSizes: [10, 20, 50] })).toBe(10)
+    expect(await first({ pageSizes: [10, 20, 50], defaultPageSize: 30 })).toBe(30)
+    expect(await first({ pageSizes: [10, 20, 50], defaultPageSize: 30 }, { defaultPageSize: 20 })).toBe(20)
+  })
+
+  describe('窄档(库根节点宽 < 600)不画每页选择器', () => {
+    class RO {
+      static instances: RO[] = []
+      cb: () => void
+      constructor(cb: () => void) {
+        this.cb = cb
+        RO.instances.push(this)
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    it('量到根节点宽 500 → 没有 suffix;量到 900 → 有', async () => {
+      RO.instances = []
+      vi.stubGlobal('ResizeObserver', RO)
+      const wrapper = mount(SmartTable, { props: { ...base, data: rows }, attachTo: document.body })
+      Object.defineProperty(wrapper.element, 'clientWidth', { value: 500, configurable: true })
+      RO.instances.forEach((i) => i.cb())
+      await nextTick()
+      expect(pagerProps(wrapper).suffix).toBeUndefined()
+
+      Object.defineProperty(wrapper.element, 'clientWidth', { value: 900, configurable: true })
+      RO.instances.forEach((i) => i.cb())
+      await nextTick()
+      expect(typeof pagerProps(wrapper).suffix).toBe('function')
+      wrapper.unmount()
+      vi.unstubAllGlobals()
+    })
+  })
+
+  describe('B9 筛选后分页', () => {
+    const filterCols = [{ key: 'name', title: 'Name', filter: true }] as SmartTableColumn<unknown>[]
+    const value = { logic: 'and' as const, conditions: [{ action: 'contains' as const, value: 'a' }] }
+
+    it('默认(宿主没传)保持库现状:远程回第 1 页', async () => {
+      const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 500 }))
+      const wrapper = mount(SmartTable, { props: { columns: filterCols, fetcher, rowKey: 'id' } })
+      await flushPromises()
+      pagerProps(wrapper).onUpdatePage!(3)
+      await flushPromises()
+      ;(wrapper.vm as unknown as { setFilter: (k: string, v: unknown) => void }).setFilter('name', value)
+      await flushPromises()
+      expect(fetcher.mock.calls.at(-1)![0]).toMatchObject({ page: 1 })
+      wrapper.unmount()
+    })
+
+    it('宿主显式传官方 paginationBehaviorOnFilter="current" → 留在当前页', async () => {
+      const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 500 }))
+      const wrapper = mount(SmartTable, {
+        props: { columns: filterCols, fetcher, rowKey: 'id' },
+        attrs: { paginationBehaviorOnFilter: 'current' },
+      })
+      await flushPromises()
+      pagerProps(wrapper).onUpdatePage!(3)
+      await flushPromises()
+      ;(wrapper.vm as unknown as { setFilter: (k: string, v: unknown) => void }).setFilter('name', value)
+      await flushPromises()
+      expect(fetcher.mock.calls.at(-1)![0]).toMatchObject({ page: 3 })
+      wrapper.unmount()
+    })
   })
 })

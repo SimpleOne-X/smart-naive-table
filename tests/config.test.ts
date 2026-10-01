@@ -20,7 +20,7 @@ describe('resolveDefaults 优先级', () => {
     expect(r.align).toBe('left')
     expect(r.indexWidth).toBe(80)
     expect(r.titleAlign).toBe('center') // 未给 → 兜底
-    expect(r.pageSizes).toEqual([10, 20, 50])
+    expect(r.pageSizes).toEqual([100, 500, 1000]) // P-1:B1 落地后翻转,锁的是 2.1.1 的旧默认值
   })
 
   it('undefined 字段不得覆盖兜底', () => {
@@ -131,5 +131,19 @@ describe('labels 约定(D9):新增键可选、英文默认与中文包保持完�
     const merged = mergeLabels(legacy)
     expect(merged.search).toBe('查询')
     expect(merged.filterIsNull).toBe(defaultLabels.filterIsNull)
+  })
+})
+
+describe('defaultPageSize / pageSizesGiven(D4)', () => {
+  it('不注入:pageSizesGiven 为 false,没有全局 defaultPageSize', () => {
+    const r = resolveDefaults()
+    expect(r.pageSizes).toEqual([100, 500, 1000])
+    expect(r.pageSizesGiven).toBe(false)
+    expect(r.defaultPageSize).toBeUndefined()
+  })
+  it('注入了 pageSizes → pageSizesGiven 为 true;注入 defaultPageSize 原样透传', () => {
+    expect(resolveDefaults({ pageSizes: [10, 20] })).toMatchObject({ pageSizes: [10, 20], pageSizesGiven: true })
+    expect(resolveDefaults({ defaultPageSize: 30 }).defaultPageSize).toBe(30)
+    expect(resolveDefaults({ defaultPageSize: 30 }).pageSizesGiven).toBe(false)
   })
 })

@@ -14,7 +14,9 @@ export interface SmartTableDefaults {
   emptyText?: string
   /** tag:true 列的 NTag 样式;内置兜底 { size:'small', bordered:false }。 */
   tag?: { size?: 'small' | 'medium' | 'large'; bordered?: boolean }
-  /** 分页可选每页条数;内置兜底 [10,20,50]。 */
+  /** 默认每页条数;缺省时取宿主显式给的 pageSizes[0],再缺省取 100。优先级见 pageSize.ts 的 resolveDefaultPageSize。 */
+  defaultPageSize?: number
+  /** 分页可选每页条数;内置兜底 [100,500,1000]。 */
   pageSizes?: number[]
   /** 是否显示每页条数选择器;内置兜底 true。 */
   showSizePicker?: boolean
@@ -51,7 +53,10 @@ export type ResolvedSmartTableDefaults = {
   titleAlign: 'left' | 'center' | 'right'
   emptyText: string
   tag: { size: 'small' | 'medium' | 'large'; bordered: boolean }
+  defaultPageSize?: number
   pageSizes: number[]
+  /** 宿主是否显式注入了 pageSizes(决定要不要拿 pageSizes[0] 当默认每页条数)。 */
+  pageSizesGiven: boolean
   showSizePicker: boolean
   fixedFallbackWidth: number
   indexWidth: number
@@ -72,7 +77,8 @@ export const BUILTIN_DEFAULTS: ResolvedSmartTableDefaults = {
   titleAlign: 'center',
   emptyText: '—',
   tag: { size: 'small', bordered: false },
-  pageSizes: [10, 20, 50],
+  pageSizes: [100, 500, 1000],
+  pageSizesGiven: false,
   showSizePicker: true,
   fixedFallbackWidth: 120,
   indexWidth: 64,
@@ -98,6 +104,7 @@ export function resolveDefaults(injected?: SmartTableDefaults | null): ResolvedS
     if (v !== undefined) (out as Record<string, unknown>)[k] = v
   }
   out.tag = { ...BUILTIN_DEFAULTS.tag, ...injected.tag }
+  out.pageSizesGiven = injected.pageSizes !== undefined
   return out
 }
 

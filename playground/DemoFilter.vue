@@ -121,6 +121,7 @@ const columns: SmartTableColumn<DemoRow>[] = [
       :data="rows"
       :labels="labels"
       :title="tt('前端过滤 + 列宽拖拽', 'Local filtering + resizable')()"
+      :pagination="{ pageSizes: [20, 50, { label: '每页 100 条', value: 100 }] }"
       storage-key="demo-filter"
       resizable
       :single-line="false"

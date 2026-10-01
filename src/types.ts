@@ -268,8 +268,11 @@ export interface SmartTableProps<T = any> {
   params?: Record<string, any>
   /** 挂载即请求,默认 true。 */
   immediate?: boolean
-  defaultPageSize?: number // 默认 10
-  /** false 隐藏分页;对象与内置默认合并后透传 n-data-table 分页。 */
+  defaultPageSize?: number // 默认取宿主给的 pageSizes[0],再缺省 100(解析优先级见 pageSize.ts)
+  /**
+   * false 隐藏分页;对象与内置默认合并后透传 n-data-table 分页。
+   * 3.0 起默认官方 simple(输入框 / 总页数),每页条数选择器由库用官方嵌套 NPagination 画;传 { simple: false } 回到页码序列。
+   */
   pagination?: false | Partial<PaginationProps>
   /** false 隐藏搜索表单(即使列声明了 search)。 */
   search?: false | SearchFormConfig
