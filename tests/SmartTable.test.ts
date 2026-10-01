@@ -7,7 +7,6 @@ import SmartTable from '../src/SmartTable.vue'
 import ColumnSettings from '../src/ColumnSettings.vue'
 import Toolbar from '../src/Toolbar.vue'
 import FilterChips from '../src/FilterChips.vue'
-import { FILLER_COLUMN_KEY } from '../src/useColumns'
 import { saveState } from '../src/storage'
 import { SMART_TABLE_DEFAULTS } from '../src/config'
 import type { SmartTableColumn } from '../src/types'
@@ -100,7 +99,7 @@ describe('SmartTable 列宽拖拽事件透传', () => {
     wrapper.unmount()
   })
 })
-describe('SmartTable 列宽钉住后填满容器', () => {
+describe('SmartTable 列宽钉住后由吸收列吸收余量(B8,取代占位列;E1)', () => {
   /** jsdom 没有 ResizeObserver,这里替一个能手动触发的桩,用来驱动组件里的容器测量。 */
   class ResizeObserverStub {
     static instances: ResizeObserverStub[] = []
@@ -136,96 +135,181 @@ describe('SmartTable 列宽钉住后填满容器', () => {
     ResizeObserverStub.instances.forEach((i) => i.emit())
   }
 
-  it('列宽之和小于容器时补一列占位:表格总宽正好等于容器宽,右侧不留白,其余列保持拖出来的宽度', async () => {
-    const wrapper = mountWithHostWidth([
-      { key: 'name', title: 'Name', width: 200, resizable: true },
-      { key: 'op', title: 'Op', width: 200, fixed: 'right' },
-    ])
-    const dataTable = wrapper.findComponent(NDataTable)
+  type Col = { key: string; width?: number; resizable?: boolean }
 
-    // 走一遍真实拖拽:Naive 拖动中持续回调,松手落账,此后列宽进入钉住态
-    const resize = dataTable.props('onUnstableColumnResize') as (...a: unknown[]) => void
-    const actualWidths: Record<string, number> = { name: 200, op: 200 }
-    resize(120, 120, { key: 'name' }, (k: string) => actualWidths[k])
+  /** 走一遍真实拖拽:Naive 拖动中持续回调,松手落账,此后列宽进入钉住态。 */
+  function drag(wrapper: ReturnType<typeof mount>, key: string, to: number, actual: Record<string, number>) {
+    const resize = wrapper.findComponent(NDataTable).props('onUnstableColumnResize') as (...a: unknown[]) => void
+    resize(to, to, { key }, (k: string) => actual[k])
+  }
+  function release() {
     window.dispatchEvent(new MouseEvent('mouseup'))
+  }
+
+  const three = (): SmartTableColumn<unknown>[] => [
+    { key: 'a', title: 'A', width: 200, resizable: true },
+    { key: 'b', title: 'B', width: 200, resizable: true },
+    { key: 'op', title: 'Op', width: 200, fixed: 'right' },
+  ]
+
+  it('拖非吸收列(a)后:没有占位列;吸收列(b)不写 width 且没有把手;scroll-x = 已钉列 + 吸收列下限', async () => {
+    const wrapper = mountWithHostWidth(three())
+    const dataTable = wrapper.findComponent(NDataTable)
+    drag(wrapper, 'a', 120, { a: 200, b: 200, op: 200 })
+    release()
     emitResizeObserver()
     await nextTick()
 
-    const columns = dataTable.props('columns') as Array<{ key: string; width?: number }>
-    expect(columns.map((c) => c.key)).toEqual(['name', FILLER_COLUMN_KEY, 'op'])
-    // 拖窄后 120 + 操作列 200 = 320,占位列独自吃掉剩下的 580
-    expect(columns[1].width).toBe(HOST_WIDTH - 320)
+    const columns = dataTable.props('columns') as Col[]
+    expect(columns.map((c) => c.key)).toEqual(['a', 'b', 'op']) // 列数恒等于声明的列数
     expect(columns[0].width).toBe(120)
+    expect(columns[1].width).toBeUndefined() // 吸收列:弹性,浏览器把剩余宽度给它
+    expect(columns[1].resizable).toBe(false) // 永远没有把手(Naive 内部拖拽宽度无法清除,所以吸收列不能是拖过的列)
+    expect(columns[2].width).toBe(200)
+    expect(dataTable.props('scrollX')).toBe(120 + 200 + 200) // 120(拖出来)+ 吸收列下限 200(声明宽)+ op 200
+
+    wrapper.unmount()
+    vi.unstubAllGlobals()
+  })
+
+  it('已钉住的表格,拖拽进行中(松手之前)scroll-x 跟着被拖的列同步,不必每帧重建列', async () => {
+    const wrapper = mountWithHostWidth(three())
+    const dataTable = wrapper.findComponent(NDataTable)
+    drag(wrapper, 'a', 120, { a: 200, b: 200, op: 200 })
+    release()
+    emitResizeObserver()
+    await nextTick()
+
+    // 再次拖拽 a,但还没有松手
+    drag(wrapper, 'a', 200, { a: 120, b: 200, op: 200 })
+    await nextTick()
+    expect(dataTable.props('scrollX')).toBe(120 + 200 + 200 + (200 - 120)) // 已钉列 + 吸收列下限 + 拖拽增量
+
+    wrapper.unmount()
+    vi.unstubAllGlobals()
+  })
+
+  it('没拖过列宽(未钉住)时不动列:拉伸交给 Naive 自己的 width:100%(吸收列仍不可拖)', async () => {
+    const wrapper = mountWithHostWidth(three())
+    emitResizeObserver()
+    await nextTick()
+
+    const dataTable = wrapper.findComponent(NDataTable)
+    const columns = dataTable.props('columns') as Col[]
+    expect(columns.map((c) => c.key)).toEqual(['a', 'b', 'op'])
+    expect(columns[0].width).toBe(200)
+    expect(columns[1].width).toBe(200)
+    expect(columns[1].resizable).toBe(false)
+    expect(dataTable.props('scrollX')).toBe(600)
+
+    wrapper.unmount()
+    vi.unstubAllGlobals()
+  })
+
+  it('列宽之和超过容器时照旧横向滚动', async () => {
+    const wrapper = mountWithHostWidth([
+      { key: 'a', title: 'A', width: 800, resizable: true },
+      { key: 'b', title: 'B', width: 400, resizable: true },
+      { key: 'op', title: 'Op', width: 300, fixed: 'right' },
+    ])
+    const dataTable = wrapper.findComponent(NDataTable)
+    drag(wrapper, 'a', 800, { a: 800, b: 400, op: 300 })
+    release()
+    emitResizeObserver()
+    await nextTick()
+    expect(dataTable.props('scrollX')).toBe(800 + 400 + 300)
+
+    wrapper.unmount()
+    vi.unstubAllGlobals()
+  })
+
+  it('[Review Focus 4] 全部列都 fixed:最后一列写显式宽度吃掉余量(容器宽由 ResizeObserver 量到),拖别的列时它让得出来', async () => {
+    const wrapper = mountWithHostWidth([
+      { key: 'a', title: 'A', width: 200, fixed: 'left', resizable: true },
+      { key: 'b', title: 'B', width: 200, fixed: 'right' },
+    ])
+    const dataTable = wrapper.findComponent(NDataTable)
+    drag(wrapper, 'a', 120, { a: 200, b: 200 })
+    release()
+    emitResizeObserver()
+    await nextTick()
+
+    const columns = dataTable.props('columns') as Col[]
+    expect(columns.map((c) => c.key)).toEqual(['a', 'b'])
+    expect(columns[0].width).toBe(120)
+    expect(columns[1].width).toBe(HOST_WIDTH - 120)
     expect(dataTable.props('scrollX')).toBe(HOST_WIDTH)
 
     wrapper.unmount()
     vi.unstubAllGlobals()
   })
 
-  it('已钉住的表格,拖拽进行中(松手之前)表格总宽也应等于容器宽度,不应中途露出留白', async () => {
-    const wrapper = mountWithHostWidth([
-      { key: 'name', title: 'Name', width: 200, resizable: true },
-      { key: 'op', title: 'Op', width: 200, fixed: 'right' },
-    ])
-    const dataTable = wrapper.findComponent(NDataTable)
-    const resize = dataTable.props('onUnstableColumnResize') as (...a: unknown[]) => void
-    const actualWidths: Record<string, number> = { name: 200, op: 200 }
+  describe('拖过的列后来成为吸收列 → 重挂(tableKey++),清掉 Naive 内部的拖拽宽度', () => {
+    const four = (): SmartTableColumn<unknown>[] => [
+      { key: 'a', title: 'A', width: 150, resizable: true },
+      { key: 'b', title: 'B', width: 150, resizable: true },
+      { key: 'c', title: 'C', width: 150, resizable: true },
+      { key: 'd', title: 'D', width: 150, resizable: true },
+    ]
+    const uid = (w: ReturnType<typeof mount>) => w.findComponent(NDataTable).vm.$.uid
+    const actual = { a: 250, b: 250, c: 250, d: 250 }
 
-    // 先走一遍完整拖拽,让表格进入钉住态(name 120 + op 200 + 占位 580 = 900)
-    resize(120, 120, { key: 'name' }, (k: string) => actualWidths[k])
-    window.dispatchEvent(new MouseEvent('mouseup'))
-    emitResizeObserver()
-    await nextTick()
-    actualWidths.name = 120
+    it('先拖 c(非吸收列),再隐藏 d → c 成为吸收列 → NDataTable 被重挂;c 现在不写 width', async () => {
+      const wrapper = mountWithHostWidth(four())
+      drag(wrapper, 'c', 290, actual)
+      release()
+      emitResizeObserver()
+      await nextTick()
+      const before = uid(wrapper)
 
-    // 再次拖拽 name 列,但还没有松手(onUnstableColumnResize 在鼠标移动时持续触发)
-    resize(200, 200, { key: 'name' }, (k: string) => actualWidths[k])
-    await nextTick()
+      wrapper.findComponent(ColumnSettings).vm.$emit('toggle', 'd', false)
+      await flushPromises()
+      expect(uid(wrapper)).not.toBe(before) // 重挂了
+      const columns = wrapper.findComponent(NDataTable).props('columns') as Col[]
+      expect(columns.map((c) => c.key)).toEqual(['a', 'b', 'c'])
+      expect(columns[2].width).toBeUndefined()
+      expect(columns[2].resizable).toBe(false)
 
-    // 拖拽中途,表格总宽仍应等于容器宽度:占位列要跟着 dragDelta 一起让出空间
-    expect(dataTable.props('scrollX')).toBe(HOST_WIDTH)
+      wrapper.unmount()
+      vi.unstubAllGlobals()
+    })
 
-    wrapper.unmount()
-    vi.unstubAllGlobals()
-  })
+    it('新吸收列在本次挂载期间没被拖过(只拖了 a,再隐藏 d → c 成吸收列)→ 不重挂', async () => {
+      const wrapper = mountWithHostWidth(four())
+      drag(wrapper, 'a', 210, actual)
+      release()
+      emitResizeObserver()
+      await nextTick()
+      const before = uid(wrapper)
 
-  it('没拖过列宽(未钉住)时不补占位列 —— 拉伸交给 Naive 自己的 width:100%', async () => {
-    const wrapper = mountWithHostWidth([
-      { key: 'name', title: 'Name', width: 200 },
-      { key: 'op', title: 'Op', width: 200, fixed: 'right' },
-    ])
-    emitResizeObserver()
-    await nextTick()
+      wrapper.findComponent(ColumnSettings).vm.$emit('toggle', 'd', false)
+      await flushPromises()
+      expect(uid(wrapper)).toBe(before)
 
-    const dataTable = wrapper.findComponent(NDataTable)
-    const columns = dataTable.props('columns') as Array<{ key: string }>
-    expect(columns.map((c) => c.key)).toEqual(['name', 'op'])
-    expect(dataTable.props('scrollX')).toBe(400)
+      wrapper.unmount()
+      vi.unstubAllGlobals()
+    })
 
-    wrapper.unmount()
-    vi.unstubAllGlobals()
-  })
+    it('重挂之后「拖过的列」记录清空:之后再换吸收列不会无谓地再重挂', async () => {
+      const wrapper = mountWithHostWidth(four())
+      drag(wrapper, 'c', 290, actual)
+      release()
+      emitResizeObserver()
+      await nextTick()
+      wrapper.findComponent(ColumnSettings).vm.$emit('toggle', 'd', false)
+      await flushPromises()
+      const afterFirst = uid(wrapper)
 
-  it('列宽之和超过容器时不补占位列,照旧横向滚动', async () => {
-    const wrapper = mountWithHostWidth([
-      { key: 'name', title: 'Name', width: 800, resizable: true },
-      { key: 'op', title: 'Op', width: 400, fixed: 'right' },
-    ])
-    const dataTable = wrapper.findComponent(NDataTable)
+      wrapper.findComponent(ColumnSettings).vm.$emit('toggle', 'd', true) // d 回来,c 退出吸收 —— d 从没被拖过
+      await flushPromises()
+      expect(uid(wrapper)).toBe(afterFirst)
+      wrapper.findComponent(ColumnSettings).vm.$emit('toggle', 'd', false) // d 再隐藏,c 再次成为吸收列:c 是重挂之前拖过的,记录已清空 → 不再重挂
+      await flushPromises()
+      expect(uid(wrapper)).toBe(afterFirst)
 
-    const resize = dataTable.props('onUnstableColumnResize') as (...a: unknown[]) => void
-    const actualWidths: Record<string, number> = { name: 800, op: 400 }
-    resize(800, 800, { key: 'name' }, (k: string) => actualWidths[k])
-    window.dispatchEvent(new MouseEvent('mouseup'))
-    emitResizeObserver()
-    await nextTick()
-
-    const columns = dataTable.props('columns') as Array<{ key: string }>
-    expect(columns.map((c) => c.key)).toEqual(['name', 'op'])
-    expect(dataTable.props('scrollX')).toBe(1200)
-
-    wrapper.unmount()
-    vi.unstubAllGlobals()
+      wrapper.unmount()
+      vi.unstubAllGlobals()
+    })
   })
 })
 describe('SmartTable 暴露的 filters / columnWidths 是只读快照', () => {

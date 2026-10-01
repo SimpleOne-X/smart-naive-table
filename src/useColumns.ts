@@ -25,6 +25,15 @@ import { findOption, optionLabel } from './useOptions'
 import { clearState, loadState, mergeCols, peekStoredDensity, saveState, type DeclaredCol } from './storage'
 import type { ResolvedSmartTableDefaults } from './config'
 
+/**
+ * 带图标的表头的最小宽度:左内边距 12 + 标题 44 + 漏斗簇 30(可过滤)+ 箭头簇 21(可排序)+ 右内边距 16。
+ * 可拖拽列的拖拽下限取它与 resizeMinWidth 的较大者,免得把图标挤出格子(B12)。
+ */
+export function headerIconFloor(hasFilter: boolean, hasSorter: boolean): number {
+  if (!hasFilter && !hasSorter) return 0
+  return 12 + 44 + (hasFilter ? 30 : 0) + (hasSorter ? 21 : 0) + 16
+}
+
 export function isSpecialColumn<T>(c: SmartTableColumn<T>): c is SmartTableSpecialColumn<T> {
   return 'type' in c && typeof (c as SmartTableSpecialColumn<T>).type === 'string'
 }
@@ -231,6 +240,10 @@ export interface UseColumnsOpts<T> {
   renderFilter?: (def: FilterDef<T>) => VNodeChild
   /** 表级列宽拖拽开关;列上显式 resizable 优先。 */
   resizable?: () => boolean
+  /** 表格容器的可见宽度(仅「没有可拖的非固定列」的退路用来算吸收列的显式宽度)。 */
+  hostWidth?: () => number
+  /** 拖拽进行中的临时增量(SmartTable 维护,松手清零);退路里吸收列要让出这部分。 */
+  dragDelta?: () => number
 }
 
 export interface UseColumnsReturn<T> {
@@ -251,6 +264,8 @@ export interface UseColumnsReturn<T> {
   pinned: ComputedRef<boolean>
   naiveColumns: ComputedRef<DataTableColumn<T>[]>
   scrollX: ComputedRef<number>
+  /** 当前吸收余量的列的 key(没有可见列时 null);SmartTable 据此在它变成「拖过的列」时重挂。 */
+  absorberKey: ComputedRef<string | null>
 }
 
 export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
@@ -291,17 +306,76 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
    */
   const pinned = computed(() => Object.keys(widths.value).length > 0)
 
+  /** 可见叶子数据列(最终顺序,多级表头展开到叶子)及各自是否固定(设置里的固定优先)。 */
+  const visibleLeaves = computed(() => {
+    const out: Array<{ col: SmartTableDataColumn<T>; fixed?: 'left' | 'right' }> = []
+    const walk = (cols: SmartTableDataColumn<T>[], inherited?: 'left' | 'right') => {
+      for (const c of cols) {
+        const own = c.fixed === 'left' || c.fixed === 'right' ? c.fixed : undefined
+        const fixed = inherited ?? own
+        if (c.children?.length) walk(c.children, fixed)
+        else out.push({ col: c, fixed })
+      }
+    }
+    // 顶层列的 fixed 直接取 orderedVisibleData 给的值(managed 列 = 设置里的值,与 toNaive 的 override 同源):
+    // 不能再 `?? col.fixed` —— 用户在列设置里把声明了 fixed 的列取消固定后,它渲染成非固定列,这里也得认它是非固定。
+    for (const { col, fixed } of orderedVisibleData.value) {
+      if (col.children?.length) walk(col.children, fixed)
+      else out.push({ col, fixed })
+    }
+    return out
+  })
+
   /**
-   * 叶子数据列的最终宽度。toNaive 与 scrollX 共用这一套口径 —— 两者一旦对不上,
+   * 拖过列宽后吸收余量的列(B8,E1 / spike S1 的 dk 方案):最后一个**可见、非固定、`resizable !== false`** 的叶子数据列。
+   * elastic = true:钉住后**不写 width**,由 table-layout:fixed 把剩余宽度自然分给它;它的「钉住宽度」只是下限。
+   * 没有这样的列(全部 fixed / 全部不可拖)→ 退路:最后一个叶子列,写显式宽度(elastic = false)。
+   * 宿主给「操作」列写 `resizable: false` 就退出吸收(吸收列顺延到前一列);fixed: 'right' 的操作列天然不参与。
+   */
+  const absorber = computed<{ key: string; elastic: boolean } | null>(() => {
+    const leaves = visibleLeaves.value
+    if (leaves.length === 0) return null
+    for (let i = leaves.length - 1; i >= 0; i--) {
+      if (!leaves[i].fixed && leaves[i].col.resizable !== false) return { key: leaves[i].col.key, elastic: true }
+    }
+    return { key: leaves[leaves.length - 1].col.key, elastic: false }
+  })
+  const absorberKey = computed(() => absorber.value?.key ?? null)
+
+  /** 一列的宽度下限:拖出来 / 存储里的宽度 ?? 声明宽 ?? minWidth ?? 兜底宽。吸收列**不冻结成实测宽**,否则它成了下限,拖别的列时不肯缩(实测溢出 61px)。 */
+  function floorWidth(col: SmartTableDataColumn<T>): number {
+    return Number(widths.value[col.key] ?? col.width ?? col.minWidth ?? d.fixedFallbackWidth)
+  }
+
+  /**
+   * 叶子数据列的最终宽度(未考虑吸收列)。toNaive 与 scrollX 共用这一套口径 —— 两者一旦对不上,
    * 差额就会被表格摊回各列,拖一列左侧的列跟着动。
    */
-  function leafWidth(col: SmartTableDataColumn<T>, fixed?: 'left' | 'right'): number | undefined {
+  function rawLeafWidth(col: SmartTableDataColumn<T>, fixed?: 'left' | 'right'): number | undefined {
     const w = widths.value[col.key]
     if (w !== undefined) return w
     if (col.width !== undefined) return Number(col.width)
     // 固定列必须有具体宽度(否则 Naive 固定列错位);钉住态下所有列同理
     if (fixed || pinned.value) return Number(col.minWidth ?? d.fixedFallbackWidth)
     return undefined
+  }
+
+  /**
+   * 叶子数据列的最终宽度。钉住态下的吸收列:弹性 → undefined(不写 width);
+   * 退路 → 写显式宽度 max(下限, 容器宽 − 其余列宽之和 − 拖拽增量)。
+   */
+  function leafWidth(col: SmartTableDataColumn<T>, fixed?: 'left' | 'right'): number | undefined {
+    const a = absorber.value
+    if (pinned.value && a && a.key === col.key) {
+      if (a.elastic) return undefined
+      let others = 0
+      for (const sc of specialCols.value) others += specialWidth(sc)
+      for (const l of visibleLeaves.value) {
+        if (l.col.key !== col.key) others += rawLeafWidth(l.col, l.fixed) ?? floorWidth(l.col)
+      }
+      return Math.max(floorWidth(col), Math.round((opts.hostWidth?.() ?? 0) - others - (opts.dragDelta?.() ?? 0)))
+    }
+    return rawLeafWidth(col, fixed)
   }
 
   /** 特殊列(序号/勾选/展开)的最终宽度,同样两处共用。 */
@@ -349,7 +423,7 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
   }
 
   /**
-   * 列宽拖拽开始前,把所有可见叶子列钉成「当前实际渲染宽度」。
+   * 列宽拖拽开始前,把所有可见叶子列(吸收列 —— 最后一个可见、非固定、可拖的列 —— 除外)钉成「当前实际渲染宽度」。
    *
    * 为什么必须做:表格是 table-layout:fixed + width:100%,声明宽度之和小于容器时,
    * 浏览器会把富余宽度按比例摊给每一列 —— 实际渲染宽度因此大于声明宽度。
@@ -367,6 +441,8 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
           walk(col.children)
           continue
         }
+        // 吸收列不钉(B8):它是弹性的;退路里的吸收列也不能冻结成实测宽,否则拖别的列时它不肯缩
+        if (col.key === absorber.value?.key) continue
         if (next[col.key] !== undefined) continue
         const w = measure(col.key)
         if (typeof w === 'number' && w > 0) {
@@ -495,14 +571,24 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
     // 列宽拖拽:列显式 resizable 优先于表级开关;拖过的宽度回填成 width,
     // 刷新页面后(Naive 内部拖拽态已清空)仍由它还原。
     const resizable = naiveRest.resizable ?? opts.resizable?.() ?? false
-    result.resizable = resizable
+    // 吸收列永远没有拖拽把手(E1):Naive 把拖过的列记进内部 resizableWidthsRef,此后这一列的 <col> 宽度只认拖拽值、
+    // 不看我们传的 width,也没有清除入口 —— 弹性的吸收列一旦被拖过就再也弹性不起来。所以吸收列始终 resizable:false
+    // (必须始终,不能只在钉住态:第一次拖就拖吸收列时,freezeWidths 使表格进入钉住态,同一帧里把手被卸载、拖拽被中断)
+    const draggable = resizable && absorber.value?.key !== key
+    result.resizable = draggable
     // 没有下限时能被拖成 0 宽,列头直接消失且拖不回来
-    if (resizable && result.minWidth === undefined) result.minWidth = d.resizeMinWidth
+    // 带图标的列取 max(resizeMinWidth, 图标下限),免得图标被挤出格子(B12);列上显式写了 minWidth 的不覆盖
+    if (draggable && result.minWidth === undefined) {
+      const hasSorter = naiveRest.sorter != null && (naiveRest.sorter as unknown) !== false
+      result.minWidth = Math.max(d.resizeMinWidth, headerIconFloor(!!filterDef, hasSorter))
+    }
 
     const fixed = override && 'fixed' in override ? override.fixed : col.fixed
     result.fixed = fixed
     const width = leafWidth(col, fixed)
     if (width !== undefined) result.width = width
+    // 钉住态下 leafWidth 只会对弹性吸收列返回 undefined:把透传过来的声明宽度也摘掉,交给浏览器弹性分配
+    else if (pinned.value) delete result.width
 
     const slot = opts.slots[`cell-${key}`]
     if (render || slot || options || format) {
@@ -585,18 +671,11 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
     ...orderedVisibleData.value.map(({ col, fixed, managed }) => toNaive(col, managed ? { fixed } : undefined)),
   ])
 
-  /** auto scrollX = Σ可见叶子列 (width ?? minWidth ?? 兜底宽);特殊列缺省按 indexWidth。 */
+  /** auto scrollX = 特殊列宽度 + Σ可见叶子列(最终宽度 ?? 下限);吸收列按它的下限(退路则按显式宽度)计入,保证 scroll-x 始终 ≥ 各列下限之和。 */
   const scrollX = computed(() => {
     let sum = 0
     for (const col of specialCols.value) sum += specialWidth(col)
-    const walk = (cols: SmartTableDataColumn<T>[]) => {
-      for (const c of cols) {
-        if (c.children?.length) walk(c.children)
-        // 未钉住且没写宽度的列,leafWidth 返回 undefined —— scroll-x 仍按兜底宽估算
-        else sum += leafWidth(c, c.fixed) ?? Number(c.minWidth ?? d.fixedFallbackWidth)
-      }
-    }
-    walk(orderedVisibleData.value.map((r) => r.col))
+    for (const { col, fixed } of visibleLeaves.value) sum += leafWidth(col, fixed) ?? floorWidth(col)
     return sum
   })
 
@@ -614,34 +693,6 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
     pinned,
     naiveColumns,
     scrollX,
+    absorberKey,
   }
-}
-
-/** 占位列的 key。它不进列设置、不排序、不过滤、不可拖拽,只负责把表格填满容器。 */
-export const FILLER_COLUMN_KEY = '__smart_filler'
-
-/**
- * 列宽钉住(table-layout: fixed + 表格宽度 = 各列宽之和)后,列宽之和小于容器时补一列占位,
- * 把富余宽度独自吃掉:表头底色、行底色、边框都铺到容器右缘,而每一列仍是拖出来的精确宽度。
- * 不补的话表格右侧就是一块空白,补进真实列则会把富余摊回各列,拖一列会牵动其它列。
- *
- * 插在右固定列这一串的最前面 —— 找的是从数组末尾往前数、连续都是 fixed:'right' 的那一段
- * 的起点,而不是第一个匹配项:右固定列理应声明在最后,但没有任何校验强制这一点,若中间也混了
- * 一个 fixed:'right'(声明顺序或列设置里拖拽出来的),占位列仍要落在真正的尾部之前,不能卡在
- * 表格中间把后续的非固定列隔断。`allowExport: false` 让它不进 downloadCsv 导出。
- * width <= 0 时原样返回。
- */
-export function withFillerColumn<T>(columns: DataTableColumn<T>[], width: number): DataTableColumn<T>[] {
-  if (!(width > 0)) return columns
-  const filler: DataTableBaseColumn<T> = {
-    key: FILLER_COLUMN_KEY,
-    title: '',
-    width,
-    className: 'smart-table-filler-col',
-    allowExport: false,
-    render: () => null,
-  }
-  let at = columns.length
-  while (at > 0 && columns[at - 1].fixed === 'right') at--
-  return [...columns.slice(0, at), filler, ...columns.slice(at)]
 }

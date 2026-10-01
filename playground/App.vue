@@ -5,6 +5,7 @@ import DemoBasic from './DemoBasic.vue'
 import DemoWide from './DemoWide.vue'
 import DemoFilter from './DemoFilter.vue'
 import DemoCrud from './DemoCrud.vue'
+import DemoAbsorb from './DemoAbsorb.vue'
 import { locale, tt } from './locale'
 import { mockState } from './mock'
 
@@ -37,6 +38,7 @@ const naiveDateLocale = computed(() => (isZh.value ? dateZhCN : null))
           <n-tab-pane name="wide" :tab="tt('宽表', 'Wide')()"><DemoWide /></n-tab-pane>
           <n-tab-pane name="filter" :tab="tt('过滤 / 列宽', 'Filter / Resize')()"><DemoFilter /></n-tab-pane>
           <n-tab-pane name="crud" :tab="'CRUD'"><DemoCrud /></n-tab-pane>
+          <n-tab-pane name="absorb" tab="列宽余量"><DemoAbsorb /></n-tab-pane>
         </n-tabs>
       </div>
     </n-message-provider>
