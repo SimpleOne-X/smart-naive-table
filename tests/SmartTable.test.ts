@@ -831,6 +831,28 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
     wrapper.unmount()
   })
 
+  it('[Fix round 2] 本地模式 + simple:false:宿主经 NDataTable 原生链路收到的每页条数通知只触发一次,不是两次', async () => {
+    // simple:false 时没有内层嵌套选择器(suffix 只在 simple 下画),宿主看到的是 NDataTable 自己渲染的
+    // 官方 NPagination;它内部的 mergedOnUpdatePageSize/doUpdatePageSize(use-table-data.mjs)本来就会
+    // 按 attrs 级拼写通知一遍 —— Fix round 1 在 onSize 里加的 notifyPageSizeListeners 如果也挂在这条路径上,
+    // 就会被通知两次(Fix round 2 要修的回归)。直接触发 NDataTable 内部真实绑定给官方 NPagination 的
+    // 'onUpdate:pageSize' prop(即 mergedOnUpdatePageSize 本身),比在 jsdom 里模拟下拉点击更贴近「走原生
+    // 链路」,又不需要重新实现 NDataTable 内部每一层。
+    const attrsUpdatePageSize = vi.fn()
+    const wrapper = mount(SmartTable, {
+      props: { ...base, data: many, pagination: { simple: false } },
+      attrs: { 'onUpdate:pageSize': attrsUpdatePageSize },
+    })
+    await nextTick()
+    expect(pagerProps(wrapper).suffix).toBeUndefined() // simple:false 下确实没有内层嵌套选择器
+    const nativeHandler = wrapper.findComponent(NPagination).props('onUpdate:pageSize') as (n: number) => void
+    nativeHandler(500)
+    await nextTick()
+    expect(attrsUpdatePageSize).toHaveBeenCalledTimes(1)
+    expect(attrsUpdatePageSize).toHaveBeenCalledWith(500)
+    wrapper.unmount()
+  })
+
   it('[D3 #4] 本地模式宿主 pagination.defaultPageSize: 20:50 行只显示 20 行(不被受控 pageSize 盖成 100)', async () => {
     const wrapper = mount(SmartTable, { props: { ...base, data: many, pagination: { defaultPageSize: 20 } } })
     await nextTick()

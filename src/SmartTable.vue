@@ -441,20 +441,31 @@ const mergedPagination = computed<false | PaginationProps>(() => {
   // D3 #2 / #6:保留 { label, value } 对象;并入当前值(官方在当前值不在选项里时显示裸值)
   const sizes = mergePageSizes(user.pageSizes ?? defaults.pageSizes, current)
 
-  // 改每页条数的处理函数:外层分页(非 simple 时)与内层嵌套选择器共用同一个
-  const onSize = isRemote.value
+  // 本地模式改每页条数的状态更新(回第 1 页同步表格页码 + 转发宿主回调),remote/local 两个
+  // onUpdatePageSize 入口(内层嵌套选择器 / 非 simple 时交给官方选择器)共用这同一段状态变更逻辑。
+  function applyLocalSize(n: number) {
+    localPageSize.value = n
+    // 改每页条数回第 1 页(与远程一致)。官方外层本地分页只会静默夹页、不发 onUpdatePage,
+    // 所以库里记页码的 localPage 要自己置 1,并同步表格的页码
+    localPage.value = 1
+    tableRef.value?.page(1)
+    callAll(user.onUpdatePageSize, n) // D3 #3:转发宿主的回调
+  }
+
+  /**
+   * 「绕开 NDataTable」入口 —— 只有内层嵌套选择器(E2,渲染在 suffix 里的那个官方 NPagination)用这个。
+   * 它是我们自己 h() 出来的一个独立组件实例,完全不经过 NDataTable 内部的
+   * mergedOnUpdatePageSize/doUpdatePageSize(use-table-data.mjs),所以必须自己补发 notifyPageSizeListeners
+   * ——否则宿主用那 5 种拼写监听会静默收不到通知(Fix round 1 Finding 1)。
+   */
+  const onSizeBypass = isRemote.value
     ? // 远程:与 2.1.1 一致 —— 宿主给了自己的处理函数就由宿主接管,否则走 useSmartTable(回第 1 页重查)
       (n: number) => {
         callAll(user.onUpdatePageSize ?? table.onPageSize, n)
         notifyPageSizeListeners(user, n)
       }
     : (n: number) => {
-        localPageSize.value = n
-        // 改每页条数回第 1 页(与远程一致)。官方外层本地分页只会静默夹页、不发 onUpdatePage,
-        // 所以库里记页码的 localPage 要自己置 1,并同步表格的页码
-        localPage.value = 1
-        tableRef.value?.page(1)
-        callAll(user.onUpdatePageSize, n) // D3 #3:转发宿主的回调
+        applyLocalSize(n)
         notifyPageSizeListeners(user, n)
       }
 
@@ -470,7 +481,7 @@ const mergedPagination = computed<false | PaginationProps>(() => {
         pageSize: info.pageSize,
         itemCount: info.itemCount,
         page: info.page,
-        onUpdatePageSize: onSize,
+        onUpdatePageSize: onSizeBypass,
       })
   }
   // 非 simple 回退:走官方 showSizePicker / pageSizes。pageSizes 放在 ...user 之后,免得宿主原值盖掉并入了当前值的版本(D3 #6)
@@ -498,7 +509,13 @@ const mergedPagination = computed<false | PaginationProps>(() => {
       localPage.value = p
       callAll(user.onUpdatePage, p)
     },
-    onUpdatePageSize: onSize,
+    // 「走 NDataTable 原生链路」入口:simple:false 时宿主看到的是 NDataTable 自己渲染的官方选择器,
+    // 改动经它内部的 mergedOnUpdatePageSize/doUpdatePageSize 流转,那条链路自己就会按 5 种拼写通知宿主
+    // (且会读到这里挂的 onUpdatePageSize)——这里只做状态更新,不能再调 notifyPageSizeListeners,
+    // 否则 simple:false + 本地模式下宿主会被通知两次(Fix round 2 修的回归)。simple:true 时 NDataTable
+    // 内部官方分页本就不画 size-picker(Pagination.mjs:665),这个 key 实际不会被那条原生链路触发,
+    // 真正改每页条数走的是上面的 onSizeBypass(suffix 里的内层嵌套选择器)。
+    onUpdatePageSize: applyLocalSize,
   }
 })
 
