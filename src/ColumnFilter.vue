@@ -1,28 +1,36 @@
 <script setup lang="ts">
 // 表头过滤面板:漏斗触发 + 弹层。两种形态共用同一份过滤值模型(FilterValue):
-//   options   —— Arco 风格,勾选候选项(等价于若干 equal 条件取「或」)
-//   condition —— Bootstrap Blazor 风格,一行 [动作 + 值]
-// 面板内改的是草稿,点「确定」才提交,避免每敲一个字就打一次远程请求。
-import { computed, ref, watch, type PropType } from 'vue'
+//   options   —— Arco 风格,勾选候选项(等价于若干 equal 条件取「或」);底部「高级条件」展开同一份多条件编辑
+//   condition —— Bootstrap Blazor 风格,多行 [操作符 + 值](最多 5 条,≥ 2 条出现且/或)
+// 面板内改的是草稿,点「确定」才提交,避免每敲一个字就打一次远程请求;Esc / 点外部丢弃草稿。
+// 键盘 / 焦点 / ARIA:公开的 NPopover 不管(焦点不进面板、Esc 不关闭,见设计文档 9.1),这里自己做(D6)。
+import { computed, nextTick, reactive, ref, watch, type PropType } from 'vue'
+import { NButton, NCheckbox, NPopover, NRadioButton, NRadioGroup, NSpace, NTooltip, useThemeVars } from 'naive-ui'
+import type { FilterAction, FilterLogic, FilterValue, SmartTableLabels, SmartTableOption } from './types'
+import { filterDefTitle, type FilterDef } from './useColumns'
 import {
-  NButton,
-  NCheckbox,
-  NDatePicker,
-  NInput,
-  NInputNumber,
-  NPopover,
-  NSelect,
-  NSpace,
-  NTooltip,
-  useThemeVars,
-} from 'naive-ui'
-import type { SelectMixedOption } from 'naive-ui/es/select/src/interface'
-import type { FilterAction, FilterCondition, FilterValue, SmartTableLabels, SmartTableOption } from './types'
-import type { FilterDef } from './useColumns'
-import { activeConditions, filterValueToOptions, isFilterActive, optionsToFilterValue } from './filter'
-import { ACTION_LABEL_KEY, fmt } from './labels'
+  activeConditions,
+  filterValueToOptions,
+  isFilterActive,
+  isOptionsRepresentable,
+  optionsToFilterValue,
+} from './filter'
+import { fmt } from './labels'
 import { optionLabel } from './useOptions'
 import { FilterIcon } from './icons'
+import ConditionRow from './ConditionRow.vue'
+import {
+  MAX_CONDITIONS,
+  addCondition,
+  blankDraft,
+  draftFromValue,
+  draftToValue,
+  removeCondition,
+  setConditionAction,
+  setConditionValue,
+  setLogic,
+  type FilterDraft,
+} from './filterDraft'
 
 const props = defineProps({
   def: { type: Object as PropType<FilterDef>, required: true },
@@ -31,6 +39,8 @@ const props = defineProps({
   getOptions: { type: Function as PropType<(key: string) => SmartTableOption[]>, required: true },
   isLoadingOptions: { type: Function as PropType<(key: string) => boolean>, required: true },
   dateValueFormat: { type: String, default: 'yyyy-MM-dd' },
+  /** 每次变大 = 请求打开面板(已生效条件 chips 点击时用)。 */
+  openRequest: { type: Number, default: 0 },
 })
 
 const emit = defineEmits<{
@@ -45,28 +55,86 @@ const activeCount = computed(() => activeConditions(props.value).length)
 const ariaLabel = computed(() =>
   activeCount.value > 1 ? `${props.labels.filter}(${fmt(props.labels.filterActiveCount, { n: activeCount.value })})` : props.labels.filter,
 )
+// 面板的无障碍名:「列标题 + 过滤」(渲染期求值,切语言即时生效)
+const panelLabel = computed(() => `${filterDefTitle(props.def)} ${props.labels.filter}`)
+
+const panelRef = ref<HTMLElement | null>(null)
+const triggerRef = ref<HTMLElement | null>(null)
+/** 关闭后是否把焦点还给漏斗:Esc / 确定 / 重置 → 是;点外部关闭 → 否(别抢走用户刚点的控件的焦点)。 */
+let returnFocus = false
 
 /* ---- 草稿:打开弹层时从当前生效值回填 ---- */
 
-// condition 模式固定一条条件(面板不提供加/减行);多条只来自编程式赋值。
-const condition = ref<FilterCondition>({ action: 'equal', value: null })
+const firstAction = (): FilterAction => props.def.actions[0] ?? 'equal'
+const draft = ref<FilterDraft>(blankDraft(firstAction()))
 const checked = ref<unknown[]>([])
-
-function blankCondition(): FilterCondition {
-  return { action: props.def.actions[0] ?? 'equal', value: null }
-}
+/** options 列:是否展开「高级条件」(多条件编辑)。 */
+const advanced = ref(false)
 
 function loadDraft(from: FilterValue | null) {
+  draft.value = draftFromValue(from, firstAction())
   if (props.def.mode === 'options') {
-    checked.value = filterValueToOptions(from)
-    return
+    // 勾选表达不了当前值(notEqual / isNull / 且 的多条 equal …)→ 自动展开高级条件原样显示,不静默丢条件(C3)
+    const representable = isOptionsRepresentable(from)
+    advanced.value = !representable
+    checked.value = representable ? filterValueToOptions(from) : []
   }
-  const first = from?.conditions?.find((c) => c)
-  condition.value = first ? { ...first } : blankCondition()
+}
+
+/* ---- 键盘 / 焦点(D6) ---- */
+
+/** 面板里可 Tab 到的控件(tabindex=-1 的面板容器自己不算)。 */
+const FOCUSABLE = 'input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+function focusFirst() {
+  panelRef.value?.querySelector<HTMLElement>(FOCUSABLE)?.focus()
+}
+
+/** 第 j 行条件的第一个可聚焦控件(操作符下拉)。 */
+function rowControl(panel: HTMLElement, j: number): HTMLElement | null | undefined {
+  return panel.querySelectorAll('.smart-table-filter-row')[j]?.querySelector<HTMLElement>(FOCUSABLE)
+}
+
+/**
+ * 被点的控件随这次更新被卸载(删除行的 ×、「高级条件 / 返回列表」切换)或被禁用(加到上限的「添加」)时,
+ * 浏览器把焦点丢到 body —— 面板 teleport 在 body 末尾,焦点落到 body 之后 Esc / Tab 都到不了面板上的监听
+ * (Step 13 真实浏览器实测:Esc 关不掉面板)。只在焦点原本就在面板里时介入:更新后焦点不在面板里的可用控件上,
+ * 就移到 pick 给的控件(找不到则面板容器)。
+ */
+function keepFocusInPanel(pick: (panel: HTMLElement) => HTMLElement | null | undefined) {
+  if (!panelRef.value?.contains(document.activeElement)) return
+  void nextTick(() => {
+    const panel = panelRef.value
+    if (!panel || !show.value) return
+    const cur = document.activeElement as (HTMLElement & { disabled?: boolean }) | null
+    if (cur && panel.contains(cur) && !cur.disabled) return
+    ;(pick(panel) ?? panel).focus()
+  })
+}
+
+/** 有 NSelect / NDatePicker 下拉展开的条件行下标。展开期间 Esc 只该收起那个下拉,不能连面板一起关掉(草稿会丢)。 */
+const dropdownRows = reactive(new Set<number>())
+const dropdownOpen = computed(() => dropdownRows.size > 0)
+function onDropdown(i: number, open: boolean) {
+  if (open) dropdownRows.add(i)
+  else dropdownRows.delete(i)
 }
 
 watch(show, (open) => {
-  if (open) loadDraft(props.value)
+  dropdownRows.clear()
+  if (open) {
+    loadDraft(props.value)
+    return
+  }
+  if (returnFocus) {
+    returnFocus = false
+    triggerRef.value?.querySelector<HTMLElement>('button')?.focus()
+  }
+})
+// 弹层内容挂载(每次打开都会重新挂载)后再聚焦第一个可编辑控件:内容是 teleport 出去的,show 变 true 时还不在 DOM 里。
+// 宿主自定义面板(def.render)不自动聚焦:里面是什么控件库不知道,抢焦点可能打断宿主自己的逻辑。
+watch(panelRef, (el) => {
+  if (el && show.value && !props.def.render) void nextTick(focusFirst)
 })
 // 外部(编程式 setFilter / clearFilters)改了值,弹层开着也要跟上
 watch(
@@ -75,6 +143,61 @@ watch(
     if (show.value) loadDraft(v)
   },
 )
+watch(
+  () => props.openRequest,
+  (n, o) => {
+    if (n > 0 && n !== o) show.value = true
+  },
+)
+
+function close(focusBack: boolean) {
+  returnFocus = focusBack
+  show.value = false
+}
+
+/** Tab 在面板内循环(role=dialog 的常规做法;草稿不丢):最后一个控件 Tab → 第一个,第一个 Shift+Tab → 最后一个。 */
+function trapTab(e: KeyboardEvent) {
+  const panel = panelRef.value
+  if (!panel) return
+  const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE))
+  if (!items.length) return
+  const first = items[0]
+  const last = items[items.length - 1]
+  const cur = document.activeElement
+  if (e.shiftKey && (cur === first || cur === panel)) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && cur === last) {
+    e.preventDefault()
+    first.focus()
+  }
+}
+
+/**
+ * 面板键盘处理(捕获阶段挂在面板容器上)。
+ * Esc:有下拉展开 → 放行,让 NSelect / NDatePicker 自己收起它(它们只 markEventEffectPerformed,不 stopPropagation,
+ * 所以必须在捕获阶段、它们动手之前判断,不然它们收起后我们这边读到的「是否有下拉」已经变了);
+ * 没有下拉 → 关闭面板、丢弃草稿、焦点还给漏斗。自定义面板(def.render)同样适用 Esc。
+ */
+function onPanelKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    if (dropdownOpen.value) return
+    e.stopPropagation()
+    close(true) // 丢弃草稿:不 emit
+    return
+  }
+  if (e.key === 'Tab' && !props.def.render) trapTab(e)
+}
+
+/**
+ * 漏斗触发器上的 Esc(F3):面板打开期间,焦点还停在漏斗按钮上时(自定义面板 def.render 不自动聚焦,焦点就留在这里;
+ * 这时 keydown 到不了面板容器上的捕获监听)也要能关:关闭、丢弃草稿、焦点留在漏斗。面板没开时什么也不做,不拦别人的 Esc。
+ */
+function onTriggerKeydown(e: KeyboardEvent) {
+  if (e.key !== 'Escape' || !show.value || dropdownOpen.value) return
+  e.stopPropagation()
+  close(true)
+}
 
 /* ---- 选项(options 模式) ---- */
 
@@ -106,54 +229,67 @@ function toggleAll(on: boolean) {
   checked.value = on ? [...disabledChecked, ...selectableOptions.value.map((o) => o.value)] : disabledChecked
 }
 
-/* ---- 条件行(condition 模式) ---- */
+/* ---- 勾选 ↔ 高级条件 ---- */
 
-const actionOptions = computed<SelectMixedOption[]>(() =>
-  props.def.actions.map((a) => ({ label: actionLabel(a), value: a })),
-)
-
-function actionLabel(a: FilterAction): string {
-  return props.labels[ACTION_LABEL_KEY[a]]
+/** 勾选 → 条件:0 个 = 空白行,1 个 = equal,≥ 2 个 = 一条 in(不丢选择)。 */
+function checkedToDraft(): FilterDraft {
+  const n = checked.value.length
+  if (n === 0) return blankDraft(firstAction())
+  if (n === 1) return { logic: 'and', conditions: [{ action: 'equal', value: checked.value[0] }] }
+  return { logic: 'and', conditions: [{ action: 'in', value: [...checked.value] }] }
+}
+function openAdvanced() {
+  draft.value = checkedToDraft()
+  advanced.value = true
+  keepFocusInPanel((p) => p.querySelector<HTMLElement>(FOCUSABLE)) // 被点的「高级条件」按钮已被替换
+}
+/** 高级 → 勾选:仅当草稿能被勾选无损表达时允许。 */
+const canCollapse = computed(() => isOptionsRepresentable(draftToValue(draft.value)))
+function closeAdvanced() {
+  if (!canCollapse.value) return
+  checked.value = filterValueToOptions(draftToValue(draft.value))
+  advanced.value = false
+  keepFocusInPanel((p) => p.querySelector<HTMLElement>(FOCUSABLE)) // 被点的「返回列表」按钮已被替换
 }
 
-const selectOptions = computed<SelectMixedOption[]>(() =>
-  flatOptions.value.map((o) => ({
-    label: optionLabel(o),
-    value: o.value as string | number,
-    disabled: o.disabled,
-  })),
-)
+/* ---- 条件行编辑 ---- */
 
-function setAction(action: FilterAction) {
-  condition.value = { ...condition.value, action }
+const showEditor = computed(() => props.def.mode === 'condition' || advanced.value)
+const onAction = (i: number, a: FilterAction) => (draft.value = setConditionAction(draft.value, i, a))
+const onValue = (i: number, v: unknown) => (draft.value = setConditionValue(draft.value, i, v))
+const onRemove = (i: number) => {
+  dropdownRows.clear() // 行号会整体前移,旧的展开记录作废;该行上的下拉随行一起卸载
+  draft.value = removeCondition(draft.value, i, firstAction())
+  // 被点的 × 随行卸载:焦点给顶替它的那一行(删的是最后一行则给前一行)
+  const j = Math.min(i, draft.value.conditions.length - 1)
+  keepFocusInPanel((p) => rowControl(p, j))
 }
-
-function setValue(value: unknown) {
-  condition.value = { ...condition.value, value }
+const onAdd = () => {
+  draft.value = addCondition(draft.value, firstAction())
+  // 加到上限时「添加」随之禁用、焦点会丢:给新加的那一行。没到上限时焦点仍在「添加」上,keepFocusInPanel 不动它
+  const last = draft.value.conditions.length - 1
+  keepFocusInPanel((p) => rowControl(p, last))
 }
-
-function onValueKeyup(e: KeyboardEvent) {
-  if (e.key === 'Enter') confirm()
-}
+const onLogic = (l: FilterLogic) => (draft.value = setLogic(draft.value, l))
 
 /* ---- 提交 / 重置 ---- */
 
 function draftValue(): FilterValue | null {
-  if (props.def.mode === 'options') return optionsToFilterValue(checked.value)
-  return { logic: 'and', conditions: [{ ...condition.value }] }
+  if (props.def.mode === 'options' && !advanced.value) return optionsToFilterValue(checked.value)
+  return draftToValue(draft.value)
 }
 
 function confirm() {
   const v = draftValue()
   emit('update:value', v && isFilterActive(v) ? v : null)
-  show.value = false
+  close(true)
 }
 
 function reset() {
   const fallback = props.def.defaultValue ?? null
   loadDraft(fallback)
   emit('update:value', fallback && isFilterActive(fallback) ? fallback : null)
-  show.value = false
+  close(true)
 }
 </script>
 
@@ -163,13 +299,23 @@ function reset() {
       <!-- data-data-table-filter:官方点表头时据此跳过排序(Header.mjs:107-108 的 happensIn(e, 'dataTableFilter'))。
            不用 @click.stop:它会吞掉宿主挂在 th / 祖先上的 click 监听(Q-6)。 -->
       <span
+        ref="triggerRef"
         class="smart-table-filter-trigger"
         :class="{ 'smart-table-filter-trigger--active': active, 'smart-table-filter-trigger--open': show }"
         data-data-table-filter
+        @keydown="onTriggerKeydown"
       >
         <n-tooltip trigger="hover" :disabled="show">
           <template #trigger>
-            <n-button quaternary size="tiny" :type="active ? 'primary' : 'default'" :aria-label="ariaLabel">
+            <!-- aria-haspopup / aria-expanded:屏幕阅读器得知这个按钮会弹出对话框、当前是否展开(D6) -->
+            <n-button
+              quaternary
+              size="tiny"
+              :type="active ? 'primary' : 'default'"
+              :aria-label="ariaLabel"
+              aria-haspopup="dialog"
+              :aria-expanded="show"
+            >
               <template #icon><FilterIcon /></template>
             </n-button>
           </template>
@@ -182,9 +328,14 @@ function reset() {
       </span>
     </template>
 
+    <!-- 面板容器:role=dialog + aria-label;tabindex=-1 让它能被鼠标聚焦 —— 点空白处时浏览器自动把焦点给它(不落到 body),不需要任何 mousedown 处理(E3,S3 实测) -->
     <div
+      ref="panelRef"
       class="smart-table-filter"
-      :class="{ 'smart-table-filter--condition': !def.render && def.mode === 'condition' }"
+      :class="{ 'smart-table-filter--condition': !def.render && showEditor }"
+      role="dialog"
+      tabindex="-1"
+      :aria-label="panelLabel"
       :style="{
         background: themeVars.popoverColor,
         borderRadius: themeVars.borderRadius,
@@ -192,16 +343,17 @@ function reset() {
         color: themeVars.textColor2,
       }"
       @click.stop
+      @keydown.capture="onPanelKeydown"
     >
       <!-- 自定义面板:完全接管内容,只复用弹层与提交通道 -->
       <component
         v-if="def.render"
-        :is="() => def.render!({ value, setValue: (v) => emit('update:value', v), close: () => (show = false) })"
+        :is="() => def.render!({ value, setValue: (v) => emit('update:value', v), close: () => close(true) })"
       />
 
       <template v-else>
         <!-- options:勾选候选项 -->
-        <div v-if="def.mode === 'options'" class="smart-table-filter-options">
+        <div v-if="def.mode === 'options' && !advanced" class="smart-table-filter-options">
           <n-checkbox
             v-if="def.multiple && flatOptions.length > 1"
             class="smart-table-filter-all"
@@ -225,61 +377,57 @@ function reset() {
           </span>
         </div>
 
-        <!-- condition:一行「动作 + 值」 -->
+        <!-- 多条件编辑(condition 列恒显示;options 列展开「高级条件」后显示) -->
         <div v-else class="smart-table-filter-conditions">
-          <div class="smart-table-filter-row">
-            <n-select
-              class="smart-table-filter-action"
-              size="small"
-              :value="condition.action"
-              :options="actionOptions"
-              :consistent-menu-width="false"
-              @update:value="setAction"
-            />
-            <!-- 值控件写成真实元素(不走 <component :is>):重渲染时被 patch 而不是重挂,
-                 输入过程中不会掉焦点。def.props 放最前面,可透传但盖不掉值绑定与回调。 -->
-            <div class="smart-table-filter-value">
-              <n-input-number
-                v-if="def.type === 'number'"
-                v-bind="def.props"
-                size="small"
-                clearable
-                style="width: 100%"
-                :value="(condition.value ?? null) as number | null"
-                @update:value="setValue"
-              />
-              <n-date-picker
-                v-else-if="def.type === 'date'"
-                v-bind="def.props"
-                type="date"
-                size="small"
-                clearable
-                style="width: 100%"
-                :value-format="dateValueFormat"
-                :formatted-value="(condition.value ?? null) as string | null"
-                @update:formatted-value="setValue"
-              />
-              <n-select
-                v-else-if="def.type === 'select'"
-                v-bind="def.props"
-                size="small"
-                clearable
-                :value="(condition.value ?? null) as string | number | null"
-                :options="selectOptions"
-                :loading="isLoadingOptions(def.optionsKey)"
-                @update:value="setValue"
-              />
-              <n-input
-                v-else
-                v-bind="def.props"
-                size="small"
-                clearable
-                :value="(condition.value ?? null) as string | null"
-                @update:value="setValue"
-                @keyup="onValueKeyup"
-              />
-            </div>
+          <ConditionRow
+            v-for="(c, i) in draft.conditions"
+            :key="i"
+            :def="def"
+            :condition="c"
+            :labels="labels"
+            :get-options="getOptions"
+            :is-loading-options="isLoadingOptions"
+            :date-value-format="dateValueFormat"
+            :removable="draft.conditions.length > 1"
+            @update:action="(a: FilterAction) => onAction(i, a)"
+            @update:value="(v: unknown) => onValue(i, v)"
+            @remove="onRemove(i)"
+            @enter="confirm"
+            @dropdown="(o: boolean) => onDropdown(i, o)"
+          />
+          <div v-if="draft.conditions.length > 1" class="smart-table-filter-logic">
+            <n-radio-group size="small" :value="draft.logic" @update:value="onLogic">
+              <n-radio-button value="and">{{ labels.filterLogicAnd }}</n-radio-button>
+              <n-radio-button value="or">{{ labels.filterLogicOr }}</n-radio-button>
+            </n-radio-group>
           </div>
+          <n-button
+            class="smart-table-filter-add"
+            text
+            size="tiny"
+            type="primary"
+            :disabled="draft.conditions.length >= MAX_CONDITIONS"
+            @click="onAdd"
+          >
+            + {{ labels.filterAddCondition }}
+          </n-button>
+        </div>
+
+        <!-- options 列:勾选 ↔ 高级条件 的切换入口 -->
+        <div v-if="def.mode === 'options'" class="smart-table-filter-advanced">
+          <n-button v-if="!advanced" class="smart-table-filter-advanced-open" text size="tiny" @click="openAdvanced">
+            {{ labels.filterAdvanced }}
+          </n-button>
+          <n-button
+            v-else
+            class="smart-table-filter-advanced-close"
+            text
+            size="tiny"
+            :disabled="!canCollapse"
+            @click="closeAdvanced"
+          >
+            {{ labels.filterSimple }}
+          </n-button>
         </div>
       </template>
 
@@ -301,6 +449,7 @@ function reset() {
 .smart-table-filter-trigger {
   display: inline-flex;
   align-items: center;
+  /* 标题 → 漏斗 8px(Q-5);漏斗 → 排序箭头 6px 由 SmartTable 的样式给 */
   margin-left: 8px;
   /* 表头默认 center 对齐时,漏斗不该把标题挤偏 */
   vertical-align: middle;
@@ -324,9 +473,13 @@ function reset() {
   text-align: left;
   font-weight: normal;
 }
-/* 条件面板给定宽:两个控件并排,靠内层 min-width 撑不出稳定布局 */
+/* 容器只接程序化焦点(点空白处 / Esc 的落点),不画焦点环 */
+.smart-table-filter:focus {
+  outline: none;
+}
+/* 条件面板:一行「操作符 | 值 | 删除」放得下;窄屏不越出视口 */
 .smart-table-filter--condition {
-  width: 340px;
+  width: min(400px, calc(100vw - 16px));
 }
 .smart-table-filter-options {
   display: flex;
@@ -340,25 +493,15 @@ function reset() {
   flex-direction: column;
   gap: 8px;
 }
-.smart-table-filter-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-/* 定宽 basis:NSelect 根节点是 width:100%,用 flex-basis:auto 会把整行吃掉,
-   值控件被挤成 0 宽(看起来就像只剩一个下拉框)。 */
-.smart-table-filter-action {
-  flex: 0 0 108px;
-}
-.smart-table-filter-value {
-  flex: 1 1 auto;
-  min-width: 0;
-}
 .smart-table-filter-logic {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+}
+.smart-table-filter-add {
+  align-self: flex-start;
+}
+.smart-table-filter-advanced {
+  margin-top: 8px;
 }
 .smart-table-filter-footer {
   margin-top: 8px;

@@ -41,6 +41,12 @@ export const defaultLabels: Required<SmartTableLabels> = {
   filterNoValue: 'No value needed',
   more: 'More',
   filterActiveCount: 'filtered by {n}',
+  filterAddCondition: 'Add condition',
+  filterRemoveCondition: 'Remove condition',
+  filterLogicAnd: 'AND',
+  filterLogicOr: 'OR',
+  filterAdvanced: 'Advanced conditions',
+  filterSimple: 'Back to list',
 }
 
 /**
@@ -83,6 +89,12 @@ export const zhCNLabels: Required<SmartTableLabels> = {
   filterNoValue: '无需填值',
   more: '更多',
   filterActiveCount: '已筛选 {n} 条',
+  filterAddCondition: '添加条件',
+  filterRemoveCondition: '删除条件',
+  filterLogicAnd: '且',
+  filterLogicOr: '或',
+  filterAdvanced: '高级条件',
+  filterSimple: '返回列表',
 }
 
 /** 三层合并:内置英文 < 全局默认(global)< 实例 prop(partial)。结果是 Required 形状(缺的键已由英文默认补齐)。 */

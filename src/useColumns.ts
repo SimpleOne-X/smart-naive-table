@@ -134,6 +134,12 @@ export interface FilterDef<T = any> {
   filter?: (value: FilterValue, row: T) => boolean
 }
 
+/** 过滤项的展示标题:字符串 / 数字直接用;函数返回非字符串(VNode)或没有标题 → 回退成列 key。渲染期调用,切语言即时生效。 */
+export function filterDefTitle(def: { key: string; title?: string | (() => VNodeChild) }): string {
+  const t = typeof def.title === 'function' ? def.title() : def.title
+  return typeof t === 'string' || typeof t === 'number' ? String(t) : def.key
+}
+
 /**
  * 从列定义派生过滤项:带 filter 且会进表格的数据列(hideInTable 的列没有表头,不参与)。
  * mode 缺省按有无字典推断;condition 模式的值控件类型缺省按 format 推断。

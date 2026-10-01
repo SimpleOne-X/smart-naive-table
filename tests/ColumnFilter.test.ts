@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
-import { h, defineComponent } from 'vue'
-import { NConfigProvider, darkTheme } from 'naive-ui'
+import { flushPromises, mount } from '@vue/test-utils'
+import { h, defineComponent, nextTick } from 'vue'
+import { NConfigProvider, NRadioGroup, NSelect, darkTheme } from 'naive-ui'
 import ColumnFilter from '../src/ColumnFilter.vue'
+import ConditionRow from '../src/ConditionRow.vue'
 import { filterValueToOptions, optionsToFilterValue } from '../src/filter'
 import { fmt } from '../src/labels'
 import type { FilterDef } from '../src/useColumns'
@@ -15,6 +16,17 @@ const labels = {
   filterConfirm: '确定',
   filterSelectAll: '全选',
   filterActiveCount: '已筛选 {n} 条',
+  filterAddCondition: '添加条件',
+  filterRemoveCondition: '删除条件',
+  filterLogicAnd: '且',
+  filterLogicOr: '或',
+  filterAdvanced: '高级条件',
+  filterSimple: '返回列表',
+  filterNoValue: '无需填值',
+  filterEqual: '等于',
+  filterNotEqual: '不等于',
+  filterContains: '包含',
+  filterIsNull: '为空',
 } as unknown as Required<SmartTableLabels>
 
 let mountCount = 0
@@ -213,5 +225,406 @@ describe('ColumnFilter 条数角标的文字色(Q-2)', () => {
     const dark = mountBadge(darkTheme)
     expect(dark.find('.smart-table-filter-badge').attributes('style')).toContain('rgb(0, 0, 0)')
     dark.unmount()
+  })
+})
+
+describe('ColumnFilter 多条件面板(B7 / C3)', () => {
+  const docClick = click
+  const conditionDef = (over: Partial<FilterDef> = {}): FilterDef => ({
+    key: 'name',
+    field: 'name',
+    optionsKey: 'name',
+    mode: 'condition',
+    multiple: true,
+    type: 'input',
+    actions: ['contains', 'equal', 'isNull'],
+    ...over,
+  })
+  const v = (logic: 'and' | 'or', ...conds: Array<[string, unknown]>): FilterValue => ({
+    logic,
+    conditions: conds.map(([action, value]) => ({ action: action as never, value })),
+  })
+
+  async function openPanel(def: FilterDef, value: FilterValue | null, getOptions = () => [] as never[]) {
+    const wrapper = mount(ColumnFilter, {
+      props: { def, value, labels, getOptions, isLoadingOptions: () => false },
+      attachTo: document.body,
+    })
+    await wrapper.find('.smart-table-filter-trigger').trigger('click')
+    await flushPromises()
+    return wrapper
+  }
+  const footerButtons = () => document.body.querySelectorAll('.smart-table-filter-footer button')
+  const confirmBtn = () => footerButtons()[1]
+  const lastEmitted = (w: ReturnType<typeof mount>) => {
+    const e = w.emitted('update:value')!
+    return e[e.length - 1][0] as FilterValue | null
+  }
+
+  it('condition 列:面板里能看到全部已有条件(不再只取第一条)', async () => {
+    const w = await openPanel(conditionDef(), v('or', ['contains', 'a'], ['equal', 'b']))
+    expect(document.body.querySelectorAll('.smart-table-filter-row')).toHaveLength(2)
+    w.unmount()
+  })
+
+  it('添加条件到上限 5 条后「添加」按钮禁用;≥ 2 条才出现且/或', async () => {
+    const w = await openPanel(conditionDef(), null)
+    expect(document.body.querySelector('.smart-table-filter-logic')).toBeNull()
+    for (let i = 0; i < 4; i++) {
+      docClick(document.body.querySelector('.smart-table-filter-add'))
+      await nextTick()
+    }
+    expect(document.body.querySelectorAll('.smart-table-filter-row')).toHaveLength(5)
+    expect(document.body.querySelector('.smart-table-filter-logic')).not.toBeNull()
+    expect(document.body.querySelector('.smart-table-filter-add')!.hasAttribute('disabled')).toBe(true)
+    w.unmount()
+  })
+
+  it('两行 + 「或」:确认后提交 { logic: or, conditions: [两条] }', async () => {
+    const w = await openPanel(conditionDef(), null)
+    docClick(document.body.querySelector('.smart-table-filter-add'))
+    await nextTick()
+    const rows = w.findAllComponents(ConditionRow)
+    rows[0].vm.$emit('update:value', 'a')
+    rows[1].vm.$emit('update:value', 'b')
+    w.findComponent(NRadioGroup).vm.$emit('update:value', 'or')
+    await nextTick()
+    docClick(confirmBtn())
+    expect(lastEmitted(w)).toEqual(v('or', ['contains', 'a'], ['contains', 'b']))
+    w.unmount()
+  })
+
+  it('删除到只剩一行:没有「删除」按钮,且提交时 logic 归位为 and', async () => {
+    const w = await openPanel(conditionDef(), v('or', ['contains', 'a'], ['contains', 'b']))
+    docClick(document.body.querySelector('.smart-table-filter-remove'))
+    await nextTick()
+    expect(document.body.querySelectorAll('.smart-table-filter-row')).toHaveLength(1)
+    expect(document.body.querySelector('.smart-table-filter-remove')).toBeNull()
+    docClick(confirmBtn())
+    expect(lastEmitted(w)).toEqual(v('and', ['contains', 'b']))
+    w.unmount()
+  })
+
+  it('无值算子:值位置是禁用的占位框;不填值也能提交', async () => {
+    const w = await openPanel(conditionDef(), v('and', ['isNull', null]))
+    const input = document.body.querySelector('.smart-table-filter-value input') as HTMLInputElement
+    expect(input.disabled).toBe(true)
+    expect(input.placeholder).toBe('无需填值')
+    docClick(confirmBtn())
+    expect(lastEmitted(w)).toEqual(v('and', ['isNull', null]))
+    w.unmount()
+  })
+
+  it('换操作符:旧值形状不再适用就清空(contains → isNull)', async () => {
+    const w = await openPanel(conditionDef(), v('and', ['contains', 'abc']))
+    w.findComponent(ConditionRow).vm.$emit('update:action', 'isNull')
+    await nextTick()
+    docClick(confirmBtn())
+    expect(lastEmitted(w)).toEqual(v('and', ['isNull', null]))
+    w.unmount()
+  })
+
+  it('列声明之外的操作符(编程式给了 notEqual)在下拉里也能显示,不是空白', async () => {
+    const def = conditionDef({ actions: ['contains'] })
+    const w = await openPanel(def, v('and', ['notEqual', 'x']))
+    const select = w.findComponent(ConditionRow).findComponent(NSelect)
+    const options = select.props('options') as Array<{ value: string }>
+    expect(options.map((o) => o.value)).toEqual(['notEqual', 'contains'])
+    w.unmount()
+  })
+
+  describe('options 列:勾选 ↔ 高级条件(C3:不丢信息)', () => {
+    const opts = [
+      { label: 'A', value: 1 },
+      { label: 'B', value: 2 },
+    ]
+    // 真实派生里 options 列的值控件类型是 'select'(deriveFilterDefs);夹具也按这个来 —— 否则数字值会灌进 NInput,Vue 报 prop 类型 warn。
+    // 文件顶部现成的 buildOptionsDef() 是 type: 'input'(Q-12),所以这里显式改成 select;下面 isNull 那条专门覆盖 select + 无值算子。
+    const optionsDef = (): FilterDef => ({ ...buildOptionsDef(), type: 'select' })
+
+    it('[Review Focus 3] 当前值是 notEqual:打开时自动展开高级条件并原样显示,确认不覆盖', async () => {
+      const value = v('and', ['notEqual', 1])
+      const w = await openPanel(optionsDef(), value, () => opts as never[])
+      expect(document.body.querySelector('.smart-table-filter-options')).toBeNull() // 没有勾选列表
+      expect(document.body.querySelectorAll('.smart-table-filter-row')).toHaveLength(1)
+      docClick(confirmBtn())
+      expect(lastEmitted(w)).toEqual(value)
+      w.unmount()
+    })
+
+    it('[Review Focus 3] type: "select" 的 options 列,值是 isNull:同样自动展开高级条件,确认原样提交', async () => {
+      const def = optionsDef()
+      expect(def.type).toBe('select')
+      const value = v('and', ['isNull', null])
+      const w = await openPanel(def, value, () => opts as never[])
+      expect(document.body.querySelector('.smart-table-filter-options')).toBeNull()
+      expect(document.body.querySelectorAll('.smart-table-filter-row')).toHaveLength(1)
+      const input = document.body.querySelector('.smart-table-filter-value input') as HTMLInputElement
+      expect(input.disabled).toBe(true) // isNull 无需填值
+      docClick(confirmBtn())
+      expect(lastEmitted(w)).toEqual(value)
+      w.unmount()
+    })
+
+    it('多条 equal 取「且」(勾选读成「或」会变语义):同样展开高级条件,确认原样提交', async () => {
+      const value = v('and', ['equal', 1], ['equal', 2])
+      const w = await openPanel(optionsDef(), value, () => opts as never[])
+      expect(document.body.querySelector('.smart-table-filter-options')).toBeNull()
+      docClick(confirmBtn())
+      expect(lastEmitted(w)).toEqual(value)
+      w.unmount()
+    })
+
+    it('可表达(equal 取「或」)→ 仍是勾选列表', async () => {
+      const w = await openPanel(optionsDef(), optionsToFilterValue([1, 2]), () => opts as never[])
+      expect(document.body.querySelector('.smart-table-filter-options')).not.toBeNull()
+      expect(document.body.querySelector('.smart-table-filter-row')).toBeNull()
+      w.unmount()
+    })
+
+    it('勾选 → 高级:把勾选转写成条件(1 个 = equal,2 个 = 一条 in),不丢选择', async () => {
+      const w = await openPanel(optionsDef(), optionsToFilterValue([1, 2]), () => opts as never[])
+      docClick(document.body.querySelector('.smart-table-filter-advanced-open'))
+      await nextTick()
+      expect(document.body.querySelectorAll('.smart-table-filter-row')).toHaveLength(1)
+      docClick(confirmBtn())
+      expect(lastEmitted(w)).toEqual(v('and', ['in', [1, 2]]))
+      w.unmount()
+    })
+
+    it('高级 → 返回列表:草稿不可表达时按钮禁用;改成可表达后才能返回', async () => {
+      const w = await openPanel(optionsDef(), v('and', ['notEqual', 1]), () => opts as never[])
+      const close = () => document.body.querySelector('.smart-table-filter-advanced-close') as HTMLElement
+      expect(close().hasAttribute('disabled')).toBe(true)
+      w.findComponent(ConditionRow).vm.$emit('update:action', 'equal')
+      await nextTick()
+      expect(close().hasAttribute('disabled')).toBe(false)
+      docClick(close())
+      await nextTick()
+      expect(document.body.querySelector('.smart-table-filter-options')).not.toBeNull()
+      w.unmount()
+    })
+  })
+
+  describe('键盘 / 焦点 / ARIA(公开的 NPopover 不管,库自己做;D6)', () => {
+    const panelEl = () => document.body.querySelector('.smart-table-filter') as HTMLElement
+    const key = (k: string, shiftKey = false) =>
+      panelEl().dispatchEvent(new KeyboardEvent('keydown', { key: k, shiftKey, bubbles: true, cancelable: true }))
+    const FOCUSABLE =
+      'input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+    it('打开后焦点进入面板', async () => {
+      const w = await openPanel(conditionDef(), null)
+      await flushPromises()
+      expect(panelEl().contains(document.activeElement)).toBe(true)
+      w.unmount()
+    })
+
+    it('Esc:关闭并丢弃草稿(不提交),焦点还给漏斗按钮', async () => {
+      const w = await openPanel(conditionDef(), null)
+      w.findComponent(ConditionRow).vm.$emit('update:value', 'draft-only')
+      await nextTick()
+      key('Escape')
+      await flushPromises()
+      expect(w.emitted('update:value')).toBeUndefined()
+      expect(document.activeElement).toBe(w.find('.smart-table-filter-trigger button').element)
+      w.unmount()
+    })
+
+    it('点「确定」关闭后焦点也还给漏斗按钮', async () => {
+      const w = await openPanel(conditionDef(), null)
+      w.findComponent(ConditionRow).vm.$emit('update:value', 'x')
+      await nextTick()
+      docClick(confirmBtn())
+      await flushPromises()
+      expect(document.activeElement).toBe(w.find('.smart-table-filter-trigger button').element)
+      w.unmount()
+    })
+
+    it('[D6] 下拉展开时按 Esc:只留给下拉去收,面板与草稿都还在(确认仍能提交草稿)', async () => {
+      const w = await openPanel(conditionDef(), null)
+      const row = w.findComponent(ConditionRow)
+      row.vm.$emit('update:value', 'draft')
+      row.findComponent(NSelect).vm.$emit('update:show', true) // 操作符下拉展开
+      await nextTick()
+      key('Escape')
+      await flushPromises()
+      expect(panelEl()).not.toBeNull()
+      expect(w.emitted('update:value')).toBeUndefined()
+      docClick(confirmBtn())
+      expect(lastEmitted(w)).toEqual(v('and', ['contains', 'draft']))
+      w.unmount()
+    })
+
+    it('[D6] 下拉收起之后再按 Esc:才关闭面板(丢弃草稿)', async () => {
+      const w = await openPanel(conditionDef(), null)
+      const row = w.findComponent(ConditionRow)
+      row.vm.$emit('update:value', 'draft')
+      row.findComponent(NSelect).vm.$emit('update:show', true)
+      row.findComponent(NSelect).vm.$emit('update:show', false)
+      await nextTick()
+      key('Escape')
+      await flushPromises()
+      expect(w.emitted('update:value')).toBeUndefined()
+      expect(document.activeElement).toBe(w.find('.smart-table-filter-trigger button').element)
+      w.unmount()
+    })
+
+    it('[D6 / E3] 点空白处靠容器 tabindex=-1 自动聚焦(不写 mousedown 处理):容器可聚焦,聚焦后 Esc 仍然生效', async () => {
+      const w = await openPanel(conditionDef(), null)
+      expect(panelEl().getAttribute('tabindex')).toBe('-1')
+      panelEl().focus() // 浏览器里点空白处的效果;jsdom 不模拟鼠标点击的默认聚焦,这里直接 focus()
+      expect(document.activeElement).toBe(panelEl())
+      key('Escape')
+      await flushPromises()
+      expect(document.activeElement).toBe(w.find('.smart-table-filter-trigger button').element)
+      w.unmount()
+    })
+
+    it('[D6] Tab 在面板内循环:最后一个控件 Tab → 第一个;第一个 Shift+Tab → 最后一个', async () => {
+      const w = await openPanel(conditionDef(), null)
+      const items = Array.from(panelEl().querySelectorAll<HTMLElement>(FOCUSABLE))
+      const first = items[0]
+      const last = items[items.length - 1]
+      expect(first).not.toBe(last)
+      last.focus()
+      key('Tab')
+      expect(document.activeElement).toBe(first)
+      key('Tab', true)
+      expect(document.activeElement).toBe(last)
+      w.unmount()
+    })
+
+    it('[D6] ARIA:漏斗按钮 aria-haspopup / aria-expanded;面板 role=dialog + aria-label(列标题 + 过滤)', async () => {
+      const w = mount(ColumnFilter, {
+        props: { def: conditionDef({ title: '姓名' }), value: null, labels, getOptions: () => [], isLoadingOptions: () => false },
+        attachTo: document.body,
+      })
+      const btn = w.find('.smart-table-filter-trigger button')
+      expect(btn.attributes('aria-haspopup')).toBe('dialog')
+      expect(btn.attributes('aria-expanded')).toBe('false')
+      await w.find('.smart-table-filter-trigger').trigger('click')
+      await flushPromises()
+      expect(btn.attributes('aria-expanded')).toBe('true')
+      expect(panelEl().getAttribute('role')).toBe('dialog')
+      expect(panelEl().getAttribute('aria-label')).toBe('姓名 过滤')
+      w.unmount()
+    })
+
+    it('[D6] 自定义面板(def.render):不自动聚焦(不抢焦点);Esc 仍能关闭,焦点还给漏斗', async () => {
+      const def = conditionDef({ render: () => h('button', { class: 'host-btn' }, 'x') })
+      const w = await openPanel(def, null)
+      await flushPromises()
+      expect(panelEl().contains(document.activeElement)).toBe(false)
+      key('Escape')
+      await flushPromises()
+      expect(document.activeElement).toBe(w.find('.smart-table-filter-trigger button').element)
+      w.unmount()
+    })
+
+    it('[F3] 自定义面板不自动聚焦、焦点留在漏斗上:对漏斗按钮按 Esc 同样关闭面板,焦点留在漏斗(真实浏览器里 keydown 到不了面板容器)', async () => {
+      const def = conditionDef({ render: () => h('button', { class: 'host-btn' }, 'x') })
+      const w = await openPanel(def, null)
+      await flushPromises()
+      const btn = w.find('.smart-table-filter-trigger button')
+      expect(btn.attributes('aria-expanded')).toBe('true')
+      ;(btn.element as HTMLElement).focus()
+      await btn.trigger('keydown', { key: 'Escape' })
+      await flushPromises()
+      expect(btn.attributes('aria-expanded')).toBe('false')
+      expect(document.activeElement).toBe(btn.element)
+      expect(w.emitted('update:value')).toBeUndefined() // 丢弃,不提交
+      w.unmount()
+    })
+  })
+
+  describe('[Step 13 实测] 被点的控件随更新卸载 / 禁用:焦点收回面板,不掉到 body(Esc / Tab 仍有人接)', () => {
+    const panelEl = () => document.body.querySelector('.smart-table-filter') as HTMLElement
+    // 真实键盘事件的目标是当前焦点元素(不是面板容器):焦点掉到 body 时,面板上的监听根本收不到
+    const pressOnFocused = (k: string) =>
+      (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }))
+    // 浏览器里点按钮会先把焦点给它,再触发 click
+    const focusAndClick = (el: Element | null) => {
+      ;(el as HTMLElement).focus()
+      docClick(el)
+    }
+    const expectFocusUsableInPanel = () => {
+      const a = document.activeElement as HTMLElement & { disabled?: boolean }
+      expect(a).not.toBe(document.body)
+      expect(panelEl().contains(a)).toBe(true)
+      expect(a.disabled ?? false).toBe(false)
+    }
+    const expanded = (w: ReturnType<typeof mount>) => w.find('.smart-table-filter-trigger button').attributes('aria-expanded')
+
+    it('删除一行(被点的 × 随行卸载):焦点落到顶替它的那一行;之后 Esc 照常关闭面板', async () => {
+      const w = await openPanel(conditionDef(), v('and', ['contains', 'a'], ['contains', 'b']))
+      focusAndClick(document.body.querySelector('.smart-table-filter-remove'))
+      await flushPromises()
+      expectFocusUsableInPanel()
+      expect(document.body.querySelector('.smart-table-filter-row')!.contains(document.activeElement)).toBe(true)
+      pressOnFocused('Escape')
+      await flushPromises()
+      expect(expanded(w)).toBe('false')
+      expect(w.emitted('update:value')).toBeUndefined()
+      w.unmount()
+    })
+
+    it('添加到上限(被点的「添加」随之禁用):焦点移到新加的那一行;之后 Esc 照常关闭面板', async () => {
+      const w = await openPanel(conditionDef(), null)
+      for (let i = 0; i < 4; i++) {
+        focusAndClick(document.body.querySelector('.smart-table-filter-add'))
+        await flushPromises()
+      }
+      expect(document.body.querySelector('.smart-table-filter-add')!.hasAttribute('disabled')).toBe(true)
+      expectFocusUsableInPanel()
+      const rows = document.body.querySelectorAll('.smart-table-filter-row')
+      expect(rows[rows.length - 1].contains(document.activeElement)).toBe(true)
+      pressOnFocused('Escape')
+      await flushPromises()
+      expect(expanded(w)).toBe('false')
+      w.unmount()
+    })
+
+    it('没到上限时「添加」后焦点留在「添加」按钮上(不多管闲事)', async () => {
+      const w = await openPanel(conditionDef(), null)
+      const add = document.body.querySelector('.smart-table-filter-add')
+      focusAndClick(add)
+      await flushPromises()
+      expect(document.activeElement).toBe(add)
+      w.unmount()
+    })
+
+    it('勾选 → 高级条件 → 返回列表(被点的切换按钮每次都被替换):焦点落到新内容的第一个控件;之后 Esc 照常关闭面板', async () => {
+      const opts = [
+        { label: 'A', value: 1 },
+        { label: 'B', value: 2 },
+      ]
+      const def: FilterDef = { ...buildOptionsDef(), type: 'select' }
+      const w = await openPanel(def, optionsToFilterValue([1]), () => opts as never[])
+      focusAndClick(document.body.querySelector('.smart-table-filter-advanced-open'))
+      await flushPromises()
+      expectFocusUsableInPanel()
+      expect(document.body.querySelector('.smart-table-filter-row')!.contains(document.activeElement)).toBe(true)
+      focusAndClick(document.body.querySelector('.smart-table-filter-advanced-close'))
+      await flushPromises()
+      expectFocusUsableInPanel()
+      expect(document.body.querySelector('.smart-table-filter-options')!.contains(document.activeElement)).toBe(true)
+      pressOnFocused('Escape')
+      await flushPromises()
+      expect(expanded(w)).toBe('false')
+      w.unmount()
+    })
+  })
+
+  it('openRequest 变大 = 请求打开面板(chips 点击用)', async () => {
+    const w = mount(ColumnFilter, {
+      props: { def: conditionDef(), value: null, labels, getOptions: () => [], isLoadingOptions: () => false, openRequest: 0 },
+      attachTo: document.body,
+    })
+    expect(document.body.querySelector('.smart-table-filter')).toBeNull()
+    await w.setProps({ openRequest: 1 })
+    await flushPromises()
+    expect(document.body.querySelector('.smart-table-filter')).not.toBeNull()
+    w.unmount()
   })
 })

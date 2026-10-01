@@ -440,6 +440,14 @@ export interface SmartTableLabels {
   more?: string
   /** 漏斗 aria-label 的后缀,含 {n} 占位(有效条件数)。 */
   filterActiveCount?: string
+  filterAddCondition?: string
+  filterRemoveCondition?: string
+  /** 同一列多条件的连接方式(「且 / 或」分段按钮)。 */
+  filterLogicAnd?: string
+  filterLogicOr?: string
+  /** options 列底部展开多条件编辑的入口 / 收起回勾选列表的入口。 */
+  filterAdvanced?: string
+  filterSimple?: string
 }
 
 /* ======================== 持久化存储结构 ======================== */

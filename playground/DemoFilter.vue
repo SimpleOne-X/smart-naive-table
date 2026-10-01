@@ -109,6 +109,12 @@ const columns: SmartTableColumn<DemoRow>[] = [
       >
         {{ tt('编程式:只看离职', 'Set filter: resigned')() }}
       </n-button>
+      <n-button
+        size="small"
+        @click="tableRef?.setFilter('status', { logic: 'and', conditions: [{ action: 'notEqual', value: 1 }] })"
+      >
+        {{ tt('编程式:状态 ≠ 在职', 'Set filter: status ≠ Active')() }}
+      </n-button>
       <span>{{ tt('过滤态', 'Filter state') }}: {{ JSON.stringify(state) }}</span>
       <span v-if="lastResize">{{ tt('最近列宽', 'Last resize') }}: {{ lastResize }}</span>
       <n-button size="small" secondary @click="measure">{{ tt('量一下列宽', 'Measure') }}</n-button>
