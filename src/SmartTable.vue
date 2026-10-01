@@ -16,7 +16,7 @@ import {
   type Slots,
 } from 'vue'
 import { NCard, NDataTable } from 'naive-ui'
-import type { DataTableInst, PaginationInfo, PaginationProps } from 'naive-ui'
+import type { DataTableInst, DropdownOption, PaginationInfo, PaginationProps } from 'naive-ui'
 import type {
   Density,
   FilterState,
@@ -91,6 +91,8 @@ const emit = defineEmits<{
   filterChange: [key: string, value: FilterValue | null, state: FilterState]
   /** 拖拽调整列宽(拖动过程中持续触发,与 Arco 的 column-resize 一致)。 */
   columnResize: [key: string, width: number]
+  /** 「更多」菜单(toolbar.more)选中某项。 */
+  moreSelect: [key: string | number, option: DropdownOption]
 }>()
 
 // 仅声明插槽类型(对外):cell-* / header-* 是按列 key 动态读取的,模板里没有对应 <slot>,
@@ -607,8 +609,10 @@ defineExpose({
         :labels="mergedLabels"
         :config="props.toolbar ?? {}"
         :density="columnsApi.density.value"
+        :remote="isRemote"
         @refresh="refresh"
         @update:density="columnsApi.setDensity"
+        @more-select="(k, o) => emit('moreSelect', k, o)"
       >
         <template v-if="slots.title" #title><slot name="title" /></template>
         <template v-if="slots.toolbar" #left><slot name="toolbar" /></template>

@@ -1,20 +1,25 @@
 <script setup lang="ts">
-// 表格卡片头:标题 + 左侧操作区(#left)+ 右侧工具按钮(刷新/密度/列设置 #settings)。
+// 表格卡片头:标题 + 左侧操作区(#left)+ 右侧:宿主按钮(#right)、「更多」菜单、内置图标(刷新/密度/列设置 #settings)。
 import { computed, type PropType } from 'vue'
 import { NButton, NDropdown, NSpace, NTooltip } from 'naive-ui'
-import type { Density, SmartTableLabels, ToolbarConfig } from './types'
-import { DensityIcon, RefreshIcon } from './icons'
+import type { DropdownOption } from 'naive-ui'
+import type { Density, SmartTableLabels, ToolbarConfig, ToolbarMoreOption } from './types'
+import { ChevronDownIcon, DensityIcon, RefreshIcon } from './icons'
 
 const props = defineProps({
   title: { type: String, default: undefined },
-  labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true },
+  labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true }, // 保留 Task 2 改好的 Required<>(D9)
+  // [Object, Boolean]:toolbar: false 是合法取值,只写 Object 时传 false 会让 Vue 报 prop 类型 warn(Q-11)
   config: { type: [Object, Boolean] as PropType<ToolbarConfig | false>, default: () => ({}) },
   density: { type: String as PropType<Density>, required: true },
+  /** 远程模式(传了 fetcher)。静态数据模式下刷新什么都不做,所以不显示刷新按钮。 */
+  remote: { type: Boolean, default: true },
 })
 
 const emit = defineEmits<{
   refresh: []
   'update:density': [d: Density]
+  moreSelect: [key: string | number, option: DropdownOption]
 }>()
 
 const cfg = computed<ToolbarConfig>(() => (props.config === false ? { refresh: false, density: false, columnSettings: false } : props.config))
@@ -23,6 +28,20 @@ const densityOptions = computed(() => [
   { label: (props.density === 'comfortable' ? '✓ ' : '') + props.labels.densityComfortable, key: 'comfortable' },
   { label: (props.density === 'compact' ? '✓ ' : '') + props.labels.densityCompact, key: 'compact' },
 ])
+
+// 只有分隔线 / 自定义渲染项时没有可选的东西,不渲染「更多」按钮
+const moreOptions = computed<ToolbarMoreOption[]>(() => {
+  const list = cfg.value.more ?? []
+  const selectable = list.some((o) => {
+    const t = (o as { type?: string }).type
+    return t !== 'divider' && t !== 'render'
+  })
+  return selectable ? list : []
+})
+
+function onMoreSelect(key: string | number, option: DropdownOption) {
+  emit('moreSelect', key, option)
+}
 </script>
 
 <template>
@@ -35,7 +54,13 @@ const densityOptions = computed(() => [
     </div>
     <n-space :size="4" align="center">
       <slot name="right" />
-      <n-tooltip v-if="cfg.refresh !== false" trigger="hover">
+      <n-dropdown v-if="moreOptions.length" trigger="click" placement="bottom-end" :options="moreOptions" @select="onMoreSelect">
+        <n-button size="small" icon-placement="right" :aria-label="labels.more">
+          {{ labels.more }}
+          <template #icon><ChevronDownIcon /></template>
+        </n-button>
+      </n-dropdown>
+      <n-tooltip v-if="cfg.refresh !== false && remote" trigger="hover">
         <template #trigger>
           <n-button quaternary circle size="small" :aria-label="labels.refresh" @click="emit('refresh')">
             <template #icon><RefreshIcon /></template>

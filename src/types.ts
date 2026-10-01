@@ -1,5 +1,5 @@
 import type { Ref, VNodeChild, MaybeRefOrGetter } from 'vue'
-import type { DataTableBaseColumn, DataTableInst, PaginationProps } from 'naive-ui'
+import type { DataTableBaseColumn, DataTableInst, DropdownProps, PaginationProps } from 'naive-ui'
 // naive-ui 只出现在类型位置;运行时 hooks(useSmartTable/useTableCrud/useOptions)不 import 它。
 
 /* ======================== 数据契约 ======================== */
@@ -244,11 +244,16 @@ export interface SearchFormConfig {
   collapsedRows?: number
 }
 
+/** 「更多」菜单的选项:官方 NDropdown 的 options 原样透传(文档只保证 label / key / disabled 与 { type: 'divider' })。 */
+export type ToolbarMoreOption = NonNullable<DropdownProps['options']>[number]
+
 export interface ToolbarConfig {
-  refresh?: boolean // 默认 true
+  refresh?: boolean // 默认 true;静态数据模式(没传 fetcher)一律不显示
   /** 是否显示「密度」按钮;默认 false(3.0 起密度交给宿主的个人设置经 defaultDensity 传入)。传 true 时存储里的密度优先。 */
   density?: boolean
   columnSettings?: boolean // 默认 true
+  /** 「更多」菜单(导出 / 导入 / …由宿主定义);不传、空数组或只有分隔线时不显示按钮。选中后发 moreSelect。 */
+  more?: ToolbarMoreOption[]
 }
 
 export interface SmartTableProps<T = any> {
@@ -426,6 +431,8 @@ export interface SmartTableLabels {
   filterNotIn?: string
   /** 无值算子的值位置占位。 */
   filterNoValue?: string
+  /** 工具栏「更多」菜单按钮文字。 */
+  more?: string
 }
 
 /* ======================== 持久化存储结构 ======================== */

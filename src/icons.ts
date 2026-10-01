@@ -23,6 +23,8 @@ function lineIcon(paths: string[]): FunctionalComponent {
 export const RefreshIcon = lineIcon(['M23 4v6h-6', 'M20.49 15a9 9 0 1 1-2.13-9.36L23 10'])
 export const DensityIcon = lineIcon(['M3 6h18', 'M3 12h18', 'M3 18h18'])
 export const ColumnsIcon = lineIcon(['M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M9 3v18', 'M15 3v18'])
+export const ChevronDownIcon = lineIcon(['M6 9l6 6 6-6'])
+export const CloseIcon = lineIcon(['M18 6L6 18', 'M6 6l12 12'])
 // 漏斗:表头过滤触发图标(实心,过滤生效时整体变主题色)
 export const FilterIcon: FunctionalComponent = () =>
   h(

@@ -633,3 +633,32 @@ describe('SmartTable 密度的写入端(Q-1:保存列设置 / 列宽不把宿主
     wrapper.unmount()
   })
 })
+
+describe('SmartTable 工具栏接线(B5 / more)', () => {
+  const base = { columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[], rowKey: 'id' }
+
+  it('B5:静态数据模式不显示刷新;远程模式显示', async () => {
+    const staticWrapper = mount(SmartTable, { props: { ...base, data: rows } })
+    expect(staticWrapper.html()).not.toContain('aria-label="Refresh"')
+    staticWrapper.unmount()
+
+    const remoteWrapper = mount(SmartTable, { props: { ...base, fetcher: async () => ({ items: rows, total: 2 }) } })
+    await flushPromises()
+    expect(remoteWrapper.html()).toContain('aria-label="Refresh"')
+    remoteWrapper.unmount()
+  })
+
+  it('实例方法 refresh() 在静态模式下保持空操作(不抛错)', async () => {
+    const wrapper = mount(SmartTable, { props: { ...base, data: rows } })
+    await expect((wrapper.vm as unknown as { refresh: () => Promise<void> }).refresh()).resolves.toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('moreSelect 从 Toolbar 转发到 SmartTable 的事件', () => {
+    const more = [{ label: '导出', key: 'export' }]
+    const wrapper = mount(SmartTable, { props: { ...base, data: rows, toolbar: { more } } })
+    wrapper.findComponent(Toolbar).vm.$emit('moreSelect', 'export', more[0])
+    expect(wrapper.emitted('moreSelect')).toEqual([['export', more[0]]])
+    wrapper.unmount()
+  })
+})

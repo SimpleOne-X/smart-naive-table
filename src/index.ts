@@ -53,6 +53,7 @@ export type {
   Density,
   SearchFormConfig,
   ToolbarConfig,
+  ToolbarMoreOption,
   SmartTableProps,
   SmartTableInst,
   UseSmartTableOptions,

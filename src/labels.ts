@@ -39,6 +39,7 @@ export const defaultLabels: Required<SmartTableLabels> = {
   filterIn: 'In',
   filterNotIn: 'Not in',
   filterNoValue: 'No value needed',
+  more: 'More',
 }
 
 /**
@@ -79,6 +80,7 @@ export const zhCNLabels: Required<SmartTableLabels> = {
   filterIn: '属于',
   filterNotIn: '不属于',
   filterNoValue: '无需填值',
+  more: '更多',
 }
 
 /** 三层合并:内置英文 < 全局默认(global)< 实例 prop(partial)。结果是 Required 形状(缺的键已由英文默认补齐)。 */

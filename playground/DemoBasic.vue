@@ -19,6 +19,14 @@ const enabledOptions = [
   { label: tt('禁用', 'Disabled'), value: false, tagType: 'default' as const },
 ]
 
+// toolbar.more:官方 NDropdown 的 options 原样透传;选中后库发 moreSelect(key, option),由宿主处理(库不内置导出 / 导入)
+const moreOptions = [
+  { label: tt('导出', 'Export'), key: 'export' },
+  { label: tt('导入', 'Import'), key: 'import' },
+  { type: 'divider' as const, key: 'd1' },
+  { label: tt('下载导入模板', 'Download template'), key: 'tpl' },
+]
+
 const columns: SmartTableColumn<DemoRow>[] = [
   { type: 'index', fixed: 'left' },
   // filter: true —— 有 options 的列自动出勾选列表,没有的出「动作 + 值」条件行
@@ -60,6 +68,8 @@ const columns: SmartTableColumn<DemoRow>[] = [
     :fetcher="mockPage"
     :title="tt('人员列表', 'Staff')()"
     :labels="labels"
+    :toolbar="{ more: moreOptions }"
+    @more-select="(key) => message.info(`more: ${String(key)}`)"
     storage-key="demo-basic"
     resizable
     :single-line="false"
