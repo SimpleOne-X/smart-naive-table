@@ -28,8 +28,8 @@ Write `columns`, plug in a `fetcher` — the search form, pagination, dict trans
 
 - **Columns drive everything**: add `search` to a column and it becomes a search field; add `options` and it translates cells and feeds the select — one declaration, used everywhere
 - **One function for the backend**: `fetcher` receives `{ page, pageSize, ...filters }` and returns `{ items, total }`
-- **Toolbar out of the box**: refresh, density toggle, column settings (show / hide, drag to reorder, pin left / right), remembered per table
-- **Header filters + column resize**: add `filter` to a column for a funnel icon — a checkbox panel or an "action + value" condition panel; resized widths are remembered, and dragging one column moves only that column
+- **Toolbar out of the box**: refresh (remote mode only), column settings (show / hide, drag to reorder, pin left / right), remembered per table; an optional "More" menu (`toolbar.more`); the density toggle is no longer shown by default (`toolbar: { density: true }` brings it back)
+- **Header filters + column resize**: add `filter` to a column for a funnel icon — a checkbox panel or a multi-condition panel (up to 5 conditions, AND / OR, keyboard-accessible); resized widths are remembered, and dragging one column moves only that column
 - **Follows your Naive theme**: light / dark and locale come from `<n-config-provider>`
 - **Details handled**: race-guarded requests, empty params stripped, fixed-column width fallback, deduped async dicts
 - **Lightweight**: the only runtime dependency is `sortablejs` (loaded only when row dragging is on); ESM with full TypeScript types
@@ -91,12 +91,12 @@ That gives you a complete list page:
 
 - **Search area**: "Account" and "Name" inputs, a "Status" select (options from `options`), plus Search / Reset buttons
 - **Table**: row numbers, status tags, formatted time, pagination at the bottom
-- **Toolbar**: refresh, density toggle, column settings
+- **Toolbar**: refresh (remote mode only), column settings; the density toggle is hidden by default (`toolbar: { density: true }` brings it back)
 
 When you click Search, `fetcher` receives (empty values already stripped):
 
 ```js
-{ page: 1, pageSize: 10, account: 'user01', status: 1 }
+{ page: 1, pageSize: 100, account: 'user01', status: 1 }
 ```
 
 > **Tip**: render SmartTable inside `<n-config-provider>` — theme and locale follow it. The full code behind the screenshot is in [playground/DemoBasic.vue](./playground/DemoBasic.vue).
@@ -187,8 +187,9 @@ Open it from the rightmost toolbar icon: toggle visibility, drag to reorder, pin
 
 Add `filter` to a column and a funnel icon appears in its header. The panel comes in two shapes, picked per column:
 
-- **Checkbox panel** (the column has `options`): tick dict entries; with multi-select this is internally "several *equals* conditions joined by **or**"
-- **Condition panel** (no `options`): one "action + value" row. Actions default by value type (text gets *contains / not contains / equals / not equals*; numbers and dates get *equals / greater than / less than*, ...)
+- **Checkbox panel** (the column has `options`): tick dict entries; with multi-select this is internally "several *equals* conditions joined by **or**" (`multiple: false` uses the official radio buttons). "Advanced conditions" at the bottom switches to multi-condition editing; conditions the checkboxes can't express (e.g. *not equals*) open there automatically instead of being dropped
+- **Condition panel** (no `options`): several "action + value" rows (up to 5; AND / OR once there are 2 or more). Actions default by value type (text gets *contains / not contains / equals / not equals*; numbers and dates get *equals / greater than / less than*, ...)
+- The panel edits a draft that only applies on "OK"; Esc closes it and discards the draft, and Tab cycles inside the panel
 
 ```ts
 const columns: SmartTableColumn<Row>[] = [
@@ -213,7 +214,7 @@ const columns: SmartTableColumn<Row>[] = [
 ```jsonc
 {
   "page": 1,
-  "pageSize": 10,
+  "pageSize": 100,
   "filters": [
     { "field": "name", "logic": "and", "conditions": [{ "action": "contains", "value": "ali" }] },
     { "field": "status", "logic": "or", "conditions": [{ "action": "equal", "value": 1 }, { "action": "equal", "value": 2 }] }
@@ -241,6 +242,12 @@ You can also replace the whole panel; `ctx` carries `value`, `setValue` and `clo
 
 Filter state is readable and writable: `tableRef.filters`, `tableRef.setFilter(key, value)`, `tableRef.clearFilters()`, and changes emit `@filter-change`.
 
+To show users which conditions are active, add `filter-chips`: a row of chips appears under the toolbar — click a chip to reopen that column's panel, × removes that one condition, and chips that don't fit fold into "+N". When some column declares a `defaultValue`, "Restore defaults" appears only once the state deviates from the defaults; otherwise "Clear all" appears with 2 or more chips:
+
+```vue
+<SmartTable :columns="columns" :fetcher="fetchList" filter-chips />
+```
+
 To turn every filter off at once (same shape as `:search="false"`; column-level `filter` declarations stop taking effect too):
 
 ```vue
@@ -261,15 +268,29 @@ Add `resizable` to the table and every data column can be dragged by its right h
 - With `storage-key`, widths are stored in localStorage next to the column settings and survive reloads
 - `@column-resize` (`key`, `width`) fires continuously while dragging; the localStorage write is debounced internally
 - **Dragging one column changes only that column**: the first drag pins every column (including index / selection) to its current rendered width and switches the table to `table-layout: fixed` with its width fixed to the sum of the columns. Columns to the left stay put; only the dragged one follows the cursor
-- **The table always fills its container**: when the columns add up to less than the container, the leftover width is absorbed by a single filler column (inserted before the right-fixed ones, so header and row backgrounds still reach the right edge) while every real column keeps the width you dragged; widening past the container scrolls horizontally as before. "Restore defaults" in column settings brings back the auto-fit behavior
-- Columns can't be dragged to zero: resizable columns get a fallback `minWidth` (60 by default), and an explicit `minWidth` on the column wins
+- **The table always fills its container**: when the columns add up to less than the container, the leftover width is absorbed by the **last visible, non-fixed, draggable column (the "absorber")**; there is no filler column in the header any more and every other column keeps the width you dragged. Widening past the container scrolls horizontally as before. **The absorber has no drag handle (even before you have dragged anything)**: drag its left neighbour's handle instead; put `resizable: false` on a column to make it opt out (the absorber moves to the previous column). "Restore defaults" in column settings brings back the auto-fit behavior
+- Columns can't be dragged to zero: resizable columns get a fallback `minWidth` of 60, or `max(60, icon floor)` for columns with sort / filter icons (93 sort only, 102 filter only, 123 both); an explicit `minWidth` on the column wins
 - "Restore defaults" in column settings resets widths too
+
+### Pagination
+
+Pagination defaults to the official `simple` mode (page input / total pages), 100 rows per page, with `[100, 500, 1000]` to choose from:
+
+- The page-size picker is an official `NPagination` nested in the pagination `suffix`, so its text follows the locale of `<n-config-provider>` ("100 / page") with no extra label to configure; `{ label, value }` objects in `pageSizes` are shown as-is, and a current page size missing from the list is merged in
+- In the narrow tier (table root narrower than 600px) the page-size picker is not drawn, so the pagination bar never wraps
+- Initial page size, in order of precedence: the instance `default-page-size` > the instance `pagination.pageSize` / `pagination.defaultPageSize` > the global `defaultPageSize` > the first entry of `pageSizes` given explicitly by the host (instance or global) > 100
+- To go back to the page-number list: `:pagination="{ simple: false }"` (the official `showSizePicker` / `pageSizes` then apply); in `simple` mode Naive doesn't render `showQuickJumper` / `pageSlot`
+- ⚠ In remote mode the request now carries `pageSize: 100` by default: if your backend caps `pageSize`, set `default-page-size` or `pageSizes` accordingly
+- Changing the page size goes back to page 1 (remote and static-data modes alike)
+- Without `fill-height`, after changing pages / page size the page scrolls back to the top of the card if that top has scrolled out of view; with `fill-height` the table body scrolls inside the card and resets to its top instead
 
 ### More scenarios
 
 | Scenario | How |
 |---|---|
-| Server-side sorting | `sorter: true` on a column; `fetcher` receives `sortField` and `sortOrder` (`'asc'` / `'desc'`) |
+| Server-side sorting | `sorter: true` on a column; `fetcher` receives `sortField` and `sortOrder` (`'asc'` / `'desc'`). For multi-column sorting use the official `sorter: { multiple: n }` (higher wins) and `fetcher` additionally receives `sorts: [{ field, order }]`; a column's `defaultSortOrder` takes effect (sent with the first request) |
+| Programmatic sorting | `tableRef.sort(key, order)` / `tableRef.clearSorter()` (same signature as the official `DataTableInst`; remote mode reloads from page 1) |
+| Fill the parent | `fill-height`; the parent needs a definite height (the body scrolls inside the card, pagination sticks to the bottom, virtual scroll). Without it, changing pages scrolls back to the top of the card |
 | External filters | `:params="{ deptId }"`; changes go back to page 1 and reload (e.g. a department tree) |
 | Static data | pass `:data="list"` without `fetcher` for client-side pagination; filter yourself on `@search` |
 | Tree table | static rows with a `children` field, plus `row-key` |
@@ -279,6 +300,8 @@ Add `resizable` to the table and every data column can be dragged by its right h
 | Row drag-to-reorder | `row-draggable` + `@row-drag-sort`; the table reorders, you persist via your API |
 | Column resize | `resizable` on the table, or `resizable: true` on a column |
 | Header filters | `filter: true` on a column; remote mode receives a `filters` param |
+| Active-filter chips | `filter-chips` (a row under the toolbar; click to reopen the panel, × removes one condition) |
+| Toolbar "More" menu | `:toolbar="{ more: [{ label: 'Export', key: 'export' }] }"` + `@more-select="(key) => ..."` (the options are the official `NDropdown` `options`; no built-in export / import) |
 | Cell grid lines | on by default (internal `single-line: false`); pass `:single-line="true"` for the single-line look |
 | Virtual scroll | `virtual-scroll` + `max-height` |
 | Summary row | `:summary="(pageData) => ..."` |
@@ -297,6 +320,7 @@ const tableRef = ref<SmartTableInst<User>>()
 // tableRef.value?.refresh()  reload the current page (e.g. after editing)
 // tableRef.value?.search()   back to page 1 (e.g. after creating)
 // tableRef.value?.reset()    clear filters and reload
+// tableRef.value?.sort('createTime', 'descend')  programmatic sort; clearSorter() clears it
 </script>
 
 <template>
@@ -351,17 +375,19 @@ app.provide(
   SMART_TABLE_DEFAULTS,
   createSmartTableDefaults({
     align: 'left',
-    pageSizes: [10, 20, 50, 100],
+    pageSizes: [100, 500, 1000],
     emptyText: '-',
     // a ref / computed makes labels follow the locale — no :labels needed on each page
     labels: computed(() => ({ search: t('common.search'), reset: t('common.reset') /* ... */ })),
+    // Chinese-only app? use the built-in set instead: labels: zhCNLabels
   }),
 )
 
 app.mount('#app')
 ```
 
-- **Built-in text** is English; override any of `search`, `reset`, `refresh`, `density`, `densityComfortable`, `densityCompact`, `columnSettings`, `columnSettingsReset`, `fixedLeft`, `fixedRight`, `fixedNone`, `expand`, `collapse` via `labels`
+- **Built-in text** is English; a complete Chinese set ships with the package — `import { zhCNLabels } from 'smart-naive-table'`, then `labels: zhCNLabels` (tweak single words with `{ ...zhCNLabels, search: '查找' }`)
+- Override any key via `labels`: `search`, `reset`, `refresh`, `density`, `densityComfortable`, `densityCompact`, `columnSettings`, `columnSettingsReset`, `fixedLeft`, `fixedRight`, `fixedNone`, `expand`, `collapse`, the filter keys, and the keys added in 3.0 (filter panel, chips, "More"). The 3.0 keys are all optional, so a complete 2.1.1 labels object still type-checks; missing keys fall back to English
 - **Locale switching**: pass `labels` as a `computed`, and write column `title` / option `label` as functions `() => t('xxx')` — they update instantly
 - **Precedence**: prop on the table / value on the column > global default > built-in default
 - Input placeholders and date panels come from Naive UI's own locale — set `:locale` / `:date-locale` on `<n-config-provider>`
@@ -422,10 +448,10 @@ Data columns accept every Naive UI column prop (`width`, `minWidth`, `fixed`, `a
 | `render` | `(ctx) => VNodeChild` | — | Replace the whole panel; `ctx` has `value`, `setValue`, `close` |
 | `filter` | `(value, row) => boolean` | built-in evaluation | Custom matching in static `data` mode (ignored in remote mode) |
 
-- **FilterAction**: `'equal'`, `'notEqual'`, `'contains'`, `'notContains'`, `'gt'`, `'gte'`, `'lt'`, `'lte'`
-- **FilterValue**: `{ logic: 'and' | 'or', conditions: { action, value }[] }`; conditions whose value is empty (`null` / `''` / `[]`) are ignored, and an all-empty value means "not filtered"
+- **FilterAction** (15): `'equal'`, `'notEqual'`, `'contains'`, `'notContains'`, `'gt'`, `'gte'`, `'lt'`, `'lte'`, plus the 3.0 additions `'isNull'` / `'isNotNull'` (empty / not empty, no value needed), `'like'` (SQL `LIKE`: `%` any run, `_` one character, whole-string, case-insensitive), `'startsWith'` / `'endsWith'` (case-insensitive) and `'in'` / `'notIn'` (the value is an array). **The header panel still offers only the first 8 by default; the others must be enabled explicitly with `filter.actions` on the column**; unknown actions never match
+- **FilterValue**: `{ logic: 'and' | 'or', conditions: { action, value }[] }`; conditions whose value is empty (`null` / `''` / `[]`) are ignored (except `isNull` / `isNotNull`), and an all-empty value means "not filtered"
 - Columns are always combined with **and**; `logic` only applies within one column
-- The built-in panel produces a single condition (condition mode) or several `equal`s joined by **or** (checkbox mode); multiple conditions only come from `defaultValue` or a programmatic `setFilter`, and both evaluation and serialization support them
+- The built-in panel edits up to 5 conditions per column (AND / OR once there are 2 or more); checkbox mode produces several `equal`s joined by **or**, and a single `in` written back through the checkboxes becomes several `equal`s joined by **or** (same meaning, different serialized shape). A programmatic `setFilter` / `defaultValue` has no limit
 
 ### Props
 
@@ -437,14 +463,17 @@ Data columns accept every Naive UI column prop (`width`, `minWidth`, `fixed`, `a
 | `row-key` | `string \| (row) => key` | `'id'` | Row identity |
 | `params` | `object` | — | Extra request params; changes go back to page 1 and reload |
 | `immediate` | `boolean` | `true` | Fetch on mount |
-| `default-page-size` | `number` | `10` | Initial page size |
-| `pagination` | `false \| PaginationProps` | — | `false` hides pagination; an object merges over built-in settings |
+| `default-page-size` | `number` | `100` | Initial page size; when the host gives `pageSizes`, defaults to its first entry (precedence: see Pagination) |
+| `pagination` | `false \| PaginationProps` | — | `false` hides pagination; an object merges over built-in settings; defaults to the official `simple` mode, `{ simple: false }` restores the page-number list |
 | `search` | `false \| SearchFormConfig` | — | Search area config (see below); `false` hides it |
 | `filter` | `boolean` | `true` | `false` turns off every header filter (even on columns declaring `filter`) |
-| `toolbar` | `false \| { refresh, density, columnSettings }` | all on | Toolbar button switches |
+| `filter-chips` | `boolean` | `false` | Show active-filter chips under the toolbar |
+| `toolbar` | `false \| { refresh, density, columnSettings, more }` | refresh (remote only) and column settings; `density` defaults to `false` | Toolbar button switches; `more` holds the "More" menu options (the official `NDropdown` `options`), selecting one emits `more-select` |
 | `title` | `string` | — | Table title, or use the `#title` slot |
-| `storage-key` | `string` | — | Persist column settings and density to localStorage |
-| `default-density` | `'comfortable' \| 'compact'` | `'comfortable'` | Initial density |
+| `card-props` | `Partial<CardProps>` | — | Official `NCard` props for the cards the library renders (table card, search card), merged over the default `size="small"` + 16px padding on all sides; `{ size: 'medium' }` restores the old look |
+| `fill-height` | `boolean` | `false` | Fill the parent: the body scrolls inside the card (official `flex-height` + virtual scroll) and pagination sticks to the bottom; **the parent needs a definite height**; `max-height` is ignored while on |
+| `storage-key` | `string` | — | Persist column settings (visibility / order / pinning / widths) to localStorage; **density is only read from / written to storage when `toolbar: { density: true }` (the density button) is on** — otherwise `default-density` decides |
+| `default-density` | `'comfortable' \| 'compact'` | `'compact'` | Initial density (reactive: when the host changes it, mounted tables follow) |
 | `labels` | `Partial<SmartTableLabels>` | English | Override component text; pass a `computed` for locale switching |
 | `active-row-key` | `string \| number \| null` | — | Highlight the matching row |
 | `row-draggable` | `boolean` | `false` | Enable row drag-to-reorder |
@@ -477,6 +506,7 @@ Anything not listed (e.g. `striped`, `max-height`, `checked-row-keys`, `virtual-
 | `row-drag-sort` | `{ from, to, reordered }` | Row drag finished |
 | `filter-change` | `key, value, state` | A header filter changed (`key` is `''` for `clearFilters`) |
 | `column-resize` | `key, width` | Column resized (fires continuously while dragging) |
+| `more-select` | `key, option` | An item of the toolbar "More" menu (`toolbar.more`) was selected |
 
 ### Slots
 
@@ -503,6 +533,8 @@ Anything not listed (e.g. `striped`, `max-height`, `checked-row-keys`, `virtual-
 | `filters` | Current filter state (read-only snapshot) |
 | `setFilter(key, value)` | Set one column's filter; `null` clears it. Remote mode reloads from page 1 |
 | `clearFilters()` | Clear all filters (restoring each column's `defaultValue`) |
+| `sort(columnKey?, order?)` | Sort by a column (same signature as the official `DataTableInst.sort`: `order` defaults to `'ascend'`, omitting `columnKey` equals `clearSorter()`). Remote mode reloads from page 1; `@update:sorter` is notified |
+| `clearSorter()` | Clear all sorting; `@update:sorter` is notified (payload `null`) |
 | `columnWidths` | Widths of columns after dragging |
 | `tableRef` | The raw `NDataTable` instance (`scrollTo`, etc.) |
 
@@ -515,9 +547,10 @@ Set via `createSmartTableDefaults({...})`; all optional:
 | `labels` | English | Component text; accepts a `ref` / `computed` |
 | `align` / `titleAlign` | `'center'` | Cell / header alignment |
 | `emptyText` | `'—'` | Placeholder for empty values |
-| `pageSizes` | `[10, 20, 50]` | Page size options |
+| `defaultPageSize` | — | Initial page size; when omitted, the first entry of an explicitly given `pageSizes`, else 100 |
+| `pageSizes` | `[100, 500, 1000]` | Page size options |
 | `showSizePicker` | `true` | Show the page size picker |
-| `density` | `'comfortable'` | Default density |
+| `density` | `'compact'` | Default density |
 | `dateValueFormat` | `'yyyy-MM-dd'` | Value format of date search fields |
 | `searchCols` | `'1 s:2 m:3 l:4'` | Search grid columns |
 | `fixedFallbackWidth` | `120` | Width for fixed columns without `width` |
@@ -526,14 +559,14 @@ Set via `createSmartTableDefaults({...})`; all optional:
 | `activeRowBg` | — | Background of the highlighted row |
 | `resizable` | `false` | Make every table's columns resizable by default |
 | `filterable` | `true` | Whether columns may declare header filters; `false` turns them off globally |
-| `resizeMinWidth` | `60` | Minimum width of a resizable column |
+| `resizeMinWidth` | `60` | Minimum width of a resizable column (columns with sort / filter icons use the larger of it and the icon floor) |
 | `filterSerializer` | see Header filters | Filter state -> request params |
 
 ### Other exports
 
 - `useSmartTable(fetcher, options)`: the UI-agnostic data core the component uses (loading, pagination, search, race guard) — build your own UI on it
-- Filter core: `matchFilterValue`, `applyFilters`, `defaultFilterSerializer`, `isFilterActive`, ... — UI-agnostic, reusable in a backend mock or your own UI
-- Helpers: `cleanParams`, `formatDate`, `formatDatetime`, `formatMoney`, `defaultLabels`, ...
+- Filter core: `matchFilterValue`, `applyFilters`, `defaultFilterSerializer`, `isFilterActive`, `isOptionsRepresentable`, `NO_VALUE_ACTIONS`, `isValuelessAction`, `actionValueKind`, ... — UI-agnostic, reusable in a backend mock or your own UI
+- Helpers and text: `cleanParams`, `formatDate`, `formatDatetime`, `formatMoney`, `defaultLabels`, `zhCNLabels`, ...
 - All types: `SmartTableColumn`, `SmartTableFetcher`, `SmartTableInst`, `SmartTableOption`, `SearchConfig`, ...
 
 ## Behavior notes
@@ -544,9 +577,10 @@ Set via `createSmartTableDefaults({...})`; all optional:
 - A fixed column without `width` gets one automatically (`minWidth` or 120), so Naive's fixed columns stay aligned
 - `scroll-x` defaults to the sum of visible column widths (including dragged ones); pass your own to override
 - Changing filters goes back to page 1: remote mode reloads, static mode filters on the client
-- Conditions whose value is empty (`null` / `''` / `[]`) are dropped and never sent to the backend; `0` and `false` are kept
+- Conditions whose value is empty (`null` / `''` / `[]`) are dropped and never sent to the backend (`isNull` / `isNotNull` need no value and are sent as usual); `0` and `false` are kept
 - A date-only filter value (`YYYY-MM-DD`) compares by whole day, so `equals 2024-03-05` matches any time that day
-- Width writes to localStorage are debounced; the stored shape moved from `v1` to `v2`, and existing column visibility / order / pinning / density keep working
+- Width writes to localStorage are debounced; the stored shape moved from `v1` to `v2`, and existing column visibility / order / pinning keep working; a stored density **only applies when the density button is on (`toolbar: { density: true }`)** — otherwise `default-density` decides (B2)
+- Column settings keep at least one column: when only one is visible, its checkbox is disabled
 
 ## Development
 
