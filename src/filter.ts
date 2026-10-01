@@ -350,9 +350,28 @@ export function optionsToFilterValue(values: unknown[]): FilterValue | null {
   return { logic: 'or', conditions: values.map((value) => ({ action: 'equal' as FilterAction, value })) }
 }
 
-/** 过滤值 → 已勾选的选项值(optionsToFilterValue 的逆运算,用于回显)。 */
+/**
+ * 过滤值 → 已勾选的选项值(optionsToFilterValue 的逆运算,用于回显)。
+ * 认得单条 in(其数组即勾选集合);其余沿用「只取 equal 条件」——调用方应先用
+ * isOptionsRepresentable 判断能否无损表达,不能时不要用它的结果覆盖原条件(C3)。
+ */
 export function filterValueToOptions(value: FilterValue | null | undefined): unknown[] {
-  return activeConditions(value)
-    .filter((c) => c.action === 'equal')
-    .map((c) => c.value)
+  const conds = activeConditions(value)
+  if (conds.length === 1 && conds[0].action === 'in' && Array.isArray(conds[0].value)) return [...conds[0].value]
+  return conds.filter((c) => c.action === 'equal').map((c) => c.value)
+}
+
+/**
+ * 当前过滤值能否被「勾选候选项」无损表达:
+ * ① 所有有效条件均为 equal,且(logic === 'or' 或仅一条);或 ② 恰好一条 in(值是数组)。
+ * 不能时,列头面板打开要自动展开「高级条件」原样显示,不能静默丢条件、也不能被确认覆盖。
+ */
+export function isOptionsRepresentable(value: FilterValue | null | undefined): boolean {
+  const conds = activeConditions(value)
+  if (conds.length === 0) return true
+  if (conds.length === 1) {
+    const [c] = conds
+    return c.action === 'equal' || (c.action === 'in' && Array.isArray(c.value))
+  }
+  return value?.logic === 'or' && conds.every((c) => c.action === 'equal')
 }

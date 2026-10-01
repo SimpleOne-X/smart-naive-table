@@ -6,6 +6,7 @@ import {
   defaultFilterSerializer,
   filterValueToOptions,
   isFilterActive,
+  isOptionsRepresentable,
   isValuelessAction,
   matchCondition,
   matchFilterValue,
@@ -323,5 +324,45 @@ describe('无值算子(C4)', () => {
 
   it('有值类算子的空值仍被丢弃(口径不变);空数组的 in 也不生效', () => {
     expect(activeConditions(val('and', cond('equal', ''), cond('in', [])))).toEqual([])
+  })
+})
+
+describe('isOptionsRepresentable(C3:勾选面板能否无损表达当前过滤值)', () => {
+  it('空 / 未过滤:可表达', () => {
+    expect(isOptionsRepresentable(null)).toBe(true)
+    expect(isOptionsRepresentable(val('and'))).toBe(true)
+    expect(isOptionsRepresentable(val('and', cond('equal', '')))).toBe(true) // 无效条件等于没有
+  })
+
+  it('单条 equal、或若干 equal 取「或」:可表达', () => {
+    expect(isOptionsRepresentable(val('and', cond('equal', 1)))).toBe(true)
+    expect(isOptionsRepresentable(optionsToFilterValue([1, 2]))).toBe(true)
+  })
+
+  it('若干 equal 取「且」:不可表达(勾选面板会把它读成「或」,语义变了)', () => {
+    expect(isOptionsRepresentable(val('and', cond('equal', 1), cond('equal', 2)))).toBe(false)
+  })
+
+  it('恰好一条 in(值是数组):可表达;in 的值不是数组、或与别的条件并存:不可表达', () => {
+    expect(isOptionsRepresentable(val('and', cond('in', [1, 2])))).toBe(true)
+    expect(isOptionsRepresentable(val('and', cond('in', 'x')))).toBe(false)
+    expect(isOptionsRepresentable(val('or', cond('in', [1]), cond('equal', 2)))).toBe(false)
+  })
+
+  it('notEqual / notIn / isNull / gt 等一律不可表达', () => {
+    expect(isOptionsRepresentable(val('and', cond('notEqual', 1)))).toBe(false)
+    expect(isOptionsRepresentable(val('and', cond('notIn', [1])))).toBe(false)
+    expect(isOptionsRepresentable(val('and', cond('isNull', null)))).toBe(false)
+    expect(isOptionsRepresentable(val('or', cond('equal', 1), cond('gt', 5)))).toBe(false)
+  })
+})
+
+describe('filterValueToOptions 认得单条 in', () => {
+  it('单条 in → 其数组(拷贝);仍忽略非 equal 条件(沿用)', () => {
+    const arr = [1, 2]
+    const out = filterValueToOptions(val('and', cond('in', arr)))
+    expect(out).toEqual([1, 2])
+    expect(out).not.toBe(arr)
+    expect(filterValueToOptions(val('or', cond('equal', 1), cond('gt', 5)))).toEqual([1])
   })
 })

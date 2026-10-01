@@ -14,6 +14,7 @@ export {
   defaultFilterSerializer,
   optionsToFilterValue,
   filterValueToOptions,
+  isOptionsRepresentable,
   NO_VALUE_ACTIONS,
   isValuelessAction,
   actionValueKind,
