@@ -62,6 +62,7 @@ provide(
       filterIn: 'IN', // 「属于」
       filterNotIn: 'NOT IN', // 「不属于」
       filterNoValue: '不需要填值', // 「无需填值」
+      filterSimple: '收起高级条件', // 「返回列表」
     },
   }),
 )

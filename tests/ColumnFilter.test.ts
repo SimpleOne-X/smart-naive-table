@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { h, defineComponent, nextTick } from 'vue'
 import { NConfigProvider, NRadioGroup, NSelect, darkTheme } from 'naive-ui'
@@ -22,6 +22,8 @@ const labels = {
   filterLogicOr: '或',
   filterAdvanced: '高级条件',
   filterSimple: '返回列表',
+  filterConditionLead: '条件',
+  filterCannotCollapse: '含勾选无法表达的条件',
   filterNoValue: '无需填值',
   filterEqual: '等于',
   filterNotEqual: '不等于',
@@ -287,7 +289,7 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
     const rows = w.findAllComponents(ConditionRow)
     rows[0].vm.$emit('update:value', 'a')
     rows[1].vm.$emit('update:value', 'b')
-    w.findComponent(NRadioGroup).vm.$emit('update:value', 'or')
+    rows[1].vm.$emit('update:logic', 'or') // 有意改动(L0-5):且 / 或 从下方的分段按钮改成第 2 行起首列的下拉,事件在条件行上
     await nextTick()
     docClick(confirmBtn())
     expect(lastEmitted(w)).toEqual(v('or', ['contains', 'a'], ['contains', 'b']))
@@ -666,6 +668,304 @@ describe('ColumnFilter 漏斗触发器的外观(L0-3 / L0-4,对齐原型 .th-fil
     await flushPromises()
     expect(w.find('.smart-table-filter-trigger--open').exists()).toBe(true)
     expect(w.find('.smart-table-filter-trigger--active').exists()).toBe(false)
+    w.unmount()
+  })
+})
+
+describe('ColumnFilter 面板排布(L0-5,对齐原型 .hpop)', () => {
+  const conditionDef = (over: Partial<FilterDef> = {}): FilterDef => ({
+    key: 'name',
+    field: 'name',
+    optionsKey: 'name',
+    mode: 'condition',
+    multiple: true,
+    type: 'input',
+    actions: ['contains', 'equal', 'isNull'],
+    ...over,
+  })
+  const two: FilterValue = {
+    logic: 'or',
+    conditions: [
+      { action: 'contains', value: 'a' },
+      { action: 'equal', value: 'b' },
+    ],
+  }
+  async function openPanel(def: FilterDef, value: FilterValue | null) {
+    const w = mount(ColumnFilter, {
+      props: { def, value, labels, getOptions: () => [], isLoadingOptions: () => false },
+      attachTo: document.body,
+    })
+    await w.find('.smart-table-filter-trigger').trigger('click')
+    await flushPromises()
+    return w
+  }
+  const q = (sel: string) => document.body.querySelector(sel) as HTMLElement | null
+  const qa = (sel: string) => Array.from(document.body.querySelectorAll<HTMLElement>(sel))
+
+  it('首列:第 1 行是「条件」引导标签,第 2 行起是且 / 或下拉(显示当前连接方式)', async () => {
+    const w = await openPanel(conditionDef(), two)
+    const rows = qa('.smart-table-filter-row')
+    expect(rows).toHaveLength(2)
+    expect(rows[0].querySelector('.smart-table-filter-lead')!.textContent).toBe('条件')
+    expect(rows[0].querySelector('.smart-table-filter-logic')).toBeNull()
+    expect(rows[1].querySelector('.smart-table-filter-lead')).toBeNull()
+    expect(rows[1].querySelector('.smart-table-filter-logic')!.textContent).toBe('或')
+    w.unmount()
+  })
+
+  it('只有 1 行时没有且 / 或下拉;下方也不再有分段按钮', async () => {
+    const w = await openPanel(conditionDef(), null)
+    expect(qa('.smart-table-filter-logic')).toHaveLength(0)
+    expect(qa('.n-radio-group')).toHaveLength(0)
+    w.unmount()
+  })
+
+  it('改且 / 或:第 2 行起任意一行的下拉都改整组的连接方式,确认后提交', async () => {
+    const w = await openPanel(conditionDef(), two)
+    const rows = w.findAllComponents(ConditionRow)
+    expect(rows[1].props('logic')).toBe('or')
+    rows[1].vm.$emit('update:logic', 'and')
+    await nextTick()
+    expect(w.findAllComponents(ConditionRow)[1].props('logic')).toBe('and')
+    click(qa('.smart-table-filter-footer button')[1])
+    const e = w.emitted('update:value')!
+    expect((e[e.length - 1][0] as FilterValue).logic).toBe('and')
+    w.unmount()
+  })
+
+  it('「添加条件」:官方 small 档的文字按钮,带加号图标,文字不再自带「+ 」前缀,也不再是主色', async () => {
+    const w = await openPanel(conditionDef(), null)
+    const add = q('.smart-table-filter-add')!
+    expect(add.querySelector('svg')).not.toBeNull()
+    expect(add.textContent!.trim()).toBe('添加条件')
+    expect(add.classList.contains('n-button--primary-type')).toBe(false)
+    // 官方 small 档(第 4 批,与同一面板里 small 的值控件一致):字 14 / 图标 18 / 高取主题 heightSmall 28
+    expect(add.getAttribute('style')).toContain('--n-font-size: 14px')
+    expect(add.getAttribute('style')).toContain('--n-icon-size: 18px')
+    expect(add.getAttribute('style')).toContain('height: 28px')
+    w.unmount()
+  })
+
+  it('底部「重置 / 确认」在 footer 里,footer 在面板最底部、带分隔线', async () => {
+    const w = await openPanel(conditionDef(), null)
+    const footer = q('.smart-table-filter-footer')!
+    expect(Array.from(footer.querySelectorAll('button')).map((b) => b.textContent!.trim())).toEqual(['重置', '确定'])
+    expect(footer.parentElement!.lastElementChild).toBe(footer)
+    expect(footer.getAttribute('style')).toContain('border-top')
+    w.unmount()
+  })
+
+  it('自定义面板(def.render)仍是 8px 内边距的老样式,不套新的条件面板排布', async () => {
+    const w = await openPanel(conditionDef({ render: () => h('div', { class: 'custom' }, 'x') }), null)
+    expect(q('.smart-table-filter')!.classList.contains('smart-table-filter--custom')).toBe(true)
+    expect(q('.smart-table-filter-body')).toBeNull()
+    w.unmount()
+  })
+
+  describe('options 列', () => {
+    const opts = [
+      { label: 'A', value: 1 },
+      { label: 'B', value: 2 },
+    ]
+    const optionsDef = (): FilterDef => ({ ...buildOptionsDef(), type: 'select' })
+    async function open(value: FilterValue | null) {
+      const w = mount(ColumnFilter, {
+        props: { def: optionsDef(), value, labels, getOptions: () => opts as never, isLoadingOptions: () => false },
+        attachTo: document.body,
+      })
+      await w.find('.smart-table-filter-trigger').trigger('click')
+      await flushPromises()
+      return w
+    }
+
+    it('底部入口带箭头:「高级条件 ▾」;展开后「返回列表 ▴」', async () => {
+      const w = await open(null)
+      expect(q('.smart-table-filter-advanced-open')!.textContent!.trim()).toBe('高级条件 ▾')
+      click(q('.smart-table-filter-advanced-open'))
+      await nextTick()
+      expect(q('.smart-table-filter-advanced-close')!.textContent!.trim()).toBe('返回列表 ▴')
+      w.unmount()
+    })
+
+    it('高级条件里含勾选表达不了的条件:「返回」禁用,并给出原因提示', async () => {
+      const w = await open({ logic: 'and', conditions: [{ action: 'notEqual', value: 1 }] })
+      expect(q('.smart-table-filter-advanced-close')!.hasAttribute('disabled')).toBe(true)
+      expect(q('.smart-table-filter-hint')!.textContent).toBe('含勾选无法表达的条件')
+      w.unmount()
+    })
+
+    it('能无损收起时没有提示', async () => {
+      const w = await open(null)
+      click(q('.smart-table-filter-advanced-open'))
+      await nextTick()
+      expect(q('.smart-table-filter-hint')).toBeNull()
+      w.unmount()
+    })
+
+    describe('单选(filter.multiple: false)用官方 NRadio,不是复选框', () => {
+      async function openSingle(value: FilterValue | null) {
+        const w = mount(ColumnFilter, {
+          props: {
+            def: { ...optionsDef(), multiple: false },
+            value,
+            labels,
+            getOptions: () => opts as never,
+            isLoadingOptions: () => false,
+          },
+          attachTo: document.body,
+        })
+        await w.find('.smart-table-filter-trigger').trigger('click')
+        await flushPromises()
+        return w
+      }
+      const lastValue = (w: ReturnType<typeof mount>) => {
+        const e = w.emitted('update:value')!
+        return e[e.length - 1][0] as FilterValue | null
+      }
+
+      it('选项是 NRadio(官方 FilterMenu.mjs:118-141 同款),没有 NCheckbox、没有「全选」', async () => {
+        const w = await openSingle(null)
+        expect(qa('.smart-table-filter-options .n-radio')).toHaveLength(2)
+        expect(qa('.smart-table-filter-options .n-checkbox')).toHaveLength(0)
+        expect(q('.smart-table-filter-options')!.classList.contains('n-radio-group')).toBe(true)
+        w.unmount()
+      })
+
+      it('已有 equal 条件时对应的 radio 是选中的;换选另一个 → 提交的是新的单个 equal', async () => {
+        const w = await openSingle({ logic: 'and', conditions: [{ action: 'equal', value: 1 }] })
+        const radios = qa('.smart-table-filter-options .n-radio')
+        expect(radios.map((r) => r.classList.contains('n-radio--checked'))).toEqual([true, false])
+        w.findComponent(NRadioGroup).vm.$emit('update:value', 2)
+        await nextTick()
+        click(qa('.smart-table-filter-footer button')[1])
+        expect(lastValue(w)).toEqual({ logic: 'or', conditions: [{ action: 'equal', value: 2 }] })
+        w.unmount()
+      })
+
+      it('没选就确认 → 提交 null(清除);多选列(默认)仍是复选框', async () => {
+        const w = await openSingle(null)
+        click(qa('.smart-table-filter-footer button')[1])
+        expect(lastValue(w)).toBeNull()
+        w.unmount()
+        const multi = await open(null)
+        expect(qa('.smart-table-filter-options .n-checkbox').length).toBeGreaterThan(0)
+        expect(qa('.smart-table-filter-options .n-radio')).toHaveLength(0)
+        multi.unmount()
+      })
+
+      // 简报之外、经批准的偏离(Task 10 的 trapTab):同名(name)的原生单选组在浏览器里只算一个 Tab 停靠点 ——
+      // 从「高级条件 ▾」Shift+Tab 回到单选组时焦点落在「选中的那个」(或方向键移过去的那个),不一定是第 1 个 radio。
+      // trapTab 原来只认 cur === 第一个可聚焦控件,焦点在第 2 个 radio 上再 Shift+Tab 就逃出面板(Chromium 实测落到页面上),
+      // 之后 Esc 也关不掉面板(与 Task 10 Step 13 同一类问题)。jsdom 不模拟原生 Tab 移动焦点,所以这里断言的是 trapTab 自己的绕回。
+      it('[批准的偏离 · Task 10 trapTab] 焦点在非首个 radio(同名单选组)上 Shift+Tab:绕回面板最后一个控件,不逃出面板', async () => {
+        const w = await openSingle({ logic: 'and', conditions: [{ action: 'equal', value: 2 }] })
+        const inputs = qa('.smart-table-filter-options input[type="radio"]')
+        expect(inputs).toHaveLength(2)
+        expect(inputs[0].getAttribute('name')).toBeTruthy()
+        expect(inputs[1].getAttribute('name')).toBe(inputs[0].getAttribute('name'))
+        inputs[1].focus()
+        inputs[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }))
+        expect(document.activeElement).toBe(qa('.smart-table-filter-footer button')[1])
+        w.unmount()
+      })
+    })
+  })
+})
+
+describe('ColumnFilter 面板不出屏(L0-9)', () => {
+  const def: FilterDef = {
+    key: 'name',
+    field: 'name',
+    optionsKey: 'name',
+    mode: 'condition',
+    multiple: true,
+    type: 'input',
+    actions: ['contains'],
+  }
+  const realInnerWidth = window.innerWidth
+  afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', { value: realInnerWidth, configurable: true })
+    vi.restoreAllMocks()
+  })
+  const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)))
+
+  async function openAt(left: number, width: number, viewport: number) {
+    Object.defineProperty(window, 'innerWidth', { value: viewport, configurable: true })
+    // jsdom 没有布局:给 NPopover 的定位容器(.v-binder-follower-content,真实布局位置、不含面板自己的平移)合成一个 rect
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (!this.classList.contains('v-binder-follower-content')) return new DOMRect(0, 0, 0, 0)
+      return new DOMRect(left, 100, width, 200)
+    })
+    const w = mount(ColumnFilter, {
+      props: { def, value: null, labels, getOptions: () => [], isLoadingOptions: () => false },
+      attachTo: document.body,
+    })
+    await w.find('.smart-table-filter-trigger').trigger('click')
+    await flushPromises()
+    await frame()
+    await nextTick()
+    return w
+  }
+  const panel = () => document.body.querySelector('.smart-table-filter') as HTMLElement
+
+  it('左侧被裁出屏幕(left = -69,宽 374,视口 390)→ 向右平移到距左边 8px', async () => {
+    const w = await openAt(-69, 374, 390)
+    expect(panel().style.transform).toBe('translateX(77px)')
+    w.unmount()
+  })
+
+  it('右侧被裁(left = 300,宽 200,视口 390)→ 向左平移到距右边 8px', async () => {
+    const w = await openAt(300, 200, 390)
+    expect(panel().style.transform).toBe('translateX(-118px)')
+    w.unmount()
+  })
+
+  it('本来就在视口内 → 不加任何平移', async () => {
+    const w = await openAt(100, 400, 1440)
+    expect(panel().style.transform).toBe('')
+    w.unmount()
+  })
+
+  it('窗口缩放时重新夹取', async () => {
+    const w = await openAt(100, 400, 1440)
+    expect(panel().style.transform).toBe('')
+    Object.defineProperty(window, 'innerWidth', { value: 420, configurable: true })
+    window.dispatchEvent(new Event('resize'))
+    await frame()
+    await nextTick()
+    expect(panel().style.transform).toBe('translateX(-88px)')
+    w.unmount()
+  })
+
+  // 简报之外的偏离(Step 5 真实浏览器实测发现):滚动时 vueuc 不是在 scroll 事件里同步挪 follower,而是 Binder.js 的
+  // onScroll → beforeNextFrameOnce 排一个 rAF,在 rAF 里 Follower.syncPosition 改写 .v-binder-follower-content 的 transform。
+  // 我们挂在 window 捕获阶段的 scroll 监听总是先于它触发,我们的 rAF 排在它前面 → 量到的是挪之前的位置,夹取永远落后一拍
+  // (实测:滚动停下后面板右缘停在 567 / 视口 520)。这里按真实顺序模拟:先派发 scroll(我们排 rAF),再排「vueuc 的」rAF 去挪 follower。
+  it('[Step 5 实测偏离] 滚动时 follower 在 vueuc 自己的 rAF 里(排在我们的 rAF 之后)才挪:挪完要重新夹取,不能落后一拍', async () => {
+    let rect = new DOMRect(100, 100, 400, 200)
+    Object.defineProperty(window, 'innerWidth', { value: 1440, configurable: true })
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('v-binder-follower-content') ? rect : new DOMRect(0, 0, 0, 0)
+    })
+    const w = mount(ColumnFilter, {
+      props: { def, value: null, labels, getOptions: () => [], isLoadingOptions: () => false },
+      attachTo: document.body,
+    })
+    await w.find('.smart-table-filter-trigger').trigger('click')
+    await flushPromises()
+    await frame()
+    await nextTick()
+    expect(panel().style.transform).toBe('')
+    const follower = panel().closest('.v-binder-follower-content') as HTMLElement
+    window.dispatchEvent(new Event('scroll')) // 我们的捕获监听先触发,排下自己的 rAF
+    requestAnimationFrame(() => {
+      // 「vueuc 的」rAF:把 follower 挪到右侧出屏的位置(改写它的 transform,与 Follower.syncPosition 一致)
+      rect = new DOMRect(1300, 100, 400, 200)
+      follower.style.transform = 'translateX(1300px) translateY(100px)'
+    })
+    await frame()
+    await flushPromises()
+    expect(panel().style.transform).toBe('translateX(-268px)')
     w.unmount()
   })
 })

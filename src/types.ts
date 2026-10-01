@@ -455,6 +455,10 @@ export interface SmartTableLabels {
   /** options 列底部展开多条件编辑的入口 / 收起回勾选列表的入口。 */
   filterAdvanced?: string
   filterSimple?: string
+  /** 面板里第 1 行条件前的引导标签(第 2 行起这一列是且 / 或下拉)。 */
+  filterConditionLead?: string
+  /** 高级条件里含勾选表达不了的条件时,「返回」禁用的原因提示。 */
+  filterCannotCollapse?: string
   /** chips 行末按钮(filterChips):没有列声明 defaultValue 时的文案。 */
   filterClearAll?: string
   /** chips 行末按钮(filterChips):有列声明生效的 defaultValue 时的文案。 */

@@ -47,6 +47,8 @@ export const defaultLabels: Required<SmartTableLabels> = {
   filterLogicOr: 'OR',
   filterAdvanced: 'Advanced conditions',
   filterSimple: 'Back to list',
+  filterConditionLead: 'Where',
+  filterCannotCollapse: 'Contains conditions checkboxes cannot show',
   filterClearAll: 'Clear all',
   filterRestoreDefault: 'Restore defaults',
 }
@@ -97,6 +99,8 @@ export const zhCNLabels: Required<SmartTableLabels> = {
   filterLogicOr: '或',
   filterAdvanced: '高级条件',
   filterSimple: '返回列表',
+  filterConditionLead: '条件',
+  filterCannotCollapse: '含勾选无法表达的条件',
   filterClearAll: '清除全部',
   filterRestoreDefault: '恢复默认',
 }
