@@ -26,6 +26,7 @@ import type {
   SmartTableFetcher,
   SmartTableLabels,
   SearchFormConfig,
+  SortItem,
   ToolbarConfig,
 } from './types'
 import { cleanParams, useSmartTable } from './useSmartTable'
@@ -40,6 +41,7 @@ import {
   type FilterDef,
 } from './useColumns'
 import { applyFilters } from './filter'
+import { collectSorters, deriveInitSorts, normalizeSorterEvent, sortToParams, sortTransition } from './sorts'
 import { useFilters } from './useFilters'
 import { mergeLabels } from './labels'
 import { useSmartTableDefaults } from './config'
@@ -125,10 +127,13 @@ const mergedLabels = computed(() => mergeLabels(props.labels, toValue(defaults.l
 const searchDefs = computed(() => deriveSearchDefs(props.columns))
 
 // 排序状态(受控):sorter 列点表头 → 写这里 → 并进 fetcher 参数 + 回显箭头。
-const sortState = ref<{ field: string; order: 'ascend' | 'descend' } | null>(null)
-function sortToParams(): Record<string, string> {
-  const s = sortState.value
-  return s ? { sortField: s.field, sortOrder: s.order === 'ascend' ? 'asc' : 'desc' } : {}
+// 数组,顺序 = 优先级(列声明的 sorter.multiple 从大到小);初值来自列上的 defaultSortOrder(C2,只在首次 setup 读一次)。
+// 不持久化(会话态,与过滤态一致)。
+const sortState = ref<SortItem[]>(deriveInitSorts(props.columns))
+const sorterInfo = computed(() => collectSorters(props.columns))
+function applySorts(items: SortItem[]) {
+  sortState.value = items
+  if (isRemote.value) void table.search()
 }
 
 /* ---- 表头过滤 ---- */
@@ -158,7 +163,7 @@ const table = useSmartTable<T>(
   (p) => props.fetcher!(p),
   {
     initParams: deriveInitParams(searchDefs.value),
-    extraParams: () => ({ ...(props.params ?? {}), ...sortToParams(), ...filterToParams() }),
+    extraParams: () => ({ ...(props.params ?? {}), ...sortToParams(sortState.value), ...filterToParams() }),
     immediate: isRemote.value && props.immediate,
     defaultPageSize: props.defaultPageSize,
     onError: (e) => emit('error', e),
@@ -205,13 +210,36 @@ const columnsApi = useColumns<T>({
   resizable: () => props.resizable ?? defaults.resizable,
 })
 
+/** 向宿主挂的 onUpdate:sorter 转发(可能是函数也可能是数组)。 */
+function notifyHostSorter(payload: unknown) {
+  const hostHandler = attrs['onUpdate:sorter']
+  const list = Array.isArray(hostHandler) ? hostHandler : [hostHandler]
+  for (const fn of list) if (typeof fn === 'function') (fn as (v: unknown) => void)(payload)
+}
+
 // Naive @update:sorter → 更新受控排序态 + 远程重查(回第 1 页)。宿主若另挂 handler 也转发。
 function onSorterChange(s: unknown) {
-  const st = (Array.isArray(s) ? s[0] : s) as { columnKey?: string | number; order?: 'ascend' | 'descend' | false } | null
-  sortState.value = st && st.order ? { field: String(st.columnKey), order: st.order } : null
-  if (isRemote.value) void table.search()
-  const hostHandler = attrs['onUpdate:sorter']
-  if (typeof hostHandler === 'function') (hostHandler as (v: unknown) => void)(s)
+  applySorts(normalizeSorterEvent(s, sorterInfo.value))
+  notifyHostSorter(s)
+}
+
+/**
+ * 编程式排序(对齐官方 DataTableInst.sort,use-sorter.mjs:105-118):order 缺省 'ascend';
+ * columnKey 为空 = clearSorter();没有 sorter 的列是空操作。单列互斥的 sorter 会顶掉其它列。
+ * 与官方一样会通知宿主的 onUpdate:sorter(载荷形状见 sorts.ts 的 sortTransition)。
+ */
+function sort(columnKey?: string | null, order: 'ascend' | 'descend' | false = 'ascend') {
+  if (!columnKey) return clearSorter()
+  const next = sortTransition(sortState.value, sorterInfo.value, columnKey, order)
+  if (!next) return
+  applySorts(next.items)
+  notifyHostSorter(next.event)
+}
+
+/** 清空全部排序;与官方一致,向宿主转发 null。 */
+function clearSorter() {
+  applySorts([])
+  notifyHostSorter(null)
 }
 
 /**
@@ -283,7 +311,7 @@ function onColumnResize(resizedWidth: number, limitedWidth: number, column: unkn
 }
 
 /**
- * 透传给 n-data-table 的 attrs,剔除 on(-)unstable-column-resize。
+ * 透传给 n-data-table 的 attrs,剔除 on(-)unstable-column-resize 与 onUpdate:sorter。
  *
  * 模板里 `v-bind="attrs"` 之后又显式绑定了 `:on-unstable-column-resize="onColumnResize"`——
  * 这个 key 命中 Vue 的 isOn() 判定,同名时 mergeProps 会把两个函数合并成数组而不是后者覆盖前者
@@ -295,6 +323,7 @@ const forwardedAttrs = computed(() => {
   const rest = { ...attrs } as Record<string, unknown>
   delete rest.onUnstableColumnResize
   delete rest['on-unstable-column-resize']
+  delete rest['onUpdate:sorter'] // 由 onSorterChange / sort() / clearSorter() 经 notifyHostSorter 统一转发,只转发一次(C6)
   return rest
 })
 
@@ -547,6 +576,8 @@ defineExpose({
   filters: readonly(filters.state),
   setFilter: filters.setFilter,
   clearFilters: filters.clearFilters,
+  sort,
+  clearSorter,
   columnWidths: readonly(columnsApi.widths),
   tableRef,
 })

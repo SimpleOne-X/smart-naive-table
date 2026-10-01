@@ -49,6 +49,7 @@ export type {
   SmartTableDataColumn,
   SmartTableSpecialColumn,
   SmartTableColumn,
+  SortItem,
   Density,
   SearchFormConfig,
   ToolbarConfig,

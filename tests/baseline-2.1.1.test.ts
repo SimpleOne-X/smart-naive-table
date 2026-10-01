@@ -87,18 +87,18 @@ describe('2.1.1 特征:排序', () => {
     wrapper.unmount()
   })
 
-  it('[C2] defaultSortOrder 被受控 sortOrder 盖掉:首次请求没有任何排序参数', async () => {
+  it('[C2 已修] defaultSortOrder 进入首次请求', async () => {
     const fetcher = vi.fn(async () => ({ items: rows, total: 2 }))
     const wrapper = mount(SmartTable, {
       props: { columns: [{ key: 'a', title: 'A', sorter: true, defaultSortOrder: 'descend' }], fetcher, rowKey: 'id' },
     })
     await flushPromises()
     const first = (fetcher.mock.calls[0] as unknown[])[0] as Record<string, unknown>
-    expect(first).not.toHaveProperty('sortField')
+    expect(first).toMatchObject({ sortField: 'a', sortOrder: 'desc' })
     wrapper.unmount()
   })
 
-  it('[C1] 多列排序被截成单列:只带第一列,没有 sorts', async () => {
+  it('[C1 已修] 多列排序:带 sortField(最高优先级)与 sorts', async () => {
     const fetcher = vi.fn(async () => ({ items: rows, total: 2 }))
     const multiCols = [
       { key: 'a', title: 'A', sorter: { compare: () => 0, multiple: 2 } },
@@ -113,8 +113,14 @@ describe('2.1.1 特征:排序', () => {
     ])
     await flushPromises()
     const last = (fetcher.mock.calls.at(-1) as unknown[])[0] as Record<string, unknown>
-    expect(last).toMatchObject({ sortField: 'a', sortOrder: 'asc' })
-    expect(last).not.toHaveProperty('sorts')
+    expect(last).toMatchObject({
+      sortField: 'a',
+      sortOrder: 'asc',
+      sorts: [
+        { field: 'a', order: 'asc' },
+        { field: 'b', order: 'desc' },
+      ],
+    })
     wrapper.unmount()
   })
 })

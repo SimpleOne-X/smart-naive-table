@@ -225,6 +225,12 @@ export type SmartTableColumn<T = any> = SmartTableDataColumn<T> | SmartTableSpec
 
 export type Density = 'comfortable' | 'compact'
 
+/** 一列的排序态;多列时数组顺序 = 优先级(高 → 低,即列声明的 sorter.multiple 从大到小)。 */
+export interface SortItem {
+  field: string
+  order: 'ascend' | 'descend'
+}
+
 export interface SearchFormConfig {
   /** 布局:'grid'(默认,独立卡片 + n-grid)| 'inline'(无卡片,单行自动换行,适配窄栏)。 */
   layout?: 'grid' | 'inline'
@@ -302,6 +308,13 @@ export interface SmartTableInst<T = any> {
   setFilter: (key: string, value: FilterValue | null) => void
   /** 清空全部过滤(恢复各列 defaultValue)。 */
   clearFilters: () => void
+  /**
+   * 设置某列排序(对齐官方 DataTableInst.sort:order 缺省 'ascend';columnKey 为空 = clearSorter();
+   * 没有 sorter 的列是空操作)。远程模式回第 1 页重查,并向宿主的 onUpdate:sorter 转发一次(载荷形状与官方一致)。
+   */
+  sort: (columnKey?: string | null, order?: 'ascend' | 'descend' | false) => void
+  /** 清空全部排序;向宿主的 onUpdate:sorter 转发 null(与官方一致)。 */
+  clearSorter: () => void
   /** 当前各列被拖拽后的宽度(未拖过的列不在表里)。 */
   columnWidths: Ref<Record<string, number>>
   /** Naive 原生实例(scrollTo / sort 等)。 */

@@ -9,7 +9,7 @@ import {
   type FilterDef,
 } from '../src/useColumns'
 import { resolveDefaults } from '../src/config'
-import type { SmartTableColumn, SmartTableOption } from '../src/types'
+import type { SmartTableColumn, SmartTableOption, SortItem } from '../src/types'
 
 interface Row {
   name: string
@@ -21,7 +21,7 @@ function build(
   columns: SmartTableColumn<Row>[],
   defaultsIn?: Parameters<typeof resolveDefaults>[0],
   slots: Slots = {},
-  sortState?: () => { field: string; order: 'ascend' | 'descend' } | null,
+  sortState?: () => SortItem[],
   extra?: {
     renderFilter?: (def: FilterDef<Row>) => unknown
     resizable?: () => boolean
@@ -86,19 +86,23 @@ describe('useColumns 消费全局默认', () => {
     expect(idx.align).toBe('left')
   })
 
-  it('sorter 列受控回显:命中列取 sortState.order,其余 sortable 列为 false', () => {
-    const state = { field: 'amt', order: 'descend' as const }
+  it('sorter 列受控回显:命中列取 sortState 里的 order,其余 sortable 列为 false;多列同时回显', () => {
     const api = build(
       [
         { key: 'name', title: 'N', sorter: true },
         { key: 'amt', title: 'A', sorter: true },
+        { key: 'st', title: 'S', sorter: true },
       ],
       undefined,
       {},
-      () => state,
+      () => [
+        { field: 'amt', order: 'descend' },
+        { field: 'st', order: 'ascend' },
+      ],
     )
-    expect(col(api, 'amt').sortOrder).toBe('descend') // 命中
-    expect(col(api, 'name').sortOrder).toBe(false) // 其余 sortable 列受控为 false
+    expect(col(api, 'amt').sortOrder).toBe('descend')
+    expect(col(api, 'st').sortOrder).toBe('ascend') // C1:多列都回显,不再只认第一列
+    expect(col(api, 'name').sortOrder).toBe(false)
   })
 
   it('无 sortState 时 sorter 列 sortOrder 为 false;非 sorter 列不设 sortOrder', () => {

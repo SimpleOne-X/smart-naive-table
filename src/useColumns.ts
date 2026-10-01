@@ -17,6 +17,7 @@ import type {
   SearchConfig,
   SearchFieldType,
   SearchRenderCtx,
+  SortItem,
 } from './types'
 import { applyFormat } from './format'
 import { isFilterActive } from './filter'
@@ -213,8 +214,8 @@ export interface UseColumnsOpts<T> {
   indexOffset: () => number
   /** 全局默认值(align/emptyText/tag/宽度兜底等),已含内置兜底。 */
   defaults: ResolvedSmartTableDefaults
-  /** 当前受控排序态(sorter 列箭头回显);getter 保证 computed 内追踪。 */
-  sortState?: () => { field: string; order: 'ascend' | 'descend' } | null
+  /** 当前受控排序态(sorter 列箭头回显,多列同时回显);getter 保证 computed 内追踪。 */
+  sortState?: () => SortItem[]
   /** 当前过滤项;有 def 的列表头会挂过滤入口。getter 保证 computed 内追踪。 */
   filterDefs?: () => FilterDef<T>[]
   /** 渲染表头过滤入口(由 SmartTable 提供,useColumns 不直接依赖 SFC)。 */
@@ -450,10 +451,10 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
       result.title = () => headerSlot({ column: col })
     }
 
-    // 受控排序:sorter 列的箭头由 sortState 决定(远程模式非受控箭头会漂)
+    // 受控排序:sorter 列的箭头由 sortState 决定(远程模式非受控箭头会漂);多列时每列各自回显
     if (naiveRest.sorter != null && (naiveRest.sorter as unknown) !== false) {
-      const s = opts.sortState?.()
-      result.sortOrder = s && s.field === key ? s.order : false
+      const hit = opts.sortState?.().find((s) => s.field === key)
+      result.sortOrder = hit ? hit.order : false
     }
 
     if (children?.length) {

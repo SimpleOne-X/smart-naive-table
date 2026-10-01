@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { NDataTable } from 'naive-ui'
 import SmartTable from '../src/SmartTable.vue'
 import ColumnSettings from '../src/ColumnSettings.vue'
@@ -329,6 +329,181 @@ describe('SmartTable「恢复默认」强制重挂表格时,行拖拽要重新�
     expect(latest.el).not.toBe(firstTbody) // 绑到的是新 tbody,不是已经卸载的旧的
     expect(latest.destroyed).toBe(false)
 
+    wrapper.unmount()
+  })
+})
+
+describe('SmartTable 排序(多列 / 默认排序 / 编程式)', () => {
+  const cmp = () => 0
+  const multiCols = [
+    { key: 'g', title: 'G', sorter: { compare: cmp, multiple: 2 } },
+    { key: 'n', title: 'N', sorter: { compare: cmp, multiple: 1 }, defaultSortOrder: 'ascend' as const },
+  ]
+  const mountRemote = (columns: unknown[], attrs: Record<string, unknown> = {}) => {
+    const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 2 }))
+    const wrapper = mount(SmartTable, { props: { columns: columns as SmartTableColumn<unknown>[], fetcher, rowKey: 'id' }, attrs })
+    return { fetcher, wrapper }
+  }
+  const sorterHandler = (wrapper: ReturnType<typeof mount>) =>
+    wrapper.findComponent(NDataTable).props('onUpdate:sorter') as (s: unknown) => void
+  const lastParams = (fetcher: { mock: { calls: unknown[][] } }) => fetcher.mock.calls.at(-1)![0] as Record<string, unknown>
+  type Inst = {
+    sort: (k?: string | null, o?: 'ascend' | 'descend' | false) => void
+    clearSorter: () => void
+  }
+
+  it('C2:列上的 defaultSortOrder 进入首次请求,箭头回显', async () => {
+    const { fetcher, wrapper } = mountRemote(multiCols)
+    await flushPromises()
+    expect((fetcher.mock.calls[0][0] as Record<string, unknown>)).toMatchObject({ sortField: 'n', sortOrder: 'asc' })
+    const cols = wrapper.findComponent(NDataTable).props('columns') as Array<{ key: string; sortOrder?: unknown }>
+    expect(cols.find((c) => c.key === 'n')!.sortOrder).toBe('ascend')
+    expect(cols.find((c) => c.key === 'g')!.sortOrder).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('C2(静态 data 模式):defaultSortOrder 同样生效 —— 本地数据按它排序,箭头回显', async () => {
+    const data = [
+      { id: 1, n: 3 },
+      { id: 2, n: 1 },
+      { id: 3, n: 2 },
+    ]
+    const wrapper = mount(SmartTable, {
+      props: {
+        columns: [
+          { key: 'n', title: 'N', sorter: (a: { n: number }, b: { n: number }) => a.n - b.n, defaultSortOrder: 'descend' },
+        ] as SmartTableColumn<unknown>[],
+        data,
+        rowKey: 'id',
+      },
+    })
+    await nextTick()
+    expect(wrapper.findAll('tbody tr').map((tr) => tr.text())).toEqual(['3', '2', '1'])
+    wrapper.unmount()
+  })
+
+  it('C1:多列点击 → sortField 取最高优先级列,并带 sorts;两列箭头都回显', async () => {
+    const { fetcher, wrapper } = mountRemote(multiCols)
+    await flushPromises()
+    sorterHandler(wrapper)([
+      { columnKey: 'n', order: 'ascend', sorter: multiCols[1].sorter },
+      { columnKey: 'g', order: 'descend', sorter: multiCols[0].sorter },
+    ])
+    await flushPromises()
+    expect(lastParams(fetcher)).toMatchObject({
+      page: 1,
+      sortField: 'g',
+      sortOrder: 'desc',
+      sorts: [
+        { field: 'g', order: 'desc' },
+        { field: 'n', order: 'asc' },
+      ],
+    })
+    const cols = wrapper.findComponent(NDataTable).props('columns') as Array<{ key: string; sortOrder?: unknown }>
+    expect(cols.find((c) => c.key === 'g')!.sortOrder).toBe('descend')
+    expect(cols.find((c) => c.key === 'n')!.sortOrder).toBe('ascend')
+    wrapper.unmount()
+  })
+
+  it('sort() / clearSorter():编程式设置与清空,远程模式回第 1 页重查;order 缺省 ascend', async () => {
+    const { fetcher, wrapper } = mountRemote(multiCols)
+    await flushPromises()
+    const inst = wrapper.vm as unknown as Inst
+    inst.sort('g', 'descend')
+    await flushPromises()
+    expect(lastParams(fetcher)).toMatchObject({ page: 1, sorts: [{ field: 'g', order: 'desc' }, { field: 'n', order: 'asc' }] })
+
+    inst.sort('n', false) // 取消 n,保留 g
+    await flushPromises()
+    expect(lastParams(fetcher)).toMatchObject({ sortField: 'g', sortOrder: 'desc' })
+    expect(lastParams(fetcher)).not.toHaveProperty('sorts')
+
+    inst.sort('n') // order 缺省 = 'ascend'(对齐官方)
+    await flushPromises()
+    expect(lastParams(fetcher)).toMatchObject({ sorts: [{ field: 'g', order: 'desc' }, { field: 'n', order: 'asc' }] })
+
+    inst.clearSorter()
+    await flushPromises()
+    expect(lastParams(fetcher)).not.toHaveProperty('sortField')
+    wrapper.unmount()
+  })
+
+  it('sort() 没传 columnKey(或传 null)= clearSorter()(对齐官方)', async () => {
+    const { fetcher, wrapper } = mountRemote(multiCols)
+    await flushPromises()
+    const inst = wrapper.vm as unknown as Inst
+    inst.sort()
+    await flushPromises()
+    expect(lastParams(fetcher)).not.toHaveProperty('sortField') // 初始的 defaultSortOrder 也被清掉
+    inst.sort('g', 'descend')
+    await flushPromises()
+    inst.sort(null)
+    await flushPromises()
+    expect(lastParams(fetcher)).not.toHaveProperty('sortField')
+    wrapper.unmount()
+  })
+
+  it('sort() 对没有 sorter 的列是空操作:不重查,也不通知宿主', async () => {
+    const onSorter = vi.fn()
+    const { fetcher, wrapper } = mountRemote([{ key: 'name', title: 'Name' }], { 'onUpdate:sorter': onSorter })
+    await flushPromises()
+    const before = fetcher.mock.calls.length
+    ;(wrapper.vm as unknown as Inst).sort('name', 'ascend')
+    await flushPromises()
+    expect(fetcher.mock.calls.length).toBe(before)
+    expect(onSorter).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('D7:sort() / clearSorter() 向宿主的 onUpdate:sorter 各转发一次,载荷形状与官方一致', async () => {
+    const onSorter = vi.fn()
+    const single = { key: 's', title: 'S', sorter: true }
+    const { wrapper } = mountRemote([...multiCols, single], { 'onUpdate:sorter': onSorter })
+    await flushPromises()
+    const inst = wrapper.vm as unknown as Inst
+    const last = () => onSorter.mock.calls.at(-1)![0]
+
+    // multiple 列:载荷是数组 = 已激活的 multiple 列(按列声明顺序)中「同列替换、否则追加」这一项;初始 n 已由 defaultSortOrder 激活
+    inst.sort('g', 'descend')
+    expect(onSorter).toHaveBeenCalledTimes(1)
+    expect(last()).toEqual([
+      { columnKey: 'n', sorter: multiCols[1].sorter, order: 'ascend' },
+      { columnKey: 'g', sorter: multiCols[0].sorter, order: 'descend' },
+    ])
+
+    // order: false:载荷里仍带这一项(order: false),与官方一致
+    inst.sort('n', false)
+    expect(onSorter).toHaveBeenCalledTimes(2)
+    expect(last()).toEqual([
+      { columnKey: 'g', sorter: multiCols[0].sorter, order: 'descend' },
+      { columnKey: 'n', sorter: multiCols[1].sorter, order: false },
+    ])
+
+    // 单列互斥的 sorter:载荷是单个对象,并顶掉其它列
+    inst.sort('s', 'ascend')
+    expect(onSorter).toHaveBeenCalledTimes(3)
+    expect(last()).toEqual({ columnKey: 's', sorter: true, order: 'ascend' })
+    await flushPromises()
+    const cols = wrapper.findComponent(NDataTable).props('columns') as Array<{ key: string; sortOrder?: unknown }>
+    expect(cols.filter((c) => c.sortOrder === 'ascend' || c.sortOrder === 'descend').map((c) => c.key)).toEqual(['s'])
+
+    // clearSorter():载荷是 null
+    inst.clearSorter()
+    expect(onSorter).toHaveBeenCalledTimes(4)
+    expect(last()).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('[C6] 点表头排序:宿主的 onUpdate:sorter 恰好被调用 1 次(2.1.1 是 2 次)', async () => {
+    const onSorter = vi.fn()
+    const { wrapper } = mountRemote(multiCols, { 'onUpdate:sorter': onSorter })
+    await flushPromises()
+    const payload = [{ columnKey: 'g', order: 'descend', sorter: multiCols[0].sorter }]
+    // 取 NDataTable 实际收到的监听器(2.1.1 里它是 [宿主, 库] 的数组)并像 Naive 那样逐个调用
+    const handler = wrapper.findComponent(NDataTable).props('onUpdate:sorter') as unknown
+    for (const fn of Array.isArray(handler) ? handler : [handler]) (fn as (s: unknown) => void)(payload)
+    expect(onSorter).toHaveBeenCalledTimes(1)
+    expect(onSorter).toHaveBeenCalledWith(payload)
     wrapper.unmount()
   })
 })
