@@ -560,7 +560,13 @@ const mergedPagination = computed<false | PaginationProps>(() => {
 
   // 本地模式改每页条数的状态更新(回第 1 页同步表格页码 + 转发宿主回调),remote/local 两个
   // onUpdatePageSize 入口(内层嵌套选择器 / 非 simple 时交给官方选择器)共用这同一段状态变更逻辑。
+  // onPageChanged() 放在第一行:这是本地模式下两条路径(下面 onSizeBypass 的本地分支、
+  // 以及 simple:false 时 NDataTable 原生选择器直接绑的 onUpdatePageSize: applyLocalSize)
+  // 唯一的汇合点 —— 写在这里而不是分别写在两条路径里,才能保证「改每页条数」在两条路径下
+  // 都恰好触发一次(Fix round 1 review:simple:false 的原生选择器此前完全没接 onPageChanged,
+  // 翻页回卡片顶部 / fillHeight 表体复位在该路径下静默失效)。
   function applyLocalSize(n: number) {
+    onPageChanged()
     localPageSize.value = n
     // 改每页条数回第 1 页(与远程一致)。官方外层本地分页只会静默夹页、不发 onUpdatePage,
     // 所以库里记页码的 localPage 要自己置 1,并同步表格的页码
@@ -582,8 +588,9 @@ const mergedPagination = computed<false | PaginationProps>(() => {
         callAll(user.onUpdatePageSize ?? table.onPageSize, n)
         notifyPageSizeListeners(user, n)
       }
-    : (n: number) => {
-        onPageChanged()
+    : // 本地:onPageChanged() 已经在 applyLocalSize 内部触发一次,这里不重复调用
+      // (否则 simple:true 的内层嵌套选择器会把 onPageChanged 触发两次)。
+      (n: number) => {
         applyLocalSize(n)
         notifyPageSizeListeners(user, n)
       }
@@ -622,8 +629,10 @@ const mergedPagination = computed<false | PaginationProps>(() => {
         callAll(user.onUpdatePage ?? table.onPage, p) // 与 2.1.1 一致:宿主给了自己的处理函数就由宿主接管
       },
       // 不复用 onSizeBypass(它额外调用 notifyPageSizeListeners):这里走的是 NDataTable 原生 pagination.onUpdatePageSize
-      // 入口,官方 mergedOnUpdatePageSize(use-table-data.mjs)自己就会按 pagination 级 + table 级共 5 种拼写转发,
-      // 再调 notifyPageSizeListeners 会把 attrs 的 3 种拼写重复通知一遍(Fix round 2 修过的同一类回归,remote 同样适用)。
+      // 入口,官方 mergedOnUpdatePageSize(use-table-data.mjs)自己就会按 pagination 级(2 种拼写,随 ...user 并入
+      // pagination 对象)+ table 级(3 种拼写,随 ...tableAttrs 并入 attrs)共 5 种拼写转发,再调
+      // notifyPageSizeListeners 会把这 5 种拼写(不只是 attrs 那 3 种)全部重复通知一遍
+      // (Fix round 2 修过的同一类回归,remote 同样适用)。
       onUpdatePageSize: (n: number) => {
         onPageChanged()
         callAll(user.onUpdatePageSize ?? table.onPageSize, n)
@@ -647,6 +656,8 @@ const mergedPagination = computed<false | PaginationProps>(() => {
     // 否则 simple:false + 本地模式下宿主会被通知两次(Fix round 2 修的回归)。simple:true 时 NDataTable
     // 内部官方分页本就不画 size-picker(Pagination.mjs:665),这个 key 实际不会被那条原生链路触发,
     // 真正改每页条数走的是上面的 onSizeBypass(suffix 里的内层嵌套选择器)。
+    // applyLocalSize 内部已经调用 onPageChanged()(Fix round 1 review):simple:false 这条此前完全没接,
+    // 改每页条数不会滚回卡片顶部 / fillHeight 下表体不会复位,现在跟内层嵌套选择器一样各自恰好触发一次。
     onUpdatePageSize: applyLocalSize,
   }
 })

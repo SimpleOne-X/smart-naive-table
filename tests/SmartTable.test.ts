@@ -1417,4 +1417,35 @@ describe('SmartTable 翻页后滚回卡片顶部(E4:只在不开 fillHeight 时)
     expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
     wrapper.unmount()
   })
+
+  // [Fix round 1 review] 本地模式 + simple:false 时没有内层嵌套选择器(suffix 只在 simple 下画),宿主看到的是
+  // NDataTable 自己渲染的官方 NPagination,改每页条数直接绑的是 applyLocalSize(与 [Fix round 2] 测试锁定的是
+  // 同一条「原生链路」)。此前 applyLocalSize 内没有调 onPageChanged(),这条路径下改每页条数不会触发「滚回卡片
+  // 顶部 / fillHeight 表体复位」(review 在真实浏览器复现:DemoFill 页面切每页条数,视口停在原地不动)。
+  // 跟 [Fix round 2] 一样,直接取 NDataTable 内部真实绑定给官方 NPagination 的 'onUpdate:pageSize' prop 调用,
+  // 而不是在 jsdom 里模拟下拉点击 —— 这样才是在验真实接线,不是在验测试自己搭的双替身。
+  it('[Fix round 1 review] 本地 + simple:false:原生选择器改每页条数,滚回卡片顶部恰好触发一次(不是零次)', async () => {
+    const wrapper = mount(SmartTable, { props: { ...base, pagination: { simple: false } }, attachTo: document.body })
+    await nextTick()
+    cardTop = -200
+    const nativeHandler = wrapper.findComponent(NPagination).props('onUpdate:pageSize') as (n: number) => void
+    nativeHandler(500)
+    await nextTick()
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1)
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'instant' })
+    wrapper.unmount()
+  })
+
+  it('[Fix round 1 review] 开了 fillHeight + simple:false:原生选择器改每页条数,表体 scrollTo 恰好触发一次(不是零次,也不是两次)', async () => {
+    const wrapper = mount(SmartTable, { props: { ...base, fillHeight: true, pagination: { simple: false } }, attachTo: document.body })
+    await nextTick()
+    const scrollTo = vi.spyOn(wrapper.findComponent(NDataTable).vm as unknown as { scrollTo: (o: unknown) => void }, 'scrollTo').mockImplementation(() => {})
+    const nativeHandler = wrapper.findComponent(NPagination).props('onUpdate:pageSize') as (n: number) => void
+    nativeHandler(500)
+    await nextTick()
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+    expect(scrollTo).toHaveBeenCalledTimes(1)
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
+    wrapper.unmount()
+  })
 })
