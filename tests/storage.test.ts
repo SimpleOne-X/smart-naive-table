@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearState, loadState, mergeCols, saveState } from '../src/storage'
+import { clearState, loadState, mergeCols, peekStoredDensity, saveState } from '../src/storage'
 
 // node 环境无 localStorage,用内存 stub(storage.ts 只用这四个方法)
 const store = new Map<string, string>()
@@ -124,5 +124,36 @@ describe('mergeCols', () => {
     ]
     const merged = mergeCols(declared, [{ key: 'a', show: true }])
     expect(merged.map((c) => c.key)).toEqual(['a', 'b', 'tail'])
+  })
+})
+
+describe('loadState / saveState 的密度(B2 / Q-1)', () => {
+  it('旧数据里没有 density 字段时回退成 compact(与内置默认一致)', () => {
+    localStorage.setItem('protable:nodens', JSON.stringify({ v: 2, cols: [], widths: {} }))
+    expect(loadState('nodens')?.density).toBe('compact')
+  })
+
+  it('saveState 的 density 传 undefined(用户从没选过)时不写这个字段;loadState 读回时仍回退成 compact', () => {
+    saveState('nodens-w', undefined, [{ key: 'a', show: true }])
+    expect(JSON.parse(localStorage.getItem('protable:nodens-w')!)).not.toHaveProperty('density')
+    expect(loadState('nodens-w')?.density).toBe('compact')
+  })
+
+  it('[E6] loadState 的第二参数 fallbackDensity:记录里没有 density 字段时取它(宿主的 defaultDensity),有字段时取字段', () => {
+    localStorage.setItem('protable:nodens2', JSON.stringify({ v: 2, cols: [], widths: {} }))
+    expect(loadState('nodens2', 'comfortable')?.density).toBe('comfortable')
+    expect(loadState('nodens2')?.density).toBe('compact') // 不传 = 内置默认,与 B2 一致
+    saveState('hasdens', 'compact', [])
+    expect(loadState('hasdens', 'comfortable')?.density).toBe('compact')
+  })
+
+  it('peekStoredDensity:只认存储里真的存过的值(没有记录 / 没有字段 / 非法值 → undefined)', () => {
+    expect(peekStoredDensity('never')).toBeUndefined()
+    saveState('p1', undefined, [])
+    expect(peekStoredDensity('p1')).toBeUndefined()
+    saveState('p2', 'comfortable', [])
+    expect(peekStoredDensity('p2')).toBe('comfortable')
+    localStorage.setItem('protable:p3', JSON.stringify({ v: 2, density: 'huge', cols: [], widths: {} }))
+    expect(peekStoredDensity('p3')).toBeUndefined()
   })
 })

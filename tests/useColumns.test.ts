@@ -30,7 +30,7 @@ function build(
   const defaults = resolveDefaults(defaultsIn)
   const opts = {
     columns: () => columns,
-    defaultDensity: 'comfortable' as const,
+    defaultDensity: () => 'comfortable' as const,
     getOptions: (k: string): SmartTableOption[] =>
       k === 'st' ? [{ label: 'A', value: 1, tagType: 'success' as const }] : [],
     slots,
@@ -333,7 +333,7 @@ describe('useColumns 列宽拖拽', () => {
     ])
     const api = useColumns<Row>({
       columns: () => columns.value,
-      defaultDensity: 'comfortable',
+      defaultDensity: () => 'comfortable',
       getOptions: () => [],
       slots: {},
       indexOffset: () => 0,

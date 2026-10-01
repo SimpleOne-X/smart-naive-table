@@ -246,7 +246,8 @@ export interface SearchFormConfig {
 
 export interface ToolbarConfig {
   refresh?: boolean // 默认 true
-  density?: boolean // 默认 true
+  /** 是否显示「密度」按钮;默认 false(3.0 起密度交给宿主的个人设置经 defaultDensity 传入)。传 true 时存储里的密度优先。 */
+  density?: boolean
   columnSettings?: boolean // 默认 true
 }
 
@@ -275,7 +276,7 @@ export interface SmartTableProps<T = any> {
   title?: string
   /** 列设置 + 密度的 localStorage 持久化键;缺省不持久化。 */
   storageKey?: string
-  defaultDensity?: Density // 默认 'comfortable'
+  defaultDensity?: Density // 默认 'compact';响应式(没有密度按钮时它就是当前值)
   /** 部分覆盖英文默认文案;传 computed 对象即随 locale 响应。 */
   labels?: Partial<SmartTableLabels>
   /** 命中行加 .smart-table-row--active 高亮(用 rowKey 比对);配合 @row-click 做主从选中。 */

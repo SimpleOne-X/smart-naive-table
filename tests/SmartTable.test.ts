@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { NDataTable } from 'naive-ui'
 import SmartTable from '../src/SmartTable.vue'
 import ColumnSettings from '../src/ColumnSettings.vue'
+import Toolbar from '../src/Toolbar.vue'
 import { FILLER_COLUMN_KEY } from '../src/useColumns'
+import { saveState } from '../src/storage'
 import type { SmartTableColumn } from '../src/types'
 
 // sortablejs 是懒加载的运行时依赖;这里换成假的,只观察「有没有绑、绑到了哪个 tbody」
@@ -504,6 +506,130 @@ describe('SmartTable 排序(多列 / 默认排序 / 编程式)', () => {
     for (const fn of Array.isArray(handler) ? handler : [handler]) (fn as (s: unknown) => void)(payload)
     expect(onSorter).toHaveBeenCalledTimes(1)
     expect(onSorter).toHaveBeenCalledWith(payload)
+    wrapper.unmount()
+  })
+})
+
+describe('SmartTable 密度(B2:宿主的值必须能生效)', () => {
+  const tableSize = (w: ReturnType<typeof mount>) => w.findComponent(NDataTable).props('size')
+  const base = { columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[], data: rows, rowKey: 'id' }
+
+  afterEach(() => localStorage.clear())
+
+  it('[Review Focus 1] 存过 comfortable 的老用户 + 宿主给 compact + 没开密度按钮 → 取 compact', () => {
+    saveState('dens-a', 'comfortable', [{ key: 'name', show: true }])
+    const wrapper = mount(SmartTable, { props: { ...base, storageKey: 'dens-a', defaultDensity: 'compact' } })
+    expect(tableSize(wrapper)).toBe('small')
+    wrapper.unmount()
+  })
+
+  it('开了 toolbar.density:true 时仍是「存储优先」(旧规则)', () => {
+    saveState('dens-b', 'comfortable', [{ key: 'name', show: true }])
+    const wrapper = mount(SmartTable, {
+      props: { ...base, storageKey: 'dens-b', defaultDensity: 'compact', toolbar: { density: true } },
+    })
+    expect(tableSize(wrapper)).toBe('medium')
+    wrapper.unmount()
+  })
+
+  it('没有存储、没有宿主值 → 默认紧凑(small)', () => {
+    const wrapper = mount(SmartTable, { props: base })
+    expect(tableSize(wrapper)).toBe('small')
+    wrapper.unmount()
+  })
+
+  it('defaultDensity 是响应式的:宿主中途改值,已挂载的表格跟着变', async () => {
+    const wrapper = mount(SmartTable, { props: { ...base, defaultDensity: 'compact' } })
+    expect(tableSize(wrapper)).toBe('small')
+    await wrapper.setProps({ defaultDensity: 'comfortable' })
+    expect(tableSize(wrapper)).toBe('medium')
+    wrapper.unmount()
+  })
+})
+
+describe('SmartTable 密度的写入端(Q-1:保存列设置 / 列宽不把宿主的密度写进存储)', () => {
+  const base = { columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[], data: rows, rowKey: 'id' }
+  const raw = (key: string) => JSON.parse(localStorage.getItem('protable:' + key) ?? 'null') as { density?: string } | null
+
+  afterEach(() => {
+    vi.useRealTimers()
+    localStorage.clear()
+  })
+
+  it('存储里原有的 density 原样保留:切列显隐后仍是旧值,不是宿主给的 compact', async () => {
+    saveState('dens-w1', 'comfortable', [{ key: 'name', show: true }])
+    const wrapper = mount(SmartTable, { props: { ...base, storageKey: 'dens-w1', defaultDensity: 'compact' } })
+    wrapper.findComponent(ColumnSettings).vm.$emit('toggle', 'name', false)
+    await nextTick()
+    expect(raw('dens-w1')!.density).toBe('comfortable')
+    wrapper.unmount()
+  })
+
+  it('拖列宽落账(防抖写入)同样不改存储里的 density', async () => {
+    vi.useFakeTimers()
+    saveState('dens-w2', 'comfortable', [{ key: 'name', show: true }])
+    const wrapper = mount(SmartTable, {
+      props: { ...base, columns: [{ key: 'name', title: 'Name', resizable: true }], storageKey: 'dens-w2', defaultDensity: 'compact' },
+    })
+    const resize = wrapper.findComponent(NDataTable).props('onUnstableColumnResize') as (...a: unknown[]) => void
+    resize(120, 120, { key: 'name' }, () => 200)
+    window.dispatchEvent(new MouseEvent('mouseup'))
+    vi.advanceTimersByTime(400)
+    expect(raw('dens-w2')!.density).toBe('comfortable')
+    wrapper.unmount()
+  })
+
+  it('没有存储记录、用户也没选过密度:保存列设置时不写 density 字段(不替用户做选择)', async () => {
+    const wrapper = mount(SmartTable, { props: { ...base, storageKey: 'dens-w3', defaultDensity: 'compact' } })
+    wrapper.findComponent(ColumnSettings).vm.$emit('toggle', 'name', false)
+    await nextTick()
+    expect(raw('dens-w3')).not.toBeNull()
+    expect(raw('dens-w3')).not.toHaveProperty('density')
+    wrapper.unmount()
+  })
+
+  it('只有 setDensity 才写:开了密度按钮、用户选「紧凑」→ 存储里是 compact;之后保存列设置不会把它改回宿主值', async () => {
+    const wrapper = mount(SmartTable, {
+      props: { ...base, storageKey: 'dens-w4', defaultDensity: 'comfortable', toolbar: { density: true } },
+    })
+    wrapper.findComponent(Toolbar).vm.$emit('update:density', 'compact')
+    await nextTick()
+    expect(raw('dens-w4')!.density).toBe('compact')
+    wrapper.findComponent(ColumnSettings).vm.$emit('toggle', 'name', false)
+    await nextTick()
+    expect(raw('dens-w4')!.density).toBe('compact')
+    wrapper.unmount()
+  })
+
+  it('[E6] 存储里有记录但没有 density 字段:开了密度按钮时取宿主的 defaultDensity(不是写死的回退值)', () => {
+    saveState('dens-w5', undefined, [{ key: 'name', show: true }])
+    const wrapper = mount(SmartTable, {
+      props: { ...base, storageKey: 'dens-w5', defaultDensity: 'comfortable', toolbar: { density: true } },
+    })
+    expect(wrapper.findComponent(NDataTable).props('size')).toBe('medium')
+    wrapper.unmount()
+  })
+
+  it('[Q-1] 记录里没有 density 字段(上次没选过):这次保存列设置仍不写这个字段', async () => {
+    saveState('dens-w6', undefined, [{ key: 'name', show: true }])
+    const wrapper = mount(SmartTable, { props: { ...base, storageKey: 'dens-w6', defaultDensity: 'compact' } })
+    wrapper.findComponent(ColumnSettings).vm.$emit('toggle', 'name', false)
+    await nextTick()
+    expect(raw('dens-w6')).not.toBeNull()
+    expect(raw('dens-w6')).not.toHaveProperty('density')
+    wrapper.unmount()
+  })
+
+  it('[F14] 「恢复默认」清掉存储后,闭包里记着的旧密度也要清:之后保存列设置不会把旧密度写回去', async () => {
+    saveState('dens-w7', 'comfortable', [{ key: 'name', show: true }])
+    const wrapper = mount(SmartTable, { props: { ...base, storageKey: 'dens-w7', defaultDensity: 'compact' } })
+    wrapper.findComponent(ColumnSettings).vm.$emit('reset')
+    await nextTick()
+    expect(raw('dens-w7')).toBeNull() // 恢复默认 = 清掉整条存储
+    wrapper.findComponent(ColumnSettings).vm.$emit('toggle', 'name', false)
+    await nextTick()
+    expect(raw('dens-w7')).not.toBeNull()
+    expect(raw('dens-w7')).not.toHaveProperty('density') // 不是 'comfortable'
     wrapper.unmount()
   })
 })

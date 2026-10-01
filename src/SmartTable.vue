@@ -199,7 +199,8 @@ const options = useOptions(() => deriveOptionsSources(props.columns))
 const columnsApi = useColumns<T>({
   columns: () => props.columns,
   storageKey: props.storageKey,
-  defaultDensity: props.defaultDensity ?? defaults.density,
+  defaultDensity: () => props.defaultDensity ?? defaults.density,
+  respectStoredDensity: () => typeof props.toolbar === 'object' && props.toolbar.density === true,
   getOptions: options.getOptions,
   slots,
   indexOffset: () => (isRemote.value ? (pagination.page - 1) * pagination.pageSize : 0),

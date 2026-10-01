@@ -8,7 +8,7 @@ import { DensityIcon, RefreshIcon } from './icons'
 const props = defineProps({
   title: { type: String, default: undefined },
   labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true },
-  config: { type: Object as PropType<ToolbarConfig | false>, default: () => ({}) },
+  config: { type: [Object, Boolean] as PropType<ToolbarConfig | false>, default: () => ({}) },
   density: { type: String as PropType<Density>, required: true },
 })
 
@@ -44,7 +44,7 @@ const densityOptions = computed(() => [
         {{ labels.refresh }}
       </n-tooltip>
       <n-dropdown
-        v-if="cfg.density !== false"
+        v-if="cfg.density === true"
         trigger="click"
         :options="densityOptions"
         @select="(k: Density) => emit('update:density', k)"

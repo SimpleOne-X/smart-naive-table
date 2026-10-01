@@ -22,7 +22,7 @@ export interface SmartTableDefaults {
   fixedFallbackWidth?: number
   /** index 序号列默认宽;内置兜底 64。 */
   indexWidth?: number
-  /** 默认密度;内置兜底 'comfortable'。 */
+  /** 默认密度;内置兜底 'compact'。 */
   density?: Density
   /** 搜索日期控件 value-format;内置兜底 'yyyy-MM-dd'。 */
   dateValueFormat?: string
@@ -76,7 +76,7 @@ export const BUILTIN_DEFAULTS: ResolvedSmartTableDefaults = {
   showSizePicker: true,
   fixedFallbackWidth: 120,
   indexWidth: 64,
-  density: 'comfortable',
+  density: 'compact',
   dateValueFormat: 'yyyy-MM-dd',
   searchCols: '1 s:2 m:3 l:4',
   resizable: false,

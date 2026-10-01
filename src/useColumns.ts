@@ -22,7 +22,7 @@ import type {
 import { applyFormat } from './format'
 import { isFilterActive } from './filter'
 import { findOption, optionLabel } from './useOptions'
-import { clearState, loadState, mergeCols, saveState, type DeclaredCol } from './storage'
+import { clearState, loadState, mergeCols, peekStoredDensity, saveState, type DeclaredCol } from './storage'
 import type { ResolvedSmartTableDefaults } from './config'
 
 export function isSpecialColumn<T>(c: SmartTableColumn<T>): c is SmartTableSpecialColumn<T> {
@@ -207,7 +207,10 @@ export interface SettingItem {
 export interface UseColumnsOpts<T> {
   columns: () => SmartTableColumn<T>[]
   storageKey?: string
-  defaultDensity: Density
+  /** 宿主给的密度(getter:响应式;没有密度按钮时它就是当前值)。 */
+  defaultDensity: () => Density
+  /** 是否让存储里的 density 优先(仅 toolbar.density === true 时为 true);缺省 false = 忽略存储里的密度。 */
+  respectStoredDensity?: () => boolean
   getOptions: (key: string) => SmartTableOption[]
   slots: Slots
   /** index 特殊列的序号偏移(远程分页 = (page-1)*pageSize)。 */
@@ -225,7 +228,7 @@ export interface UseColumnsOpts<T> {
 }
 
 export interface UseColumnsReturn<T> {
-  density: Ref<Density>
+  density: ComputedRef<Density>
   setDensity: (d: Density) => void
   settingItems: ComputedRef<SettingItem[]>
   toggleShow: (key: string, show: boolean) => void
@@ -246,10 +249,17 @@ export interface UseColumnsReturn<T> {
 
 export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
   const d = opts.defaults
-  const stored = opts.storageKey ? loadState(opts.storageKey) : null
+  const stored = opts.storageKey ? loadState(opts.storageKey, opts.defaultDensity()) : null
   // 用户改过的列状态(可能落后于最新列声明,effectiveChecks 里始终重新 merge)
   const checks = ref<DeclaredCol[]>(stored?.cols ?? [])
-  const density = ref<Density>(stored?.density ?? opts.defaultDensity)
+  // 用户在密度按钮上选的值:仅当开了密度按钮(respectStoredDensity)时才读存储;其余情况取宿主的值。
+  // 存储格式里的 density 字段仍照常写入(不动 VERSION),只是读取时不采用。
+  const userDensity = ref<Density | null>(opts.respectStoredDensity?.() ? (stored?.density ?? null) : null)
+  const density = computed<Density>(() => userDensity.value ?? opts.defaultDensity())
+  // 写回存储的 density:只有两个来源 —— 存储里原有的值,或用户在密度按钮上选的值(setDensity)。
+  // 保存列设置 / 列宽时绝不把宿主给的 defaultDensity 当成用户的选择写进去;
+  // 没有存储记录、用户也没选过 → undefined,saveState 不写这个字段。
+  let storedDensity: Density | undefined = opts.storageKey ? peekStoredDensity(opts.storageKey) : undefined
   const widths = ref<Record<string, number>>({ ...stored?.widths })
 
   const dataCols = computed(() =>
@@ -295,12 +305,13 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
 
   function persist(next: DeclaredCol[]) {
     checks.value = next
-    if (opts.storageKey) saveState(opts.storageKey, density.value, next, widths.value)
+    if (opts.storageKey) saveState(opts.storageKey, storedDensity, next, widths.value)
   }
 
-  function setDensity(d: Density) {
-    density.value = d
-    if (opts.storageKey) saveState(opts.storageKey, d, effectiveChecks.value, widths.value)
+  function setDensity(next: Density) {
+    userDensity.value = next
+    storedDensity = next
+    if (opts.storageKey) saveState(opts.storageKey, next, effectiveChecks.value, widths.value)
   }
 
   // 列宽拖拽期间 mousemove 每帧都回调,localStorage 写入必须防抖(内存态仍即时更新)
@@ -311,7 +322,7 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
     if (!opts.storageKey) return
     clearTimeout(persistWidthTimer)
     persistWidthTimer = setTimeout(() => {
-      saveState(opts.storageKey!, density.value, effectiveChecks.value, widths.value)
+      saveState(opts.storageKey!, storedDensity, effectiveChecks.value, widths.value)
     }, 300)
   }
 
@@ -378,6 +389,7 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
     widths.value = {}
     clearTimeout(persistWidthTimer)
     if (opts.storageKey) clearState(opts.storageKey)
+    storedDensity = undefined
   }
 
   /**
@@ -403,7 +415,7 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
       const next = { ...widths.value }
       staleKeys.forEach((k) => delete next[k])
       widths.value = next
-      if (opts.storageKey) saveState(opts.storageKey, density.value, effectiveChecks.value, next)
+      if (opts.storageKey) saveState(opts.storageKey, storedDensity, effectiveChecks.value, next)
     },
     // sync:同步清理,不等下一轮 flush —— 否则列刚被移除的这一帧,naiveColumns/scrollX
     // 还能读到那份陈旧宽度,可能闪一下不该出现的列宽再恢复。

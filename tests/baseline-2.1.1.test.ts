@@ -19,9 +19,9 @@ const rows = [
 afterEach(() => localStorage.clear())
 
 describe('2.1.1 特征:内置默认值', () => {
-  it('[B1][B2] 内置兜底:每页 [10,20,50]、密度 comfortable', () => {
+  it('[B1] 内置兜底:每页 [10,20,50];[B2 已翻转] 密度 compact', () => {
     expect(BUILTIN_DEFAULTS.pageSizes).toEqual([10, 20, 50])
-    expect(BUILTIN_DEFAULTS.density).toBe('comfortable')
+    expect(BUILTIN_DEFAULTS.density).toBe('compact')
   })
 })
 
@@ -45,13 +45,15 @@ describe('2.1.1 特征:分页', () => {
   })
 })
 
-describe('2.1.1 特征:密度', () => {
-  it('[B2] 默认舒适(表格 size = medium);存过 compact 的用户读到 compact(small)', () => {
+describe('3.0 密度(B2 已翻转)', () => {
+  it('默认紧凑(small)', () => {
     const plain = mount(SmartTable, { props: { columns: [{ key: 'name', title: 'Name' }], data: rows, rowKey: 'id' } })
-    expect(plain.findComponent(NDataTable).props('size')).toBe('medium')
+    expect(plain.findComponent(NDataTable).props('size')).toBe('small')
     plain.unmount()
+  })
 
-    saveState('baseline-density', 'compact', [{ key: 'name', show: true }])
+  it('存储里存过 comfortable 的用户,没有密度按钮时存储不参与:取默认 compact(small)', () => {
+    saveState('baseline-density', 'comfortable', [{ key: 'name', show: true }])
     const stored = mount(SmartTable, {
       props: { columns: [{ key: 'name', title: 'Name' }], data: rows, rowKey: 'id', storageKey: 'baseline-density' },
     })
@@ -60,12 +62,12 @@ describe('2.1.1 特征:密度', () => {
   })
 })
 
-describe('2.1.1 特征:工具栏', () => {
-  it('[B3] 默认同时有「刷新」与「密度」两个图标按钮', () => {
-    const wrapper = mount(Toolbar, { props: { labels: defaultLabels, config: {}, density: 'comfortable' } })
+describe('3.0 工具栏(B3 已翻转)', () => {
+  it('默认只有「刷新」,没有「密度」', () => {
+    const wrapper = mount(Toolbar, { props: { labels: defaultLabels, config: {}, density: 'compact' } })
     const html = wrapper.html()
     expect(html).toContain('aria-label="Refresh"')
-    expect(html).toContain('aria-label="Density"')
+    expect(html).not.toContain('aria-label="Density"')
     wrapper.unmount()
   })
 })

@@ -13,7 +13,7 @@ const PREFIX = 'protable:'
 /** 当前结构版本。v1(只有 density+cols)读到时就地升级,不丢用户已存的列设置。 */
 const VERSION = 2
 
-export function loadState(storageKey: string): StoredTableState | null {
+export function loadState(storageKey: string, fallbackDensity: Density = 'compact'): StoredTableState | null {
   try {
     const raw = localStorage.getItem(PREFIX + storageKey)
     if (!raw) return null
@@ -24,12 +24,23 @@ export function loadState(storageKey: string): StoredTableState | null {
     if (parsed.v !== 1 && parsed.v !== VERSION) return null
     return {
       v: VERSION,
-      density: parsed.density ?? 'comfortable',
+      density: parsed.density ?? fallbackDensity,
       cols: parsed.cols,
       widths: isWidthMap(parsed.widths) ? parsed.widths : {},
     }
   } catch {
     return null
+  }
+}
+
+/** 存储里**真的存过**的 density;没有记录、或记录里没有这个字段 → undefined。写回时用它,免得把回退值当成用户的选择写进去(Q-1)。 */
+export function peekStoredDensity(storageKey: string): Density | undefined {
+  try {
+    const raw = localStorage.getItem(PREFIX + storageKey)
+    const d = raw ? (JSON.parse(raw) as { density?: unknown } | null)?.density : undefined
+    return d === 'comfortable' || d === 'compact' ? d : undefined
+  } catch {
+    return undefined
   }
 }
 
@@ -41,12 +52,17 @@ function isWidthMap(v: unknown): v is Record<string, number> {
 
 export function saveState(
   storageKey: string,
-  density: Density,
+  density: Density | undefined,
   cols: DeclaredCol[],
   widths: Record<string, number> = {},
 ): void {
   try {
-    const state: StoredTableState = { v: VERSION, density, cols, widths }
+    const state: Omit<StoredTableState, 'density'> & { density?: Density } = {
+      v: VERSION,
+      ...(density ? { density } : {}),
+      cols,
+      widths,
+    }
     localStorage.setItem(PREFIX + storageKey, JSON.stringify(state))
   } catch {
     // 存储满/隐私模式等,静默失败(功能退化为内存态)
