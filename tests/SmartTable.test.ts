@@ -670,6 +670,7 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
   type PagerProps = {
     simple?: boolean
     pageSize?: number
+    defaultPage?: number
     showSizePicker?: boolean
     pageSizes?: unknown[]
     suffix?: (info: Record<string, number>) => { type: unknown; props: Record<string, any> }
@@ -763,13 +764,70 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
     wrapper.unmount()
   })
 
-  it('[D3 #3] 本地模式:内层选择器改 500 → 表格 pageSize 变 500、回第 1 页,并转发宿主的 onUpdatePageSize', async () => {
+  it('[D3 #3] 本地模式:内层选择器改 500 → 表格 pageSize 变 500,并转发宿主的 onUpdatePageSize', async () => {
     const onSize = vi.fn()
     const wrapper = mount(SmartTable, { props: { ...base, data: many, pagination: { onUpdatePageSize: onSize } } })
     picker(wrapper).props.onUpdatePageSize(500)
     await nextTick()
     expect(pagerProps(wrapper).pageSize).toBe(500)
     expect(onSize).toHaveBeenCalledWith(500)
+    wrapper.unmount()
+  })
+
+  it('[D3 #3 / Fix round 1 Finding 2] 本地模式:先翻到非首页,改每页条数 → 真的回第 1 页(不只是改 pageSize),并向宿主转发官方 onUpdate:page', async () => {
+    const onSize = vi.fn()
+    const onPage = vi.fn()
+    const wrapper = mount(SmartTable, {
+      // defaultPageSize(非受控的 pageSize)才能让库自己的 localPageSize 之后还能改 —— 用 pagination.pageSize 会把
+      // 分页条锁死成宿主的静态值,onSize 改了 localPageSize 也不会体现到最终 pagination.pageSize 上。
+      props: { ...base, data: many, pagination: { defaultPageSize: 10, onUpdatePageSize: onSize } }, // 50 行、每页 10,共 5 页
+      attrs: { 'onUpdate:page': onPage },
+    })
+    // 真的翻到非首页(调用 Naive 官方 DataTableInst.page,而不只是摆弄库自己的 localPage 状态)
+    const inst = wrapper.vm as unknown as { tableRef: { page: (p: number) => void } }
+    inst.tableRef.page(3)
+    await nextTick()
+    expect(wrapper.findAll('tbody tr')[0]?.text()).toContain('n21') // sanity:第 3 页(每页 10)首行是第 21 条
+
+    picker(wrapper, 10).props.onUpdatePageSize(500)
+    await nextTick()
+
+    expect(pagerProps(wrapper).pageSize).toBe(500)
+    expect(onSize).toHaveBeenCalledWith(500)
+    // 官方外层本地分页只会静默夹页、不发 onUpdatePage,所以库必须自己把 localPage 夹回第 1 页(体现在受控的 defaultPage 上)
+    expect(pagerProps(wrapper).defaultPage).toBe(1)
+    // tableRef.value?.page(1) 会触发官方 DataTableInst 的 doUpdatePage,向宿主转发表格级 onUpdate:page(use-table-data.mjs:228-236)
+    expect(onPage).toHaveBeenCalledWith(1)
+    wrapper.unmount()
+  })
+
+  it('[Fix round 1 Finding 1] 内层选择器改每页条数:绕开了官方 NDataTable 的通知链路,库要自己补齐多种监听拼写(pagination 级 onPageSizeChange/onUpdate:pageSize,表格级 onUpdate:pageSize/onUpdatePageSize/onPageSizeChange)', async () => {
+    const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 2 }))
+    const paginationUpdatePageSize = vi.fn()
+    const paginationOnPageSizeChange = vi.fn()
+    const attrsUpdatePageSize = vi.fn()
+    const attrsOnUpdatePageSize = vi.fn()
+    const attrsOnPageSizeChange = vi.fn()
+    const wrapper = mount(SmartTable, {
+      props: {
+        ...base,
+        fetcher,
+        pagination: { 'onUpdate:pageSize': paginationUpdatePageSize, onPageSizeChange: paginationOnPageSizeChange },
+      },
+      attrs: {
+        'onUpdate:pageSize': attrsUpdatePageSize,
+        onUpdatePageSize: attrsOnUpdatePageSize,
+        onPageSizeChange: attrsOnPageSizeChange,
+      },
+    })
+    await flushPromises()
+    picker(wrapper).props.onUpdatePageSize(500)
+    await flushPromises()
+    expect(paginationUpdatePageSize).toHaveBeenCalledWith(500)
+    expect(paginationOnPageSizeChange).toHaveBeenCalledWith(500)
+    expect(attrsUpdatePageSize).toHaveBeenCalledWith(500)
+    expect(attrsOnUpdatePageSize).toHaveBeenCalledWith(500)
+    expect(attrsOnPageSizeChange).toHaveBeenCalledWith(500)
     wrapper.unmount()
   })
 

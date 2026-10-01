@@ -416,6 +416,21 @@ function callAll(handler: unknown, ...args: unknown[]) {
   for (const fn of Array.isArray(handler) ? handler : [handler]) if (typeof fn === 'function') fn(...args)
 }
 
+/**
+ * 2.1.1 里改每页条数走的是官方 NDataTable,它会按多种拼写通知宿主(use-table-data.mjs:182-197、239-247):
+ * pagination 级 onPageSizeChange / 'onUpdate:pageSize';表格级 onUpdatePageSize / 'onUpdate:pageSize' / onPageSizeChange。
+ * 内层嵌套选择器(E2)绕开了 NDataTable,只调用了 onSize 这一个入口,上面这些拼写都不会再触发——
+ * 这里补齐,保证 2.1.1 宿主不管用哪种拼写监听都不会静默失效。是额外通知,不替代 onSize 里已有的
+ * user.onUpdatePageSize / table.onPageSize 那一路(那一路决定「谁接管回第 1 页重查」的语义)。
+ */
+function notifyPageSizeListeners(user: Partial<PaginationProps>, n: number) {
+  callAll(user['onUpdate:pageSize'], n)
+  callAll(user.onPageSizeChange, n)
+  callAll(attrs['onUpdate:pageSize'], n)
+  callAll(attrs.onUpdatePageSize, n)
+  callAll(attrs.onPageSizeChange, n)
+}
+
 const mergedPagination = computed<false | PaginationProps>(() => {
   if (props.pagination === false) return false
   const user = props.pagination ?? {}
@@ -429,7 +444,10 @@ const mergedPagination = computed<false | PaginationProps>(() => {
   // 改每页条数的处理函数:外层分页(非 simple 时)与内层嵌套选择器共用同一个
   const onSize = isRemote.value
     ? // 远程:与 2.1.1 一致 —— 宿主给了自己的处理函数就由宿主接管,否则走 useSmartTable(回第 1 页重查)
-      (n: number) => callAll(user.onUpdatePageSize ?? table.onPageSize, n)
+      (n: number) => {
+        callAll(user.onUpdatePageSize ?? table.onPageSize, n)
+        notifyPageSizeListeners(user, n)
+      }
     : (n: number) => {
         localPageSize.value = n
         // 改每页条数回第 1 页(与远程一致)。官方外层本地分页只会静默夹页、不发 onUpdatePage,
@@ -437,6 +455,7 @@ const mergedPagination = computed<false | PaginationProps>(() => {
         localPage.value = 1
         tableRef.value?.page(1)
         callAll(user.onUpdatePageSize, n) // D3 #3:转发宿主的回调
+        notifyPageSizeListeners(user, n)
       }
 
   const base: Partial<PaginationProps> = { simple, prefix: paginationPrefix.value }
