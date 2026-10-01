@@ -438,6 +438,8 @@ export interface SmartTableLabels {
   filterNoValue?: string
   /** 工具栏「更多」菜单按钮文字。 */
   more?: string
+  /** 漏斗 aria-label 的后缀,含 {n} 占位(有效条件数)。 */
+  filterActiveCount?: string
 }
 
 /* ======================== 持久化存储结构 ======================== */

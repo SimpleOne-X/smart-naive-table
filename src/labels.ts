@@ -40,6 +40,7 @@ export const defaultLabels: Required<SmartTableLabels> = {
   filterNotIn: 'Not in',
   filterNoValue: 'No value needed',
   more: 'More',
+  filterActiveCount: 'filtered by {n}',
 }
 
 /**
@@ -81,6 +82,7 @@ export const zhCNLabels: Required<SmartTableLabels> = {
   filterNotIn: '不属于',
   filterNoValue: '无需填值',
   more: '更多',
+  filterActiveCount: '已筛选 {n} 条',
 }
 
 /** 三层合并:内置英文 < 全局默认(global)< 实例 prop(partial)。结果是 Required 形状(缺的键已由英文默认补齐)。 */
@@ -108,4 +110,9 @@ export const ACTION_LABEL_KEY: Record<FilterAction, keyof SmartTableLabels> = {
   endsWith: 'filterEndsWith',
   in: 'filterIn',
   notIn: 'filterNotIn',
+}
+
+/** 极简模板:把 {name} 替换成 vars[name];没提供的变量原样保留。 */
+export function fmt(tpl: string, vars: Record<string, string | number>): string {
+  return tpl.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m))
 }

@@ -2,8 +2,10 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { h, defineComponent } from 'vue'
+import { NConfigProvider, darkTheme } from 'naive-ui'
 import ColumnFilter from '../src/ColumnFilter.vue'
 import { filterValueToOptions, optionsToFilterValue } from '../src/filter'
+import { fmt } from '../src/labels'
 import type { FilterDef } from '../src/useColumns'
 import type { FilterValue, SmartTableLabels } from '../src/types'
 
@@ -12,6 +14,7 @@ const labels = {
   filterReset: '重置',
   filterConfirm: '确定',
   filterSelectAll: '全选',
+  filterActiveCount: '已筛选 {n} 条',
 } as unknown as Required<SmartTableLabels>
 
 let mountCount = 0
@@ -142,5 +145,73 @@ describe('ColumnFilter 自定义过滤面板', () => {
     expect(mountCount).toBe(1)
 
     wrapper.unmount()
+  })
+})
+
+describe('fmt', () => {
+  it('替换 {n} 占位,未提供的变量原样保留', () => {
+    expect(fmt('已筛选 {n} 条', { n: 3 })).toBe('已筛选 3 条')
+    expect(fmt('{a}-{b}', { a: 1 })).toBe('1-{b}')
+  })
+})
+
+describe('ColumnFilter 漏斗触发器(B6 / 键盘可达)', () => {
+  function mountFilter(value: FilterValue | null) {
+    return mount(ColumnFilter, {
+      props: { def: buildOptionsDef(), value, labels, getOptions: () => [], isLoadingOptions: () => false },
+      attachTo: document.body,
+    })
+  }
+
+  it('漏斗按钮可被键盘聚焦(不再是 tabindex=-1)', () => {
+    const wrapper = mountFilter(null)
+    const btn = wrapper.find('.smart-table-filter-trigger button')
+    expect(btn.exists()).toBe(true)
+    expect(btn.attributes('tabindex')).not.toBe('-1')
+    wrapper.unmount()
+  })
+
+  it('未生效:没有 --active 类、没有角标,aria-label 就是「过滤」', () => {
+    const wrapper = mountFilter(null)
+    expect(wrapper.find('.smart-table-filter-trigger--active').exists()).toBe(false)
+    expect(wrapper.find('.smart-table-filter-badge').exists()).toBe(false)
+    expect(wrapper.find('.smart-table-filter-trigger button').attributes('aria-label')).toBe('过滤')
+    wrapper.unmount()
+  })
+
+  it('生效 1 条:有 --active 类,没有角标', () => {
+    const wrapper = mountFilter({ logic: 'and', conditions: [{ action: 'equal', value: 1 }] })
+    expect(wrapper.find('.smart-table-filter-trigger--active').exists()).toBe(true)
+    expect(wrapper.find('.smart-table-filter-badge').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('生效 > 1 条:出现条数角标,aria-label 带「已筛选 N 条」', () => {
+    const wrapper = mountFilter(optionsToFilterValue([1, 2, 3]))
+    expect(wrapper.find('.smart-table-filter-badge').text()).toBe('3')
+    expect(wrapper.find('.smart-table-filter-trigger button').attributes('aria-label')).toBe('过滤(已筛选 3 条)')
+    wrapper.unmount()
+  })
+})
+
+describe('ColumnFilter 条数角标的文字色(Q-2)', () => {
+  function mountBadge(theme: typeof darkTheme | null) {
+    const value = optionsToFilterValue([1, 2, 3])
+    const Host = defineComponent({
+      render: () =>
+        h(NConfigProvider, { theme }, () =>
+          h(ColumnFilter, { def: buildOptionsDef(), value, labels, getOptions: () => [], isLoadingOptions: () => false }),
+        ),
+    })
+    return mount(Host, { attachTo: document.body })
+  }
+
+  it('文字色取主题的 baseColor:亮色白、暗色黑;源码里没有写死的颜色', () => {
+    const light = mountBadge(null)
+    expect(light.find('.smart-table-filter-badge').attributes('style')).toContain('rgb(255, 255, 255)')
+    light.unmount()
+    const dark = mountBadge(darkTheme)
+    expect(dark.find('.smart-table-filter-badge').attributes('style')).toContain('rgb(0, 0, 0)')
+    dark.unmount()
   })
 })

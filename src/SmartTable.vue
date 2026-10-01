@@ -808,7 +808,74 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 0;
+}
+/* 表头图标「悬停才显示」(B6):未激活的排序箭头与漏斗平时透明(仍占位,不回流),悬停该列表头或
+   键盘聚焦到表头内时淡入。官方类名已在真实 NDataTable 上核对(设计文档 9.1)。
+   常驻例外:正在排序的列箭头、已筛选的列漏斗、面板打开的那一列漏斗。
+   注意:所有例外规则都要带 .n-data-table-th 前缀,与隐藏规则同级(0,4,0)并写在其后,否则压不过(P-4)。 */
+.smart-table :deep(.n-data-table-th .n-data-table-sorter) {
+  opacity: 0;
+  /* Q-3:官方给排序箭头写的是 transition: color .3s var(--n-bezier)(箭头变主色时用),
+     这里的 transition 会整条覆盖它,所以两个都要写 */
+  transition:
+    opacity 0.15s,
+    color 0.3s var(--n-bezier);
+}
+.smart-table :deep(.n-data-table-th .smart-table-filter-trigger) {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.smart-table :deep(.n-data-table-th:hover .n-data-table-sorter),
+.smart-table :deep(.n-data-table-th:hover .smart-table-filter-trigger),
+.smart-table :deep(.n-data-table-th:focus-within .smart-table-filter-trigger),
+.smart-table :deep(.n-data-table-th--sorting .n-data-table-sorter),
+.smart-table :deep(.n-data-table-th .smart-table-filter-trigger--active),
+.smart-table :deep(.n-data-table-th .smart-table-filter-trigger--open) {
+  opacity: 1;
+}
+/* 触屏兜底(Q-4):没有悬停(主输入设备是触屏,如平板)。写法与设计原型一致,只写 `(hover: none)`(F16):
+   不加 `any-pointer: coarse` —— 带触屏的 Windows 笔记本它也为 true,用鼠标时图标会常显,与原型「悬停才显示」不符。
+   未激活的图标淡显常驻(仍低于激活态的主色)。
+   24px 的列宽拖拽热区 P0 不做:它与现有 ::after 竖条错位、伸进下一列的一半会被后一个 th 盖住,
+   连同把手的视觉整体归 P1(规格 §5.6)。 */
+@media (hover: none) {
+  .smart-table :deep(.n-data-table-th .n-data-table-sorter),
+  .smart-table :deep(.n-data-table-th .smart-table-filter-trigger) {
+    opacity: 0.5;
+  }
+  .smart-table :deep(.n-data-table-th .smart-table-filter-trigger--active),
+  .smart-table :deep(.n-data-table-th .smart-table-filter-trigger--open),
+  .smart-table :deep(.n-data-table-th--sorting .n-data-table-sorter) {
+    opacity: 1;
+  }
+}
+/* 图标间距(Q-5,设计 3.11;B12 的拖拽下限 93 / 102 / 123 就是按这个布局算的):
+   标题 → 漏斗 8px(漏斗的 margin-left,在 ColumnFilter 里)、漏斗 → 排序箭头 6px(官方默认是 4px)、
+   表头右内边距 16px(= 8px 把手 + 8px 缓冲)。 */
+.smart-table :deep(.n-data-table-th) {
+  padding-right: 16px;
+}
+.smart-table :deep(.n-data-table-th .n-data-table-sorter) {
+  margin-left: 6px;
+}
+/* 图标簇紧跟标题(F2):官方 title-wrapper 是 flex、title 是 flex:1 —— 标题居中时 title 块被撑满整格,排序箭头被挤到格子最右,
+   和标题 / 漏斗之间空出一大块(默认列宽下漏斗 → 箭头实测 20px 以上,而不是 6px)。改成:wrapper 按内容收缩(inline-flex,
+   随 th 的 text-align 居中 / 靠左 / 靠右),title 按内容宽(flex: 0 1 auto,放不下时仍可收缩,min-width:0 是官方的),
+   于是「标题 + 漏斗 + 箭头」是一组、间距固定。只改 CSS,不改官方渲染结构。vertical-align:top 避免 inline 行框把表头撑高 1px。
+   优先级:官方是 (0,3,0) / (0,4,0),scoped 的 :deep 写法是 (0,4,0) / (0,5,0),刚好压过。 */
+.smart-table :deep(.n-data-table-th .n-data-table-th__title-wrapper) {
+  display: inline-flex;
+  vertical-align: top;
+}
+.smart-table :deep(.n-data-table-th .n-data-table-th__title-wrapper .n-data-table-th__title) {
+  flex: 0 1 auto;
+}
+/* 列上写了 ellipsis 且可排序时,官方给省略号盒子写了 max-width: calc(100% - 18px)(给排序箭头留位)。title 现在按内容收缩,
+   再扣 18px 会把「标题 + 漏斗」裁掉 18px(实测:漏斗被切掉);排序箭头本来就是 flex 兄弟、不会压到标题,所以还原成 100%。
+   优先级:官方 (0,4,0),这里 (0,5,0)。 */
+.smart-table :deep(.n-data-table-th.n-data-table-th--sortable .n-data-table-th__ellipsis) {
+  max-width: 100%;
 }
 /* activeRowKey 命中行高亮:背景走 --smart-table-active-row-bg,宿主/主题可覆盖。
    :deep 打进内层 n-data-table 的 td —— 包内处理,消费端不必自己写 :deep。 */

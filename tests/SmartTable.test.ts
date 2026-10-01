@@ -998,3 +998,42 @@ describe('SmartTable 卡片内边距(B11)与 cardProps(D10)', () => {
     wrapper.unmount()
   })
 })
+
+describe('SmartTable 点漏斗不触发排序(Q-6:官方 data-data-table-filter)', () => {
+  async function mountSortFilter() {
+    const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 2 }))
+    const wrapper = mount(SmartTable, {
+      props: {
+        columns: [{ key: 'name', title: 'Name', sorter: true, filter: true }] as SmartTableColumn<unknown>[],
+        fetcher,
+        rowKey: 'id',
+      },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    return { fetcher, wrapper }
+  }
+
+  it('点漏斗:不排序、不重新请求;点标题:排序(对照)', async () => {
+    const { fetcher, wrapper } = await mountSortFilter()
+    const before = fetcher.mock.calls.length
+    await wrapper.find('.smart-table-filter-trigger').trigger('click')
+    await flushPromises()
+    expect(fetcher.mock.calls.length).toBe(before)
+    await wrapper.find('th').trigger('click')
+    await flushPromises()
+    expect(fetcher.mock.calls.length).toBe(before + 1)
+    expect(fetcher.mock.calls.at(-1)![0]).toMatchObject({ sortField: 'name' })
+    wrapper.unmount()
+  })
+
+  it('漏斗上的点击不被 stopPropagation 吞掉:宿主挂在祖先上的 click 监听仍能收到', async () => {
+    const { wrapper } = await mountSortFilter()
+    const spy = vi.fn()
+    document.body.addEventListener('click', spy)
+    await wrapper.find('.smart-table-filter-trigger').trigger('click')
+    expect(spy).toHaveBeenCalled()
+    document.body.removeEventListener('click', spy)
+    wrapper.unmount()
+  })
+})

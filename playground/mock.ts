@@ -76,6 +76,13 @@ export async function mockPage(params: SmartTableParams): Promise<PageResult<Dem
       list = list.filter((r) => matchFilterValue({ logic: f.logic, conditions: f.conditions }, r[f.field]))
     }
   }
+  // 排序:{ sortField, sortOrder: 'asc' | 'desc' };多列时另带 sorts,demo 只取主排序
+  const sortField = params.sortField as string | undefined
+  if (sortField) {
+    const dir = params.sortOrder === 'desc' ? -1 : 1
+    const key = (r: DemoRow) => r[sortField] as string | number
+    list = [...list].sort((a, b) => (key(a) > key(b) ? 1 : key(a) < key(b) ? -1 : 0) * dir)
+  }
   return {
     items: list.slice((page - 1) * pageSize, page * pageSize),
     total: list.length,

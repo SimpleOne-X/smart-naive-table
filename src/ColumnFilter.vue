@@ -19,8 +19,8 @@ import {
 import type { SelectMixedOption } from 'naive-ui/es/select/src/interface'
 import type { FilterAction, FilterCondition, FilterValue, SmartTableLabels, SmartTableOption } from './types'
 import type { FilterDef } from './useColumns'
-import { filterValueToOptions, isFilterActive, optionsToFilterValue } from './filter'
-import { ACTION_LABEL_KEY } from './labels'
+import { activeConditions, filterValueToOptions, isFilterActive, optionsToFilterValue } from './filter'
+import { ACTION_LABEL_KEY, fmt } from './labels'
 import { optionLabel } from './useOptions'
 import { FilterIcon } from './icons'
 
@@ -40,6 +40,11 @@ const emit = defineEmits<{
 const themeVars = useThemeVars()
 const show = ref(false)
 const active = computed(() => isFilterActive(props.value))
+const activeCount = computed(() => activeConditions(props.value).length)
+// 漏斗的无障碍名:多于 1 条时带条数(走 labels,渲染期求值)
+const ariaLabel = computed(() =>
+  activeCount.value > 1 ? `${props.labels.filter}(${fmt(props.labels.filterActiveCount, { n: activeCount.value })})` : props.labels.filter,
+)
 
 /* ---- 草稿:打开弹层时从当前生效值回填 ---- */
 
@@ -155,22 +160,25 @@ function reset() {
 <template>
   <n-popover v-model:show="show" trigger="click" placement="bottom" :show-arrow="false" raw>
     <template #trigger>
-      <!-- stop:sorter 列的表头点击会触发排序,点漏斗不该顺带把表排一遍 -->
-      <span class="smart-table-filter-trigger" @click.stop>
+      <!-- data-data-table-filter:官方点表头时据此跳过排序(Header.mjs:107-108 的 happensIn(e, 'dataTableFilter'))。
+           不用 @click.stop:它会吞掉宿主挂在 th / 祖先上的 click 监听(Q-6)。 -->
+      <span
+        class="smart-table-filter-trigger"
+        :class="{ 'smart-table-filter-trigger--active': active, 'smart-table-filter-trigger--open': show }"
+        data-data-table-filter
+      >
         <n-tooltip trigger="hover" :disabled="show">
           <template #trigger>
-            <n-button
-              quaternary
-              size="tiny"
-              :type="active ? 'primary' : 'default'"
-              :aria-label="labels.filter"
-              :focusable="false"
-            >
+            <n-button quaternary size="tiny" :type="active ? 'primary' : 'default'" :aria-label="ariaLabel">
               <template #icon><FilterIcon /></template>
             </n-button>
           </template>
           {{ labels.filter }}
         </n-tooltip>
+        <!-- 文字色取主题的 baseColor(亮白 / 暗黑),不写死 #fff:暗色下叠在主色上对比度太低(Q-2) -->
+        <span v-if="activeCount > 1" class="smart-table-filter-badge" :style="{ color: themeVars.baseColor }">{{
+          activeCount
+        }}</span>
       </span>
     </template>
 
@@ -293,9 +301,21 @@ function reset() {
 .smart-table-filter-trigger {
   display: inline-flex;
   align-items: center;
-  margin-left: 4px;
+  margin-left: 8px;
   /* 表头默认 center 对齐时,漏斗不该把标题挤偏 */
   vertical-align: middle;
+}
+.smart-table-filter-badge {
+  margin-left: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  font-size: 10px;
+  line-height: 14px;
+  text-align: center;
+  /* 文字色在模板里经 :style 取 themeVars.baseColor(Q-2);背景取官方的激活图标色(角标在 th 的子树里,--n-* 变量可用) */
+  background: var(--n-th-icon-color-active);
 }
 .smart-table-filter {
   min-width: 200px;

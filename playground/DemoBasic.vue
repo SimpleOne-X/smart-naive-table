@@ -36,12 +36,13 @@ const columns: SmartTableColumn<DemoRow>[] = [
   { key: 'status', title: tt('状态', 'Status'), width: 110, options: statusOptions, tag: true, search: true, filter: true },
   // 单选式勾选(Arco 的 multiple: false)
   { key: 'enabled', title: tt('启用', 'Enabled'), width: 110, options: enabledOptions, tag: true, search: true, filter: { multiple: false } },
-  { key: 'salary', title: tt('薪资', 'Salary'), width: 120, align: 'right', format: 'money', filter: true },
+  { key: 'salary', title: tt('薪资', 'Salary'), width: 120, align: 'right', format: 'money', sorter: true, filter: true },
   {
     key: 'createTime',
     title: tt('创建时间', 'Created'),
     width: 190,
     format: 'datetime',
+    sorter: true,
     search: { type: 'daterange', key: 'createRange' },
     filter: true,
   },
