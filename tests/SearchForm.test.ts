@@ -54,3 +54,21 @@ describe('SearchForm 折叠态的 collapsed-rows(C5,按 n-grid 实际轨道数�
     w.unmount()
   })
 })
+
+describe('SearchForm 操作区对齐(L0-7)', () => {
+  it('搜索 / 重置 / 展开 同排垂直居中(n-space align=center),不再默认顶对齐', () => {
+    const w = mountForm('150px 150px')
+    const space = w.find('.smart-table-search .n-space')
+    expect(space.attributes('style')).toContain('align-items: center')
+    w.unmount()
+  })
+
+  it('「展开」文字按钮与同排按钮同高(主题 heightMedium = 34px;官方文字按钮自己的高度是 initial)', () => {
+    const w = mountForm('150px 150px')
+    const toggle = w.find('.smart-table-search-toggle')
+    expect(toggle.exists()).toBe(true)
+    expect(toggle.text()).toBe('Expand')
+    expect(toggle.attributes('style')).toContain('height: 34px')
+    w.unmount()
+  })
+})

@@ -16,6 +16,7 @@ import {
   NSelect,
   NSpace,
   NSwitch,
+  useThemeVars,
 } from 'naive-ui'
 import type { SelectMixedOption } from 'naive-ui/es/select/src/interface'
 import type { CardProps } from 'naive-ui'
@@ -41,6 +42,7 @@ const emit = defineEmits<{
   reset: []
 }>()
 
+const themeVars = useThemeVars()
 const isInline = computed(() => props.config.layout === 'inline')
 
 // 折叠:仅 grid 布局;collapsed 初始跟随 config.collapsible。
@@ -184,10 +186,10 @@ function renderField(f: SearchDef): VNodeChild {
             <component :is="() => renderField(f)" />
           </n-form-item-gi>
           <n-form-item-gi suffix>
-            <n-space>
+            <n-space align="center">
               <n-button type="primary" :loading="loading" @click="emit('search')">{{ labels.search }}</n-button>
               <n-button @click="emit('reset')">{{ labels.reset }}</n-button>
-              <n-button v-if="collapsible" text type="primary" @click="collapsed = !collapsed">
+              <n-button v-if="collapsible" class="smart-table-search-toggle" :style="{ height: themeVars.heightMedium }" text type="primary" @click="collapsed = !collapsed">
                 {{ collapsed ? labels.expand : labels.collapse }}
               </n-button>
             </n-space>
@@ -199,6 +201,11 @@ function renderField(f: SearchDef): VNodeChild {
 </template>
 
 <style scoped>
+/* 「展开 / 收起」:官方文字按钮没有固定高度和内边距(--n-height 是 initial,实测 28×14,比同排 34px 的按钮矮、还窄 8px);
+   与设计原型一致:高度与同排按钮同高(模板里取主题的 heightMedium)、左右内边距 4px */
+.smart-table-search-toggle {
+  padding: 0 4px;
+}
 .smart-table-search-inline-row {
   display: flex;
   flex-wrap: wrap;
