@@ -144,7 +144,9 @@ describe('useColumns 表头过滤入口', () => {
     expect(typeof title).toBe('function')
     const vnode = title(undefined)
     const children = vnode.children as VNode[]
-    expect(children[0]).toBe('N')
+    // 有意改动(L0-4):标题文字多包了一层 span.smart-table-th-text(只让文字省略、漏斗不被裁),原断言直接读 children[0] === 'N'
+    expect((children[0] as VNode).props?.class).toBe('smart-table-th-text')
+    expect((children[0] as VNode).children).toEqual(['N'])
     expect((children[1] as VNode).props?.['data-key']).toBe('name')
 
     expect(col(api, 'amt').title).toBe('A') // 无 filter 不包装
@@ -160,9 +162,11 @@ describe('useColumns 表头过滤入口', () => {
       { renderFilter },
     )
     const title = col(api, 'name').title as (c: unknown) => VNode
-    expect((title(undefined).children as VNode[])[0]).toBe('姓名')
+    // 有意改动(L0-4):标题文字在 span.smart-table-th-text 里,取它的 children
+    const text = () => ((title(undefined).children as VNode[])[0] as VNode).children
+    expect(text()).toEqual(['姓名'])
     lang = 'en'
-    expect((title(undefined).children as VNode[])[0]).toBe('Name')
+    expect(text()).toEqual(['Name'])
   })
 
   it('没有 renderFilter 时不包装(useColumns 可脱离 UI 单独使用)', () => {

@@ -628,3 +628,44 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
     w.unmount()
   })
 })
+
+describe('ColumnFilter 漏斗触发器的外观(L0-3 / L0-4,对齐原型 .th-filter / .hf-n)', () => {
+  function mountFilter(value: FilterValue | null) {
+    return mount(ColumnFilter, {
+      props: { def: buildOptionsDef(), value, labels, getOptions: () => [], isLoadingOptions: () => false },
+      attachTo: document.body,
+    })
+  }
+
+  it('[L0-3] 触发器是原生 <button type="button">(不是 NButton):尺寸与颜色由库自己的 CSS 定,不受 NButton 的 padding / 颜色变量牵制', () => {
+    const w = mountFilter(null)
+    const btn = w.find('.smart-table-filter-trigger button')
+    expect(btn.classes()).toContain('smart-table-filter-btn')
+    expect(btn.classes()).not.toContain('n-button')
+    expect(btn.attributes('type')).toBe('button')
+    expect(btn.attributes('aria-haspopup')).toBe('dialog')
+    expect(btn.find('svg').exists()).toBe(true)
+    w.unmount()
+  })
+
+  it('[L0-4] 条数角标在按钮「里面」(绝对定位,锚是 22px 的按钮,不占行内宽度,不撑宽 / 撑高表头),且 aria-hidden(条数已在按钮的 aria-label 里)', () => {
+    const w = mountFilter(optionsToFilterValue([1, 2, 3]))
+    const badge = w.find('.smart-table-filter-trigger button .smart-table-filter-badge')
+    expect(badge.exists()).toBe(true)
+    expect(badge.text()).toBe('3')
+    expect(badge.attributes('aria-hidden')).toBe('true')
+    // 按钮的无障碍名只有 aria-label,不含角标的文字
+    expect(w.find('.smart-table-filter-trigger button').attributes('aria-label')).toBe('过滤(已筛选 3 条)')
+    w.unmount()
+  })
+
+  it('[L0-3] 面板打开 → 触发器带 --open(只加底色,不变色);--active(主色)只属于「已筛选」', async () => {
+    const w = mountFilter(null)
+    expect(w.find('.smart-table-filter-trigger--open').exists()).toBe(false)
+    await w.find('.smart-table-filter-trigger').trigger('click')
+    await flushPromises()
+    expect(w.find('.smart-table-filter-trigger--open').exists()).toBe(true)
+    expect(w.find('.smart-table-filter-trigger--active').exists()).toBe(false)
+    w.unmount()
+  })
+})

@@ -307,24 +307,27 @@ function reset() {
       >
         <n-tooltip trigger="hover" :disabled="show">
           <template #trigger>
-            <!-- aria-haspopup / aria-expanded:屏幕阅读器得知这个按钮会弹出对话框、当前是否展开(D6) -->
-            <n-button
-              quaternary
-              size="tiny"
-              :type="active ? 'primary' : 'default'"
+            <!-- 原生 button(设计原型 .th-filter):22×22、图标 15px、闲置色取表头图标色(与排序箭头同灰)、打开 / 悬停只加底色、
+                 已筛选才变主色。不用 NButton:它的 padding / 文字色变量写在内联样式里,压不过库自己的 CSS。
+                 aria-haspopup / aria-expanded:屏幕阅读器得知这个按钮会弹出对话框、当前是否展开(D6) -->
+            <button
+              type="button"
+              class="smart-table-filter-btn"
               :aria-label="ariaLabel"
               aria-haspopup="dialog"
               :aria-expanded="show"
             >
-              <template #icon><FilterIcon /></template>
-            </n-button>
+              <FilterIcon />
+              <!-- 条数角标:绝对定位在按钮右上角(原型 .hf-n),不占行内宽度,所以多条件时表头既不变宽也不变高(L0-4)。
+                   文字色取主题的 baseColor(亮白 / 暗黑),不写死 #fff:暗色下叠在主色上对比度太低(Q-2)。
+                   aria-hidden:条数已在按钮的 aria-label 里,不要读两遍 -->
+              <span v-if="activeCount > 1" class="smart-table-filter-badge" aria-hidden="true" :style="{ color: themeVars.baseColor }">{{
+                activeCount
+              }}</span>
+            </button>
           </template>
           {{ labels.filter }}
         </n-tooltip>
-        <!-- 文字色取主题的 baseColor(亮白 / 暗黑),不写死 #fff:暗色下叠在主色上对比度太低(Q-2) -->
-        <span v-if="activeCount > 1" class="smart-table-filter-badge" :style="{ color: themeVars.baseColor }">{{
-          activeCount
-        }}</span>
       </span>
     </template>
 
@@ -454,16 +457,56 @@ function reset() {
   /* 表头默认 center 对齐时,漏斗不该把标题挤偏 */
   vertical-align: middle;
 }
+/* 漏斗按钮(L0-3,设计原型 .th-filter):22×22(G6,图标 15px 两侧各留 3.5px,B12 的拖拽下限 102 / 123 就是按它算的)。
+   颜色走表头的主题变量(触发器在 th 的子树里,--n-th-* 可用):闲置 = thIconColor(与排序箭头同灰),
+   悬停 / 面板打开只加 thButtonColorHover 底色(不变色),已筛选 = thIconColorActive(主色)。 */
+.smart-table-filter-btn {
+  position: relative;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--n-border-radius);
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--n-th-icon-color);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+}
+.smart-table-filter-btn:hover,
+.smart-table-filter-trigger--open .smart-table-filter-btn {
+  background: var(--n-th-button-color-hover);
+}
+.smart-table-filter-trigger--active .smart-table-filter-btn {
+  color: var(--n-th-icon-color-active);
+}
+/* 只在键盘聚焦时画焦点环(与原型 .n-btn:focus-visible 一致:克制的主色细环,外扩 2px) */
+.smart-table-filter-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--n-th-icon-color-active) 55%, transparent);
+  outline-offset: 2px;
+}
+/* 条数角标(L0-4,原型 .hf-n):绝对定位,不占宽、不占高。文字色在模板里经 :style 取 themeVars.baseColor(Q-2);
+   背景取表头的激活图标色(= 主色) */
 .smart-table-filter-badge {
-  margin-left: 2px;
-  min-width: 14px;
-  height: 14px;
+  position: absolute;
+  top: -3px;
+  right: -5px;
+  min-width: 12px;
+  height: 12px;
   padding: 0 3px;
-  border-radius: 7px;
+  border-radius: 6px;
   font-size: 10px;
-  line-height: 14px;
+  font-weight: 500;
+  line-height: 12px;
   text-align: center;
-  /* 文字色在模板里经 :style 取 themeVars.baseColor(Q-2);背景取官方的激活图标色(角标在 th 的子树里,--n-* 变量可用) */
+  pointer-events: none;
   background: var(--n-th-icon-color-active);
 }
 .smart-table-filter {

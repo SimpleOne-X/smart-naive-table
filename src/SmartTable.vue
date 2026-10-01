@@ -925,6 +925,16 @@ defineExpose({
   align-items: center;
   justify-content: center;
   gap: 0;
+  max-width: 100%;
+}
+/* 过滤列的标题文字单行、放不下省略(设计原型 .th-title),漏斗不被裁(L0-4):
+   列被拖到 B12 的下限时,「物料编码」这类 4 字标题只剩 48px,折成两行会把表头从 39.4 撑到 61.8px、图标也被挤歪。
+   B12 的下限保证的是图标簇放得下,标题让位(省略)。标题文字单独包了一层(useColumns),省略号只作用在文字上,不会连漏斗一起裁掉。 */
+.smart-table :deep(.smart-table-th-text) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* 表头图标「悬停才显示」(B6):未激活的排序箭头与漏斗平时透明(仍占位,不回流),悬停该列表头或
    键盘聚焦到表头内时淡入。官方类名已在真实 NDataTable 上核对(设计文档 9.1)。

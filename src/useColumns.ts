@@ -556,14 +556,14 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
       return result as DataTableColumn<T>
     }
 
-    // 表头过滤入口:标题后挂漏斗。包一层是为了 sorter 列点漏斗不会连带触发排序
-    // (ColumnFilter 内部 stopPropagation),同时让漏斗贴着标题而不是被 th 撑开。
+    // 表头过滤入口:标题后挂漏斗,同时让漏斗贴着标题而不是被 th 撑开。标题文字再单独包一层 .smart-table-th-text:
+    // 列被拖窄时只让文字省略(单行 + ellipsis),不折行撑高表头,也不会连漏斗一起裁掉(L0-4)。
     const filterDef = opts.filterDefs?.().find((f) => f.field === key)
     if (filterDef && opts.renderFilter) {
       const baseTitle = result.title as string | ((c: unknown) => VNodeChild) | undefined
       result.title = (c: unknown) =>
         h('span', { class: 'smart-table-th' }, [
-          typeof baseTitle === 'function' ? baseTitle(c) : baseTitle,
+          h('span', { class: 'smart-table-th-text' }, [typeof baseTitle === 'function' ? baseTitle(c) : baseTitle]),
           opts.renderFilter!(filterDef),
         ])
     }
