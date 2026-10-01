@@ -20,3 +20,7 @@ npm run build
 1. Fork 本仓库,基于 `dev` 创建自己的分支。
 2. 完成修改并补充/更新测试。
 3. 提交 Pull Request,目标分支选择 `dev`。
+
+## 对照设计原型
+
+`npm run dev` 后访问 `/prototype.html`(`?m=1..4` 选模块,`?theme=light|dark` 选明暗):用真实库复刻 `docs/smart-naive-table-design.html` 的模块 1–4,与原型并排逐项比较外观与行为。库做不到的部分留空,不用自定义代码假装。改库的外观 / 排布前后都对着它看一眼。
