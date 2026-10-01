@@ -264,6 +264,24 @@ describe('新增 7 个操作符', () => {
     expect(matchCondition(cond('like', '%'), null)).toBe(false)
   })
 
+  it('like:另一个正则元字符(括号)按字面量,不是分组语法', () => {
+    expect(matchCondition(cond('like', 'a(b)c'), 'abc')).toBe(false)
+    expect(matchCondition(cond('like', 'a(b)c'), 'a(b)c')).toBe(true)
+  })
+
+  it('like:% 能匹配跨「换行」的内容(等价于旧正则实现的 dotAll)', () => {
+    expect(matchCondition(cond('like', 'a%c'), 'a\nb\nc')).toBe(true)
+    expect(matchCondition(cond('like', 'a_c'), 'a\nc')).toBe(true) // _ 本身也匹配换行这一个字符
+  })
+
+  it('like:不走正则回溯,%-heavy pattern 在不匹配输入上也是线性时间,不会卡死(ReDoS 回归)', () => {
+    // 旧的「翻译成正则再交给引擎」实现在这类 pattern 上会指数级回溯(k=10 时单次调用 ~40s)。
+    // 这里不断言具体耗时,调用本身能在测试超时内返回就是线性实现的证明。
+    const pattern = '%a'.repeat(10) + '%b'
+    const cell = 'a'.repeat(40)
+    expect(matchCondition(cond('like', pattern), cell)).toBe(false)
+  })
+
   it('in / notIn:值是数组,命中任一项即 in;空单元格时 notIn 为真;值不是数组则 in 为假', () => {
     expect(matchCondition(cond('in', [1, 2]), 2)).toBe(true)
     expect(matchCondition(cond('in', [1, 2]), '2')).toBe(true) // 沿用 equal 的跨类型
@@ -273,6 +291,11 @@ describe('新增 7 个操作符', () => {
     expect(matchCondition(cond('in', [1, 2]), null)).toBe(false)
     expect(matchCondition(cond('notIn', [1, 2]), null)).toBe(true)
     expect(matchCondition(cond('in', 'x'), 'x')).toBe(false)
+  })
+
+  it('notIn 的值不是数组(脏数据)时按不匹配处理,与 in 的 fail-closed 口径一致,不会放行全部行', () => {
+    expect(matchCondition(cond('notIn', 'x'), 'x')).toBe(false)
+    expect(matchCondition(cond('notIn', 'x'), 'y')).toBe(false)
   })
 })
 

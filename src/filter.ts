@@ -67,8 +67,9 @@ export function isBlank(v: unknown): boolean {
   return false
 }
 
-/** 不需要填值的操作符:值为空也算「写了」,不能被 activeConditions 当成没填丢掉(C4)。 */
-export const NO_VALUE_ACTIONS: readonly FilterAction[] = ['isNull', 'isNotNull']
+/** 不需要填值的操作符:值为空也算「写了」,不能被 activeConditions 当成没填丢掉(C4)。
+ * Object.freeze:readonly 只是编译期约束,运行时(JS 消费方或反序列化后的代码)仍能 push —— 冻结防止被意外改写。 */
+export const NO_VALUE_ACTIONS: readonly FilterAction[] = Object.freeze(['isNull', 'isNotNull'])
 
 export function isValuelessAction(action: FilterAction): boolean {
   return NO_VALUE_ACTIONS.includes(action)
@@ -171,14 +172,48 @@ function matchEndsWith(cell: unknown, value: unknown): boolean {
   return String(cell).toLowerCase().endsWith(String(value).toLowerCase())
 }
 
-/** SQL LIKE:% 任意长度、_ 单个字符,整串匹配、忽略大小写;其余字符按字面量。 */
+/**
+ * 经典通配符匹配(双指针 + 单个「最近一个 % 的回溯点」),线性时间,不走正则。
+ * 早期实现把 % 翻成 `.*`、_ 翻成 `.` 交给正则引擎,%-heavy 的 pattern(如 `%a%a%a…%b`)
+ * 在不匹配的输入上会触发 NFA 回溯的指数级退化(ReDoS)——pattern 本身可来自过滤面板,
+ * host 后端一旦透传给前端(或 P1 的条件构造器直接暴露给终端用户),一条精心构造的 like
+ * 条件就能把主线程卡死数十秒。这里换成教科书式的「通配符匹配」双指针算法:
+ * 遇到字面字符直接比较(忽略大小写),遇到 % 记下当前匹配位置作为回溯锚点,
+ * 后续字面字符不匹配时从锚点回溯并把「已吞掉的字符数」加一重试 —— 最坏 O(text.length * pattern.length),
+ * 没有递归 / 回溯爆炸。
+ */
+function wildcardMatch(text: string, pattern: string): boolean {
+  let s = 0
+  let p = 0
+  let starIdx = -1
+  let starMatchFrom = -1
+  while (s < text.length) {
+    const pc = p < pattern.length ? pattern[p] : undefined
+    if (pc !== undefined && (pc === '_' || pc.toLowerCase() === text[s].toLowerCase())) {
+      s++
+      p++
+    } else if (pc === '%') {
+      starIdx = p
+      starMatchFrom = s
+      p++
+    } else if (starIdx !== -1) {
+      // 回溯:让上一个 % 多吞一个字符,从那里重新尝试
+      p = starIdx + 1
+      starMatchFrom++
+      s = starMatchFrom
+    } else {
+      return false
+    }
+  }
+  // text 已耗尽,pattern 剩余部分只能是若干个 %(% 可以匹配空)
+  while (p < pattern.length && pattern[p] === '%') p++
+  return p === pattern.length
+}
+
+/** SQL LIKE:% 任意长度(含空)、_ 单个字符,整串匹配、忽略大小写;其余字符按字面量。 */
 function matchLike(cell: unknown, value: unknown): boolean {
   if (cell === null || cell === undefined) return false
-  const source = String(value)
-    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    .replace(/%/g, '.*')
-    .replace(/_/g, '.')
-  return new RegExp(`^${source}$`, 'is').test(String(cell))
+  return wildcardMatch(String(cell), String(value))
 }
 
 function matchIn(cell: unknown, value: unknown, dateValueFormat: string): boolean {
@@ -238,7 +273,9 @@ export function matchCondition(
     case 'in':
       return matchIn(cell, value, dateValueFormat)
     case 'notIn':
-      return !matchIn(cell, value, dateValueFormat)
+      // 值不是数组(脏数据/反序列化出的畸形条件)按不匹配处理,与 in 的 fail-closed 口径对齐 ——
+      // 否则 !matchIn(...) 在 value 非数组时恒为 true,一条畸形 notIn 条件会让 or 逻辑整列放行。
+      return Array.isArray(value) && !matchIn(cell, value, dateValueFormat)
     default:
       // 未识别的 action(如反序列化/编程式构造出的脏数据)按不匹配处理 ——
       // fail-open(默认放行)会让 or 逻辑下整列过滤被一条脏条件悄悄短路成「放行全部」。
