@@ -4,6 +4,9 @@ name: Release
 #   - 该版本在 npm 上不存在        → npm publish(Trusted Publishing,无需 token)
 #   - 对应的 v<版本号> Release 不存在 → 打 tag 并创建 GitHub Release,附 npm pack 产物
 #   - 版本号没变                   → 两步都跳过,只做构建校验
+# npm dist-tag:版本号带预发布标识(如 3.0.0-beta.1、-rc.1、-alpha)时发到该标识对应的 tag(beta/rc/
+# alpha...),不发 latest —— 否则 `npm install` 默认装到的会是这个未定稿/破坏性版本而不是最新稳定版。
+# 没有预发布标识的正式版才发 latest。GitHub Release 同理,预发布版本标 prerelease。
 # 发新版:在 dev 上 `npm version patch --no-git-tag-version`(或 minor / major)并更新 CHANGELOG,再 PR 到 main。
 # 首次发布必须先用令牌手动发一次(npm 要求包已存在才能配置 Trusted Publisher),
 # 在 npmjs.com 配置 Trusted Publisher 时 workflow 文件名填 publish.yml。
@@ -47,6 +50,17 @@ jobs:
           NAME=$(node -p "require('./package.json').name")
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # semver 预发布标识是 - 之后、第一个 . 之前的部分(3.0.0-beta.1 → beta);没有 - 就是正式版 → latest。
+          if [[ "$VERSION" == *-* ]]; then
+            NPM_TAG=$(echo "$VERSION" | sed -E 's/^[^-]+-([a-zA-Z0-9]+).*/\1/')
+            IS_PRERELEASE=true
+          else
+            NPM_TAG=latest
+            IS_PRERELEASE=false
+          fi
+          echo "npm_tag=$NPM_TAG" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "::notice::版本 $VERSION → npm dist-tag: $NPM_TAG(prerelease: $IS_PRERELEASE)"
           # 包或版本不存在时 npm view 报 E404、输出为空 → 需要发布;
           # 网络等其它错误也会落到"需要发布",届时 npm publish 会失败并暴露问题,不会静默跳过。
           if [ "$(npm view "$NAME@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then
@@ -64,7 +78,7 @@ jobs:
 
       - name: 发布到 npm
         if: steps.check.outputs.npm == 'publish'
-        run: npm publish # access=public 已在 package.json 的 publishConfig;build 由 prepublishOnly 触发
+        run: npm publish --tag "${{ steps.check.outputs.npm_tag }}" # access=public 已在 package.json 的 publishConfig;build 由 prepublishOnly 触发
 
       - name: 创建 tag 与 GitHub Release
         if: steps.check.outputs.release == 'create'
@@ -72,6 +86,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           VERSION: ${{ steps.check.outputs.version }}
+          PRERELEASE: ${{ steps.check.outputs.prerelease }}
         run: |
           npm pack
-          gh release create "v$VERSION" ./*.tgz --target "$GITHUB_SHA" --title "v$VERSION" --generate-notes
+          PRERELEASE_FLAG=""
+          if [ "$PRERELEASE" = "true" ]; then PRERELEASE_FLAG="--prerelease"; fi
+          gh release create "v$VERSION" ./*.tgz --target "$GITHUB_SHA" --title "v$VERSION" --generate-notes $PRERELEASE_FLAG
