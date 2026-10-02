@@ -1,6 +1,7 @@
 // 过滤内核(UI 无关、可单测):条件求值 + 本地过滤 + 远程参数序列化。
 // 条件模型对齐 Bootstrap Blazor 的 FilterAction/FilterLogic(等于/包含/大于… + 且/或),
 // 选项勾选模式(Arco 风格)只是「若干 equal 条件 + or」的一层语法糖,两者共用同一份求值逻辑。
+import { parseDateOnlyLocal } from './format'
 import type { FilterAction, FilterCondition, FilterLogic, FilterState, FilterValue } from './types'
 
 const DAY = 86_400_000
@@ -94,6 +95,15 @@ export function isFilterActive(value: FilterValue | null | undefined): boolean {
   return activeConditions(value).length > 0
 }
 
+/**
+ * 字符串 → 时间戳(解析不了是 NaN)。纯日期串(yyyy-MM-dd)按本地零点,不交给 Date.parse ——
+ * 后者按 ES 规范把它当 UTC 零点,UTC 以西的时区里会落到本地前一天(与 formatDate 的展示基准共用 parseDateOnlyLocal)。
+ * 带时间部分的串照旧 Date.parse:裸 datetime 按本地,带 Z / 偏移的按其时刻。
+ */
+function parseTime(s: string): number {
+  return parseDateOnlyLocal(s)?.getTime() ?? Date.parse(s)
+}
+
 /** 统一成可比较标量:布尔/数字串 → number,Date/日期串 → 时间戳,其余 → 原字符串。 */
 function toComparable(v: unknown): number | string | null {
   if (v === null || v === undefined) return null
@@ -107,7 +117,7 @@ function toComparable(v: unknown): number | string | null {
   if (s.trim() === '') return null
   const n = Number(s)
   if (!Number.isNaN(n)) return n
-  const t = Date.parse(s)
+  const t = parseTime(s)
   return Number.isNaN(t) ? s : t
 }
 
@@ -135,13 +145,14 @@ function dayRange(
   if (typeof value !== 'string') return null
   const parsed = parseDateOnly(value, dateValueFormat)
   if (!parsed) return null
-  const cellTs = cell instanceof Date ? cell.getTime() : typeof cell === 'string' ? Date.parse(cell) : NaN
+  const cellTs = cell instanceof Date ? cell.getTime() : typeof cell === 'string' ? parseTime(cell) : NaN
   if (Number.isNaN(cellTs)) return null
   // 本地时区锚定,不用 UTC:单元格若是不带时区偏移的裸日期时间串(常见于后端直出的
   // datetime 字段),Date.parse 按运行环境本地时区解析 —— 与 formatDate/formatDatetime
   // 展示用的 getFullYear/getHours 是同一套本地时间基准。「整天」边界也必须锚在同一基准上,
   // 否则「等于 2024-03-05」按 UTC 零点切,裸日期时间串按本地零点切,两边对不齐,会让页面上
   // 明明显示在 3 月 5 日的行被判定成不匹配(时区在 UTC 前面时尤其明显)。
+  // 单元格是纯日期串(后端 DATE 字段)时同理:parseTime 按本地零点解析,不走 Date.parse 的 UTC 零点。
   const start = new Date(parsed.y, parsed.m - 1, parsed.d).getTime()
   if (Number.isNaN(start)) return null
   return { cellTs, start, end: start + DAY }
@@ -181,6 +192,8 @@ function matchEndsWith(cell: unknown, value: unknown): boolean {
  * 遇到字面字符直接比较(忽略大小写),遇到 % 记下当前匹配位置作为回溯锚点,
  * 后续字面字符不匹配时从锚点回溯并把「已吞掉的字符数」加一重试 —— 最坏 O(text.length * pattern.length),
  * 没有递归 / 回溯爆炸。
+ * 分支顺序要紧:先判 pattern 当前字符是不是 %,再做字面比较。反过来的话,单元格同一位置恰好也是字面 %
+ * (如 '50%' 对 '50% off')时会走字面相等分支、不记回溯锚点,后面一对不上就直接判失败。
  */
 function wildcardMatch(text: string, pattern: string): boolean {
   let s = 0
@@ -189,12 +202,12 @@ function wildcardMatch(text: string, pattern: string): boolean {
   let starMatchFrom = -1
   while (s < text.length) {
     const pc = p < pattern.length ? pattern[p] : undefined
-    if (pc !== undefined && (pc === '_' || pc.toLowerCase() === text[s].toLowerCase())) {
-      s++
-      p++
-    } else if (pc === '%') {
+    if (pc === '%') {
       starIdx = p
       starMatchFrom = s
+      p++
+    } else if (pc !== undefined && (pc === '_' || pc.toLowerCase() === text[s].toLowerCase())) {
+      s++
       p++
     } else if (starIdx !== -1) {
       // 回溯:让上一个 % 多吞一个字符,从那里重新尝试

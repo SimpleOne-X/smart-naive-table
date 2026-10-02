@@ -13,10 +13,30 @@ import {
   NO_VALUE_ACTIONS,
   optionsToFilterValue,
 } from '../src/filter'
+import { formatDate } from '../src/format'
 import type { FilterAction, FilterValue } from '../src/types'
 
 function cond(action: FilterAction, value: unknown) {
   return { action, value }
+}
+
+/**
+ * 依次切到给定时区跑 fn,结束后恢复。Node 在给 process.env.TZ 赋值时重置时区缓存,同一进程里即可切换;
+ * 但 delete process.env.TZ 不会触发重置,所以原来没设 TZ 时写回解析出的系统时区名。
+ * 每个时区先断言切换真的生效(运行时解析出的时区就是目标时区),防止测试在「切不动时区」的环境里假绿。
+ */
+function inTimeZones(zones: string[], fn: (tz: string) => void) {
+  const original = process.env.TZ
+  const systemZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  try {
+    for (const tz of zones) {
+      process.env.TZ = tz
+      expect(Intl.DateTimeFormat().resolvedOptions().timeZone, 'TZ 切换未生效').toBe(tz)
+      fn(tz)
+    }
+  } finally {
+    process.env.TZ = original ?? systemZone
+  }
 }
 function val(logic: 'and' | 'or', ...conds: Array<{ action: FilterAction; value: unknown }>): FilterValue {
   return { logic, conditions: conds }
@@ -116,6 +136,51 @@ describe('matchCondition', () => {
     } finally {
       process.env.TZ = originalTZ
     }
+  })
+
+  // final review fix(2.1.1 起就有的老缺陷,不是本轮引入的):单元格是纯日期串(后端 DATE 字段常见的序列化形状)
+  // 时,旧实现用 Date.parse 解析 —— ES 规范把不带时间的 ISO 日期串当成 UTC 零点,UTC 以西的时区里那一刻
+  // 还是本地的前一天;而过滤值的整天边界按本地零点切,于是「等于 2026-09-21」选不中 '2026-09-21' 这一行。
+  // 必须在 UTC 以西的时区里跑才有意义(本机 UTC+8 下这个缺陷不显形),所以这里逐个切时区。
+  it('单元格是纯日期串(yyyy-MM-dd)时按本地零点解析:UTC 以西的时区里日期条件也选中原日历日(final review fix)', () => {
+    inTimeZones(['America/New_York', 'America/Los_Angeles', 'Etc/GMT+11', 'UTC', 'Asia/Shanghai', 'Pacific/Kiritimati'], (tz) => {
+      const cell = '2026-09-21'
+      expect(matchCondition(cond('equal', '2026-09-21'), cell), tz).toBe(true)
+      expect(matchCondition(cond('equal', '2026-09-20'), cell), tz).toBe(false)
+      expect(matchCondition(cond('notEqual', '2026-09-21'), cell), tz).toBe(false)
+      expect(matchCondition(cond('in', ['2026-09-21', '2026-09-25']), cell), tz).toBe(true)
+      expect(matchCondition(cond('notIn', ['2026-09-21']), cell), tz).toBe(false)
+      expect(matchCondition(cond('gte', '2026-09-21'), cell), tz).toBe(true)
+      expect(matchCondition(cond('gt', '2026-09-20'), cell), tz).toBe(true)
+      expect(matchCondition(cond('gt', '2026-09-21'), cell), tz).toBe(false)
+      expect(matchCondition(cond('lt', '2026-09-21'), cell), tz).toBe(false)
+      expect(matchCondition(cond('lte', '2026-09-20'), cell), tz).toBe(false)
+      expect(matchCondition(cond('lte', '2026-09-21'), cell), tz).toBe(true)
+      // 与展示同一基准:formatDate 显示的就是原日历日,按它筛选也选得中
+      expect(formatDate(cell), tz).toBe('2026-09-21')
+      expect(matchCondition(cond('equal', formatDate(cell)), cell), tz).toBe(true)
+    })
+  })
+
+  it('纯日期串单元格在走普通标量比较时(过滤值是 Date / 带时间的串)也按本地零点,不按 UTC 零点(final review fix)', () => {
+    inTimeZones(['America/New_York', 'America/Los_Angeles', 'Asia/Shanghai'], (tz) => {
+      const cell = '2026-09-21'
+      // 过滤值是本地零点的 Date 对象(编程式 setFilter 常见):同一时刻
+      expect(matchCondition(cond('equal', new Date(2026, 8, 21)), cell), tz).toBe(true)
+      expect(matchCondition(cond('gte', new Date(2026, 8, 21)), cell), tz).toBe(true)
+      // 过滤值是不带偏移的本地 datetime 串:当天 05:00 在当天零点之后
+      expect(matchCondition(cond('lt', '2026-09-21 05:00:00'), cell), tz).toBe(true)
+      expect(matchCondition(cond('gt', '2026-09-21 05:00:00'), cell), tz).toBe(false)
+    })
+  })
+
+  it('带时间部分的单元格不受这次修复影响:裸 datetime 照旧按本地、带 Z 的照旧按 UTC 时刻', () => {
+    inTimeZones(['America/New_York'], () => {
+      expect(matchCondition(cond('equal', '2026-09-21'), '2026-09-21T23:30:00')).toBe(true)
+      // 2026-09-21T02:00:00Z = 纽约 9 月 20 日 22:00,本地日历日是 20 号
+      expect(matchCondition(cond('equal', '2026-09-20'), '2026-09-21T02:00:00Z')).toBe(true)
+      expect(matchCondition(cond('equal', '2026-09-21'), '2026-09-21T02:00:00Z')).toBe(false)
+    })
   })
 
   it('无法按 dateValueFormat 解析出 yyyy/MM/dd 三个 token 时,dayRange 放弃,退回标量比较', () => {
@@ -281,6 +346,22 @@ describe('新增 7 个操作符', () => {
     const pattern = '%a'.repeat(10) + '%b'
     const cell = 'a'.repeat(40)
     expect(matchCondition(cond('like', pattern), cell)).toBe(false)
+  })
+
+  // final review fix:pattern 里的 % 必须先按通配符处理。旧实现先比「字面字符是否相等」,单元格同一位置
+  // 恰好也是字面 % 时就走了字面匹配分支,没记回溯锚点 —— 后面再有字符对不上就直接判不匹配。
+  it('like:pattern 的 % 永远是通配符,单元格同一位置恰好也是字面 % 时照样匹配(final review fix)', () => {
+    expect(matchCondition(cond('like', '%'), 'abc%')).toBe(true)
+    expect(matchCondition(cond('like', '%'), '%abc')).toBe(true) // 单个 % 匹配一切:单元格以字面 % 开头也一样
+    expect(matchCondition(cond('like', '50%'), '50% off')).toBe(true)
+    expect(matchCondition(cond('like', 'a%'), 'a%b')).toBe(true)
+    expect(matchCondition(cond('like', '%b'), '%ab')).toBe(true) // 开头的 % 对上单元格开头的字面 %
+    expect(matchCondition(cond('like', '%%'), '%x%')).toBe(true)
+    expect(matchCondition(cond('like', 'a_%'), 'a%%b')).toBe(true)
+    // 仍是整串匹配:% 是通配符不等于放宽成「包含」
+    expect(matchCondition(cond('like', '50%'), '5% off')).toBe(false)
+    expect(matchCondition(cond('like', 'a%c'), 'a%b')).toBe(false)
+    expect(matchCondition(cond('like', '%x'), '%')).toBe(false)
   })
 
   it('in / notIn:值是数组,命中任一项即 in;空单元格时 notIn 为真;值不是数组则 in 为假', () => {

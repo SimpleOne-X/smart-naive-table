@@ -3,6 +3,8 @@
 // 折叠个数靠测量:先把全部 chip 渲染出来量 offsetTop(同一帧内完成,不会闪),再按 countFitting 决定显示几个;
 // 「+N」渲染出来后自己也占位,若它折到了第二行就再让出一个位置(shrinkForMore),直到稳定;
 // 容器宽度变了再量一次(只在宽度变化时重量,否则测量时行高变化会触发死循环)。
+// 盯的是行容器 .smart-table-chips(块级、宽度跟着父级走),不是列表:列表是 flex: 0 1 auto、按内容收缩,
+// 折成「+N」后视口再变宽,列表自己的宽度不变,盯着它的 ResizeObserver 不会触发,折起来的 chip 就回不来了(final review fix)。
 // 键盘:chip 是 role="button" tabindex="0",Enter / Space 等同点击;「孤儿」chip(列已不存在)没有面板可开,点击是空操作,× 照常清除。
 // 外观(设计原型 .chips / .chip):主色可点的 NTag small(22px 高)、间距 8px 12px、行下方 12px、「清除全部」紧跟在 chips 后面;孤儿 chip 与「+N」保持默认灰。
 // 「+N」键盘可开(Fix round 1):NPopover 的 trigger="click" 只认真实 click 事件(naive-ui 源码
@@ -33,6 +35,7 @@ const emit = defineEmits<{
   clear: []
 }>()
 
+const rowRef = ref<HTMLElement | null>(null)
 const listRef = ref<HTMLElement | null>(null)
 const visible = ref(Number.POSITIVE_INFINITY)
 const measuring = ref(true)
@@ -96,20 +99,20 @@ let observer: ResizeObserver | null = null
 let lastWidth = -1
 onMounted(() => {
   void recompute()
-  if (typeof ResizeObserver === 'undefined' || !listRef.value) return
+  if (typeof ResizeObserver === 'undefined' || !rowRef.value) return
   observer = new ResizeObserver((entries) => {
     const w = Math.round(entries[0]?.contentRect.width ?? 0)
     if (w === lastWidth) return
     lastWidth = w
     void recompute()
   })
-  observer.observe(listRef.value)
+  observer.observe(rowRef.value)
 })
 onBeforeUnmount(() => observer?.disconnect())
 </script>
 
 <template>
-  <div class="smart-table-chips">
+  <div ref="rowRef" class="smart-table-chips">
     <div ref="listRef" class="smart-table-chips__list">
       <n-tag
         v-for="c in shown"
