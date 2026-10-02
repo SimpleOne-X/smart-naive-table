@@ -160,6 +160,35 @@ describe('ColumnFilter 自定义过滤面板', () => {
 
     wrapper.unmount()
   })
+
+  it('已生效状态(漏斗图标高亮)翻转时不应重新挂载自定义面板(根因:`:is` 绑定内联箭头函数,身份每次渲染都变)', async () => {
+    mountCount = 0
+    const wrapper = mount(ColumnFilter, {
+      props: {
+        def: buildDef(),
+        value: { logic: 'and', conditions: [{ action: 'equal', value: 1 }] },
+        labels,
+        getOptions: () => [],
+        isLoadingOptions: () => false,
+      },
+    })
+
+    await wrapper.find('.smart-table-filter-trigger').trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(mountCount).toBe(1)
+
+    // 值变空(active: true -> false)、再变回非空(false -> true)——这两次翻转都只影响漏斗图标的
+    // CSS class,和自定义面板内容毫无关系,但 `:is="() => def.render!(...)"` 这种写法下,面板所在的
+    // v-if 分支每次父组件重渲染都会生成一个新的箭头函数对象当"组件类型",Vue 据此判定成不同组件,
+    // 整个卸载重挂——拖拽/连续输入中途的面板就会被打断重建。本次没有外部可观察的因果(面板内容本该
+    // 和 active 无关),只有通过 mountCount 才能抓到。
+    await wrapper.setProps({ value: { logic: 'and', conditions: [{ action: 'equal', value: '' }] } })
+    expect(mountCount).toBe(1)
+    await wrapper.setProps({ value: { logic: 'and', conditions: [{ action: 'equal', value: 2 }] } })
+    expect(mountCount).toBe(1)
+
+    wrapper.unmount()
+  })
 })
 
 describe('fmt', () => {

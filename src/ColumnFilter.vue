@@ -221,6 +221,19 @@ function close(focusBack: boolean) {
 }
 
 /**
+ * 自定义面板(def.render)的渲染入口,必须是稳定引用,不能在模板里就地写箭头函数。
+ * `<component :is="fn">` 的 `fn` 本身就是 Vue 拿来当"组件类型"比较身份的东西(resolveDynamicComponent
+ * 对函数原样返回),身份变了 isSameVNodeType 就判不同,会整棵子树卸载重挂——哪怕 fn 每次调用返回的
+ * 内容一样。模板里 `:is="() => def.render!(...)"` 每次渲染都会新建一个箭头函数对象,平时不易察觉
+ * (面板没开 / 没有其它响应式依赖触发重渲染时不会暴露),但只要组件因为任何别的原因重渲染(哪怕只是
+ * active 这个和自定义面板毫不相关的漏斗图标高亮态翻转),面板内容就会被整个卸载重挂一次 ——
+ * 拖拽 / 连续输入时会打断面板里正在交互的控件(如 NSlider 拖拽中途被卸载)。
+ */
+function renderCustomPanel() {
+  return props.def.render!({ value: props.value, setValue: (v) => emit('update:value', v), close: () => close(true) })
+}
+
+/**
  * 焦点是否在面板的首 / 尾控件 edge 上。同名的原生单选组(单选过滤的 NRadioGroup / NRadio)在浏览器里只算一个 Tab 停靠点:
  * 焦点在组里「选中的那个」或方向键移过去的那个 radio 上,不一定是 querySelectorAll 排出来的第一个 / 最后一个,
  * 但从它 Tab / Shift+Tab 出去会直接跳出整组 —— 所以 edge 所在单选组里的任意一个 radio 都算到了边上。
@@ -433,10 +446,7 @@ function reset() {
       @keydown.capture="onPanelKeydown"
     >
       <!-- 自定义面板:完全接管内容,只复用弹层与提交通道 -->
-      <component
-        v-if="def.render"
-        :is="() => def.render!({ value, setValue: (v) => emit('update:value', v), close: () => close(true) })"
-      />
+      <component v-if="def.render" :is="renderCustomPanel" />
 
       <template v-else>
         <div class="smart-table-filter-body">
