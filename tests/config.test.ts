@@ -76,6 +76,24 @@ describe('mergeLabels 三层合并', () => {
     const merged = mergeLabels(undefined, global.value)
     expect(merged.search).toBe('搜索')
   })
+
+  it('partial 显式传 undefined 不覆盖,应退回 global 或 defaultLabels', () => {
+    const merged = mergeLabels({ search: undefined }, { reset: 'R-global' })
+    expect(merged.search).toBe(defaultLabels.search) // 退回内置默认,不是 undefined
+    expect(merged.reset).toBe('R-global')
+  })
+
+  it('global 显式传 undefined 不覆盖,应退回 defaultLabels', () => {
+    const merged = mergeLabels({ search: 'S-inst' }, { search: undefined })
+    expect(merged.search).toBe('S-inst') // partial 有值,还是胜
+    const merged2 = mergeLabels(undefined, { search: undefined })
+    expect(merged2.search).toBe(defaultLabels.search) // 都没有非 undefined 值,退回内置默认
+  })
+
+  it('三层都没传某个键,拿到 defaultLabels', () => {
+    const merged = mergeLabels({ reset: 'R-inst' }, { search: 'S-global' })
+    expect(merged.refresh).toBe(defaultLabels.refresh)
+  })
 })
 
 describe('15 个操作符都有文案', () => {

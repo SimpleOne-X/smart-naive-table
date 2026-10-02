@@ -45,6 +45,8 @@
 - C5:开启 `search.collapsible` 时,窄屏(1 列)折叠态至少露出首个搜索字段(此前 0 个)。
 - **C6:宿主在 `<SmartTable>` 上写的 `@update:sorter` 每次点表头原来会被调两次(两次载荷相同,宿主若在里面累加 / 发请求会重复),现在只调一次**(库统一经 `notifyHostSorter` 转发,不再让它再从透传属性里混进去一份)。
 - **C7:单元格是纯日期串(`'2026-09-21'` 这种不带时间的形状,后端 DATE 字段常见)时,现在按浏览器本地零点解析**(2.1.1 起就有的老问题)。此前它被按 UTC 零点解析:**UTC 以西的时区(如美洲)里 `format: 'date'` / `'datetime'` 显示成前一天**,本地过滤也按前一天判定(例:「大于等于 2026-09-21」选不中这一行,「等于 2026-09-20」反而选中);**UTC 以东的时区(如 UTC+8)日期显示本来就对,但 `format: 'datetime'` 显示的是 `2026-09-21 08:00:00` 这类时区偏移小时,现在是 `00:00:00`**,过滤值是 `Date` 对象或带时间的串时的比较也随之改正。带时间部分的串(裸 datetime、带 `Z` / 偏移)、`Date` 对象、时间戳的解析不变。
+- **C8:`mergeLabels` 不再被显式 `undefined` 覆盖**(2.1.1 就有的老问题,Task 2 标记过 "pre-existing" 一直没修)。`labels` prop 中某个字段显式写 `undefined`(如从可能返回 `undefined` 的表达式计算)时,此前会覆盖掉下层的默认值、导致 UI 渲染成字面 `undefined`;现在跳过 `undefined` 键,该字段退回到 global labels 或英文内置默认。修复前:宿主 `{ search: undefined }` → `merged.search = undefined`、渲染 "undefined"。修复后:宿主 `{ search: undefined }` → `merged.search = 'Search'`(内置默认)。
+- **C9:`startsWith` / `endsWith` / `like` 操作符现在对数组单元格逐元素匹配,和 `contains` 一致**(3.0 新增操作符,发布前对齐)。修复前:单元格 `['apple', 'banana']` 被 join 成 `"apple,banana"`,`startsWith('b')` 判定整串是否以 `'b'` 开头(否)而不是数组中有无元素以 `'b'` 开头。修复后:`startsWith('b')` 逐元素判定、命中 `'banana'`、返回 `true`。避免了 join 边界的假阳性(如 `[1,22,3]` join 成 `"1,22,3"` 误中 `contains('1,2')`)。
 
 ### 新增
 

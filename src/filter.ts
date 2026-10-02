@@ -175,12 +175,16 @@ function matchContains(cell: unknown, value: unknown): boolean {
 
 function matchStartsWith(cell: unknown, value: unknown): boolean {
   if (cell === null || cell === undefined) return false
-  return String(cell).toLowerCase().startsWith(String(value).toLowerCase())
+  const needle = String(value).toLowerCase()
+  if (Array.isArray(cell)) return cell.some((v) => String(v).toLowerCase().startsWith(needle))
+  return String(cell).toLowerCase().startsWith(needle)
 }
 
 function matchEndsWith(cell: unknown, value: unknown): boolean {
   if (cell === null || cell === undefined) return false
-  return String(cell).toLowerCase().endsWith(String(value).toLowerCase())
+  const needle = String(value).toLowerCase()
+  if (Array.isArray(cell)) return cell.some((v) => String(v).toLowerCase().endsWith(needle))
+  return String(cell).toLowerCase().endsWith(needle)
 }
 
 /**
@@ -226,7 +230,9 @@ function wildcardMatch(text: string, pattern: string): boolean {
 /** SQL LIKE:% 任意长度(含空)、_ 单个字符,整串匹配、忽略大小写;其余字符按字面量。 */
 function matchLike(cell: unknown, value: unknown): boolean {
   if (cell === null || cell === undefined) return false
-  return wildcardMatch(String(cell), String(value))
+  const pattern = String(value)
+  if (Array.isArray(cell)) return cell.some((v) => wildcardMatch(String(v), pattern))
+  return wildcardMatch(String(cell), pattern)
 }
 
 function matchIn(cell: unknown, value: unknown, dateValueFormat: string): boolean {

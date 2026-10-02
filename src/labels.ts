@@ -105,12 +105,26 @@ export const zhCNLabels: Required<SmartTableLabels> = {
   filterRestoreDefault: '恢复默认',
 }
 
+/** 浅合并助手:跳过值为 undefined 的键,避免 undefined 覆盖下一层的默认值。 */
+function mergeDefined(base: Required<SmartTableLabels>, ...overrides: Array<Partial<SmartTableLabels> | undefined>): Required<SmartTableLabels> {
+  const result = { ...base }
+  for (const override of overrides) {
+    if (!override) continue
+    for (const [key, v] of Object.entries(override)) {
+      if (v !== undefined) {
+        (result as Record<string, unknown>)[key] = v
+      }
+    }
+  }
+  return result
+}
+
 /** 三层合并:内置英文 < 全局默认(global)< 实例 prop(partial)。结果是 Required 形状(缺的键已由英文默认补齐)。 */
 export function mergeLabels(
   partial?: Partial<SmartTableLabels>,
   global?: Partial<SmartTableLabels>,
 ): Required<SmartTableLabels> {
-  return { ...defaultLabels, ...global, ...partial }
+  return mergeDefined(defaultLabels, global, partial)
 }
 
 /** 操作符 → 文案键(ColumnFilter / ConditionRow / chips 共用)。 */

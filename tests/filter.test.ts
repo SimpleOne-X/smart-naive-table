@@ -319,6 +319,18 @@ describe('新增 7 个操作符', () => {
     expect(matchCondition(cond('endsWith', 'a'), undefined)).toBe(false)
   })
 
+  it('startsWith / endsWith / like:数组单元格逐元素匹配,避免 join 时的边界假阳性', () => {
+    // startsWith 对数组单元格逐元素判断(某个元素以 b 开头)
+    expect(matchCondition(cond('startsWith', 'b'), ['apple', 'banana'])).toBe(true)
+    expect(matchCondition(cond('startsWith', 'z'), ['apple', 'banana'])).toBe(false)
+    // endsWith 对数组单元格逐元素判断(某个元素以 e 结尾)
+    expect(matchCondition(cond('endsWith', 'e'), ['apple', 'banana'])).toBe(true)
+    expect(matchCondition(cond('endsWith', 'z'), ['apple', 'banana'])).toBe(false)
+    // like 对数组单元格逐元素判断(某个元素含 an)
+    expect(matchCondition(cond('like', '%an%'), ['apple', 'banana'])).toBe(true)
+    expect(matchCondition(cond('like', '%z%'), ['apple', 'banana'])).toBe(false)
+  })
+
   it('like:% 任意长度、_ 单个字符,整串匹配、忽略大小写;正则元字符按字面量', () => {
     expect(matchCondition(cond('like', 'ali%'), 'Alice')).toBe(true)
     expect(matchCondition(cond('like', '%ice'), 'Alice')).toBe(true)
