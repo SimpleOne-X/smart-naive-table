@@ -873,7 +873,7 @@ This section is the **version roadmap and current progress**, not a changelog; p
 
 | Item | Current state | Where |
 |---|---|---|
-| Narrow-tier header-filter drawer | Not done: in card mode the header funnel has no entry; filter on the narrow tier with the query builder (`search: { container: 'table' }`) | Spec §5.8, CHANGELOG `3.0.0-beta.2` |
+| Narrow-tier header-filter drawer | Not done: in card mode the header funnel has no entry; filter on the narrow tier with the query builder (`search: { container: 'table' }`) | Spec §5.8, CHANGELOG `3.0.0` |
 | `select-table` inside the editable grid | Single selection only inside a cell (use `multiselect` for small multi-value enums) | `SelectTableProps` in `src/types.ts` |
 | `SmartSelectTable` with remote data | Re-opening does not jump to the page of the selected row (local `data` does) | `activeIndex` in `src/SmartSelectTable.vue` is only computed for local data |
 | `SmartSelectTable` in the search form | Not wired into `SearchForm` yet; table-picker fields in the search form are planned separately | The "Table picker" section on this page |

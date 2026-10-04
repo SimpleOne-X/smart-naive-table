@@ -867,7 +867,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 
 | 项 | 现状 | 出处 |
 |---|---|---|
-| 窄档列头筛选抽屉 | 未做：卡片模式下列头漏斗没有入口，窄档筛选请用条件构造器（`search: { container: 'table' }`） | 规格 §5.8、CHANGELOG `3.0.0-beta.2` |
+| 窄档列头筛选抽屉 | 未做：卡片模式下列头漏斗没有入口，窄档筛选请用条件构造器（`search: { container: 'table' }`） | 规格 §5.8、CHANGELOG `3.0.0` |
 | 可编辑表格里的 `select-table` | 单元格内只支持单选（多选小枚举用 `multiselect`） | `src/types.ts` 的 `SelectTableProps` |
 | `SmartSelectTable` 远程数据 | 再次打开时不会翻到已选行所在的页（本地 `data` 会） | `src/SmartSelectTable.vue` 的 `activeIndex` 只在本地数据时计算 |
 | `SmartSelectTable` 进搜索表单 | 还没接进 `SearchForm`，搜索表单里的下拉表格字段另行规划 | 本文「下拉表格选择」一节 |

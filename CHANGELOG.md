@@ -2,17 +2,17 @@
 
 ## 3.0.0 - 2026-10-04
 
-> 3.0.0 是相对 2.1.1 的一次 **major** 升级。`3.0.0-beta.1`(P0)与 `3.0.0-beta.2`(P1 / P2 及追加)两个预发布版**没有单独发布到 npm**,下面这两节合起来就是 3.0.0 相对 2.1.1 的全部变更;升级步骤见 [MIGRATION.md](./MIGRATION.md),未完成项见 [README 的里程碑](./README.md#里程碑)。
+> 3.0.0 是相对 2.1.1 的一次 **major** 升级。下面分「追加部分」(P1 / P2 与行为变化)和「基础部分」(P0)两块,合起来就是 3.0.0 相对 2.1.1 的全部变更;升级步骤见 [MIGRATION.md](./MIGRATION.md),未完成项见 [README 的里程碑](./README.md#里程碑)。
 
-## 3.0.0-beta.2(并入 3.0.0)
+### 追加部分(P1 / P2 与行为变化)
 
-> 在 `3.0.0-beta.1` 之上追加 P1。**新能力(条件构造器、批量栏、放大)全部是可选属性、默认关闭**;但 beta.1 → beta.2 有 **11 处行为变化是不传任何新属性也会生效的**,集中写在下面的「行为变化」一节(每项带回退方式):「更多」下拉的锚定、库自己的气泡可按 Esc 关、已生效条件 chips 的位置(只影响开了 `filterChips` 的用户)、列宽拖拽把手(只影响开了 `resizable` 的用户)、当前行高亮色(D1)、`@row-click` 的触发范围(D2)、请求失败后的页码(D3)、每页条数可选项按 `fillHeight` 区分(D4)、序号列声明在数据列之后时的位置、窄档拖拽卡片里的序号、窄档卡片末尾的合计卡(后三项只影响用了对应能力的宿主)。
+> 在「基础部分」之上追加 P1。**新能力(条件构造器、批量栏、放大)全部是可选属性、默认关闭**;但有 **11 处行为变化是不传任何新属性也会生效的**,集中写在下面的「行为变化」一节(每项带回退方式):「更多」下拉的锚定、库自己的气泡可按 Esc 关、已生效条件 chips 的位置(只影响开了 `filterChips` 的用户)、列宽拖拽把手(只影响开了 `resizable` 的用户)、当前行高亮色(D1)、`@row-click` 的触发范围(D2)、请求失败后的页码(D3)、每页条数可选项按 `fillHeight` 区分(D4)、序号列声明在数据列之后时的位置、窄档拖拽卡片里的序号、窄档卡片末尾的合计卡(后三项只影响用了对应能力的宿主)。
 >
 > 验证环境:本次变更在**本地实装的 naive-ui 2.45.3** 上验证;`peerDependencies` 提到 `^2.44.0`,2.44.0 ~ 2.45.2 之间的版本未单独测。
 
-### 行为变化(不传任何新属性,升级后也会变)
+#### 行为变化(不传任何新属性,升级后也会变)
 
-| 变更 | 旧(`3.0.0-beta.1`)→ 新 | 回退方式 |
+| 变更 | 旧(基础部分)→ 新 | 回退方式 |
 |---|---|---|
 | **「更多」下拉的锚定**(**凡传了 `toolbar.more` 的宿主都受影响**) | 菜单在按钮下方**右对齐**(`bottom-end`),与按钮的间距是官方默认 6px → **左对齐(`bottom-start`)、菜单最小宽 148px、离按钮 8px**。原因:「更多」在业务按钮组末尾、右侧还有内置图标,不靠右贴边,左对齐才与设计原型一致。实现全走官方入口:`placement`、`NDropdown` 的 `menu-props`(最小宽)、`peers.Popover.space` 主题覆盖(只作用于这一个下拉) | 无开关(位置与最小宽) |
 | **库自己的气泡不开放大也能按 Esc 关** | 「更多」菜单、密度菜单、列设置、chips 的「+N」按 Esc 没有反应(官方 `NPopover` 不管键盘,`NDropdown` 只有焦点在菜单里才响应 Esc)→ **按 Esc 关闭**(库改成受控 `show`,焦点还在触发按钮上也生效)。放大态下的 Esc 分层(先收浮层、再还原)依赖它 | 无 |
@@ -22,14 +22,14 @@
 | **`@row-click` 的触发范围**(D2;用了 `@row-click` 且行内有操作控件的宿主) | 行内任何点击都触发(点「编辑 / 删除」按钮、勾选框也会冒成行点击,宿主得自己 `.stop`)→ **点击目标在行内的按钮 / 勾选框 / 单选框 / 开关 / 链接 / 输入框 / 下拉 / 展开箭头等交互控件上时不触发**。判定:目标或它在本行内的祖先命中 `button, input, textarea, select, a, label, [role=button / checkbox / radio / switch / combobox], .n-button, .n-checkbox, .n-radio, .n-switch, .n-input, .n-input-number, .n-base-selection, .n-date-picker, .n-base-close, .n-data-table-expand-trigger, [data-act], [data-open], [data-stop]`(选择器与设计原型一致,再补上 naive 的真实 DOM:`NCheckbox` 的根是 `div.n-checkbox` 而不是原生 input)。点普通单元格、单元格空白照旧触发;宿主 `row-props` 里自己的 `onClick` 不受影响、照旧先于 `rowClick` 调用 | 需要旧行为时,在 `row-props` 的 `onClick` 里自己处理(它不受忽略规则影响) |
 | **请求失败后的页码**(D3;远程模式 / `useSmartTable`) | `search()` / `onPage(p)` / `onPageSize(s)` 先改 `pagination.page` / `pageSize` 再请求,请求失败时只调 `onError`,页码指向没拿到的页、表里却是旧页的行 → **失败时把页码和每页条数还原到「表里实际展示的那一页」**(最近一次成功请求时的值),再调 `onError`。只还原最新那次请求;被更新请求取代的旧请求失败不还原、不报错(原有 `reqSeq` 竞态处理不变);成功时行为不变;`load()` / `refresh()` / `reset()` 不还原(前两者没改页码,`reset()` 同时清了搜索参数,没有可还原的「上一页」) | 无(缺陷式修正);要旧行为可在 `onError` 里把 `pagination.page` 改回去 |
 | **每页条数可选项按 `fillHeight` 区分**(D4;**没显式给 `pageSizes` 的宿主**) | 内置可选项固定 `[100, 500, 1000]` → **开了 `fillHeight` 的表格 `[100, 1000, 10000]`,没开的仍是 `[100, 500, 1000]`**(默认每页都是 100)。依据:Edge 实测(1440×900),不开 `fillHeight` 时一页 10000 行切换 9.4s、排序 22.8s、JS 堆 1.3GB;开了(官方虚拟滚动)约 45ms。宿主(实例 `pagination.pageSizes` 或全局 `createSmartTableDefaults({ pageSizes })`)显式给了就照宿主的、不分 `fillHeight`;`fillHeight` 挂载后切换时可选项跟着变,当前每页条数不在新列表里就自动并入。放大(`toolbar.maximize`)不参与判定,只看 `fillHeight` 属性 | 全局或实例显式写 `pageSizes: [100, 500, 1000]` |
-| **表头「全选」复选框的位置**(用了选择列 / 展开列的宿主;缺陷修复) | 库给表头(`.n-data-table-th`)统一加的右内边距 16px 也套在了选择列表头上,全选框比行内复选框偏左 8px → 选择 / 展开列的表头保持官方的 `padding: 0` + 居中,与行内复选框同一竖线 | 无需回退(beta.1 引入的偏差) |
+| **表头「全选」复选框的位置**(用了选择列 / 展开列的宿主;缺陷修复) | 库给表头(`.n-data-table-th`)统一加的右内边距 16px 也套在了选择列表头上,全选框比行内复选框偏左 8px → 选择 / 展开列的表头保持官方的 `padding: 0` + 居中,与行内复选框同一竖线 | 无需回退(基础部分引入的偏差) |
 | **`fillHeight` 下空状态的位置**(开了 `fillHeight` 且数据为空的宿主) | 「暂无数据」贴在表体顶部(库恒传 `scroll-x`,官方此时把空状态融进表格节点并贴顶) → **在表体里垂直居中**;没开 `fillHeight` 的表不受影响 | 宿主用更高优先级的 CSS 把 `.n-data-table-empty` 的 `height` 改回 `auto` |
 | **行拖拽排序的手感与范围**(开了 `rowDraggable` 的宿主;缺陷修复) | 走浏览器原生 HTML5 拖放:拖影是浏览器画的位图,**指针拖到哪它跟到哪**(拖出表格、拖出页面),松手后再弹回;被拖行在表里没有任何视觉反馈 → **拖动限定在表体内**:拖影只能纵向移动(X 锁在按下处)、Y 夹在表体可视范围内(首行顶 … 末行底);指针拖到表外(左 / 右 / 上 / 下)拖影贴着最近的边,**松手 = 落在最近边的那个位置**(拖到最下面之外 = 放到最后一行,不取消);贴近表体边缘(64px 内)自动滚动(虚拟滚动 / 页面滚动都行);窄档卡片同样。手感:被拖行抬起(浮层阴影 + 主题悬停底,不透明),落点留一行主色 12% 淡底的占位,邻行 180ms 滑开(`cubic-bezier(0.2, 0, 0, 1)`),拖动中光标 `grabbing` 且不选中文字;起拖阈值 4px(点一下手柄不会误起拖)。实现:sortablejs 改走 `forceFallback`(拖影是 tbody / 卡片列表里的一份行克隆,继续继承 `--n-*` 主题变量),约束靠改写 `clientX / clientY`(见 `src/rowDragConfine.ts`);新增 DOM class:`smart-table-drag-ghost`(拖影)、`smart-table-drag-placeholder`(占位)、`smart-table-drag-chosen`,拖动期间 `body` 上有 `smart-table-row-dragging`;行内的 `sortable-ghost / sortable-chosen / sortable-fallback` 不再出现。公开 API(`rowDraggable` / `dragHandle` / `@row-drag-sort`)不变。已知限制:横向滚动的宽表里,拖影按行的自然列序渲染,固定列(`fixed`)在拖影里不吸边 | 无开关;宿主若给 `.sortable-ghost` 等 sortablejs 默认 class 写过样式,请改成上面的新 class |
 | **序号列(`type: 'index'`)的位置**(声明在某个数据列**之后**的宿主;极少见) | 序号列恒在最前(排在所有数据列之前)→ **声明在某个数据列之后就排在那一列后面**(如「勾选 → 手柄 → 序号」);声明在最前或前面没有数据列时与以前完全一致 | 把序号列声明挪到所有数据列之前 |
 | **窄档 + `row-draggable` 的卡片里的序号**(同时有 `type: 'index'` 列的宿主) | 卡片里没有序号(序号列一律忽略)→ **拖拽排序的卡片在标题行末尾、勾选框之前显示行号**(同设计原型模块 10 的 `.rc-no`);不可拖拽的卡片仍不显示 | 不想要就不在拖拽表里放序号列 |
 | **窄档卡片列表末尾的「合计」卡**(同时传了 naive 的 `summary` 的宿主) | 卡片模式下合计行不显示 → **列表末尾多一张「合计」卡**(标题 = 卡片标题列的合计值,其余 = 有合计值的卡片字段) | 窄档不传 `summary` |
 
-### 新增
+#### 新增
 
 - **模式 2「条件构造器」**:`search: { container: 'table' }`。搜索区并入表格卡片的一行「字段 + 比较符 + 值」,字段候选 = 声明了 `search` 的列;点「更多条件」(`»`)展开多条件面板(每行与列头过滤面板同一套 `ConditionRow`:引导列「条件」/ 且或、比较符、值、删除;≤ 10 条、且 / 或逐字段、跨字段固定「且」);**产出走 `filters`(`FilterState` + `filterSerializer`),不再产出 `params`**;默认开 `filterChips`(B10,可显式 `filterChips: false` 关掉)。每种控件类型有推荐比较符集合(文本 / 数字 / 日期 / 选项,规格 §5.9,常量导出为 `RECOMMENDED_ACTIONS`),搜索项上可用 `search.actions` 覆盖。窄档(根节点宽 < 600)收成「输入框 + 筛选」,点「筛选」从底部抽屉(官方 `NDrawer`)展开同一份条件面板。**带 `search.render` 的列放不进构造器,不出现在字段候选里**;`daterange` 按 `date` 处理,`switch` 不进构造器;`search.key` 在模式 2 下被忽略。`search.container` 优先于旧的 `search.layout`(`'none'` = 旧 `layout: 'inline'`)。
   - 同时写了 `filter` 的列复用列头的过滤项(同一个过滤键、同一份过滤态),所以构造器与列头漏斗互相同步;因此**同一列在构造器里搜出的条件,会同时点亮它的列头漏斗**。
@@ -62,24 +62,24 @@
     - 新增导出:`SmartSelectTable`、`matchKeyword`,类型 `SmartSelectTableProps` / `SelectTableProps`;`EditorKind` 增加 `'select-table'`;新 labels(全部可选):`pickTotal`、`pickSelected`、`pickClearSel`、`pickOk`;实例 `revealRow(index)` / `goPage(page)`(`fillHeight` 虚拟滚动下滚动到某行 / 跳页)。
   - 其它可编辑表格补充(同样全是可选):`editable.add: { position: 'bottom' }`(新增行追加到末尾,新增后自动进入第一个「必填且为空」的格);列 `readonly: false` 不受 `editable.rowReadonly` 影响(如「状态」列);**锁定的格可选中 / 复制**(以前不能选中),只是不能编辑;`editable.labelWidth`(窄档抽屉标签列宽,默认 72);窄档抽屉不再为没有标题的 render 列(拖拽手柄)生成空字段。
 
-### 文档
+#### 文档
 
 - 新增升级指南 [`MIGRATION.md`](./MIGRATION.md)(2.x → 3.0.0 的破坏性变更、回退方式、升级前检查清单),并加入 `package.json` 的 `files`,随 npm 包发布;README 中英文顶部各加一行入口。
 
-### 内部
+#### 内部
 
 - 新增 `MaximizeLayer`(函数组件,只在开了放大时多包一层 `div.smart-table-layer`;不开放大时 DOM 不变)、`maximize.ts`、`useEscClose.ts`、`conditionBuilder.ts`、`ConditionPanel.vue`、`ConditionBar.vue`;`ConditionRow` 新增 `size` / `valueOnly` / `placeholder` / `lead` / `searchIcon` 与 `#field` 插槽;`ColumnFilter` 新增 `closeRequest`。
 - 对照页(`/prototype.html`)补上模块 2 / 3 / 4 的条件构造器、批量栏(批量审核 + 批量删除确认框)与放大,与设计原型逐项对照;模块 1 仍是独立搜索表单卡。
 
-## 3.0.0-beta.1(并入 3.0.0)
+### 基础部分(P0)
 
 > 这是一次 **major** 升级:下面「默认行为变更」里的每一项,**不传任何属性、升级后也会变**。每项都写了回退方式,都是一行属性。
 >
 > **⚠ C2(缺陷修复,但行为会突变)**:此前给列写了 `defaultSortOrder` 却因被受控 `sortOrder` 盖掉而从未生效;升级后**首次请求会带上排序参数、静态 `data` 模式下本地数据也会按它排序、箭头会回显**。如果你有这样的列,请确认这是你想要的。
 >
-> 本次变更**只在 naive-ui 2.45.3 上验证过**(`peerDependencies` 仍是 `^2.34.0`),其它 2.x 版本未测。
+> 本次变更**只在 naive-ui 2.45.3 上验证过**(`peerDependencies` 是 `^2.44.0`),2.44.0 ~ 2.45.2 之间的版本未单独测。
 
-### 默认行为变更(B 级)
+#### 默认行为变更(B 级)
 
 | 变更 | 旧 → 新 | 回退方式 |
 |---|---|---|
@@ -95,7 +95,7 @@
 | **卡片内边距**(B11) | 2.1.1 内容区 **20 / 24 / 20**(上 / 左右 / 下;官方 medium,无 header 时 `padding-top` 取 `--n-padding-bottom`)→ **四边 16px**(`size="small"` + 库内卡片自己的 `paddingSmall` 覆盖,不影响宿主全局主题) | `cardProps: { size: 'medium' }`(新增,见下) |
 | **可拖拽列的拖拽下限**(B12,只影响开了 `resizable` 的用户) | 固定 60px → 带图标的列取 `max(resizeMinWidth, 图标下限)`:仅排序 93、仅过滤 102、两者 123(吸收列没有把手,见 B8) | 列上显式写 `minWidth` |
 
-### 外观调整(对齐设计原型;2.1.1 已有外观的变化)
+#### 外观调整(对齐设计原型;2.1.1 已有外观的变化)
 
 | 变更 | 旧 → 新 | 回退方式 |
 |---|---|---|
@@ -108,7 +108,7 @@
 | **列设置** | 允许把列全部取消(表头只剩勾选 / 操作列)→ **只剩一列可见时那一列的勾选框禁用**;库内部的 `toggleShow` 同样兜底拒绝隐藏最后一个显示的列 | 无(没有数据列的表格没有意义) |
 | **搜索区「展开 / 收起」**(缺陷修复) | 文字按钮比同排「搜索 / 重置」上移 6px、矮 20px → **同高、垂直居中** | 无(缺陷) |
 
-### 缺陷修复(C 级)
+#### 缺陷修复(C 级)
 
 - C1:列上写 `sorter: { multiple }` 的多列排序不再被截成单列(箭头回显与远程参数都变正确)。
 - **C2:`defaultSortOrder` 现在会生效**(见顶部提示)。它**只在首次 setup 时从列声明里读一次**:列若是异步加载进来的,`defaultSortOrder` 不会生效,请在列到位后用实例方法 `sort()`。
@@ -119,7 +119,7 @@
 - **C8:`mergeLabels` 不再被显式 `undefined` 覆盖**(2.1.1 就有的老问题,Task 2 标记过 "pre-existing" 一直没修)。`labels` prop 中某个字段显式写 `undefined`(如从可能返回 `undefined` 的表达式计算)时,此前会覆盖掉下层的默认值、导致 UI 渲染成字面 `undefined`;现在跳过 `undefined` 键,该字段退回到 global labels 或英文内置默认。修复前:宿主 `{ search: undefined }` → `merged.search = undefined`、渲染 "undefined"。修复后:宿主 `{ search: undefined }` → `merged.search = 'Search'`(内置默认)。
 - **C9:`startsWith` / `endsWith` / `like` 操作符现在对数组单元格逐元素匹配,和 `contains` 一致**(3.0 新增操作符,发布前对齐)。修复前:单元格 `['apple', 'banana']` 被 join 成 `"apple,banana"`,`startsWith('b')` 判定整串是否以 `'b'` 开头(否)而不是数组中有无元素以 `'b'` 开头。修复后:`startsWith('b')` 逐元素判定、命中 `'banana'`、返回 `true`。避免了 join 边界的假阳性(如 `[1,22,3]` join 成 `"1,22,3"` 误中 `contains('1,2')`)。
 
-### 新增
+#### 新增
 
 - **多列排序**:列上写官方 `sorter: { multiple: n }`(**数值大者优先,与点击顺序无关**)。远程参数:单列不变;多列仍带最高优先级列的 `sortField` / `sortOrder`,**另加 `sorts: [{ field, order }…]`**(`order` 为 `'asc' | 'desc'`)。实例方法 `sort(columnKey?, order = 'ascend')`、`clearSorter()`(沿用官方 `DataTableInst` 的签名:不传 `columnKey` = `clearSorter()`;会通知宿主的 `onUpdate:sorter`,载荷形状与官方一致;编程式调用只转发给 `@update:sorter` 这种写法,`onUpdateSorter` / `onSorterChange` 拼写只在点表头时收到)。排序态不持久化。
 - **`FilterAction` 由 8 个扩到 15 个**:新增 `isNull` `isNotNull` `like` `startsWith` `endsWith` `in` `notIn`。**列头面板的默认可选操作符不变**,只有宿主在列上显式写 `filter.actions` 时才会出现这些操作符,所以后端只会在宿主显式开启后才收到它们。语义:`isNull`/`isNotNull` 不需要值(空 = `null`/`undefined`/空白串/空数组,`0`/`false` 不算空;**值为空也不会被当成「没填」丢弃**);`startsWith`/`endsWith` 忽略大小写;`like` 是 SQL `LIKE`(`%` 任意长度、`_` 单字符,整串匹配、忽略大小写;不支持转义,`%` / `_` 一律按通配符);`in`/`notIn` 的值是数组;**未知操作符一律按不匹配处理(fail-closed)**。**`in` 经勾选面板回写会变成若干 `equal` 取「或」——语义相同、序列化形状不同。** 新增导出:`NO_VALUE_ACTIONS`、`isValuelessAction`、`actionValueKind`、`isOptionsRepresentable`。
@@ -133,12 +133,12 @@
 - **`SmartTableProps` 补上 `rowDraggable` / `dragHandle`**(`SmartTable` 一直有这两个 prop,导出的类型里漏了,宿主按类型写 props 对象会报多余属性)。
 - 新类型导出:`SortItem`、`ToolbarMoreOption`、`ActionValueKind`;`saveState` 的 `density` 形参放宽成 `Density | undefined`(`undefined` = 不写该字段,纯放宽)。
 
-### 类型层面变更
+#### 类型层面变更
 
 - **`FilterAction` 联合类型由 8 个成员扩到 15 个**:宿主若有穷尽的 `Record<FilterAction, …>`,或带 `never` 兜底的 `switch (action)`,升级后 `vue-tsc` 会报错,需要补上新成员。
 - `SmartTableInst` 新增 `sort` / `clearSorter`:宿主若手写了该接口的实现或 mock,需要补上。
 
-### 内部
+#### 内部
 
 - 删除内部的 `withFillerColumn` / `FILLER_COLUMN_KEY`(从未从入口导出过)。
 - 内部的 `useColumns().toggleShow` 改为返回 `boolean`(是否生效;`useColumns` 未从入口导出)。
