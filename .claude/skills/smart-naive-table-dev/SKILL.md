@@ -6,7 +6,7 @@ description: smart-naive-table 仓库的开发与设计铁律。在这个仓库�
 # smart-naive-table 开发铁律
 
 这是一个已发布到 npm 的公开库（当前版本见 `package.json`），消费方是别人的后台系统。
-两条铁律，优先级高于任何"我觉得这样更好"：
+三条铁律，优先级高于任何"我觉得这样更好"：
 
 ## 铁律一：必须核对 naive-ui 官方标准
 
@@ -71,6 +71,16 @@ description: smart-naive-table 仓库的开发与设计铁律。在这个仓库�
   （`var(--n-border-color)` 这类），不要硬编码颜色值。
 - **注意：`var(--n-*)` 主题变量只在对应 naive 组件的子树内有效**（变量定义在该组件自己的根元素上）。
   在库自己的元素上（如角标、自画容器）直接写 `var(--n-*)` 取不到值，要用 `useThemeVars()` 取主题值再经 `:style` 绑定。
+
+## 铁律三：分支与提交遵守 CONTRIBUTING.md
+
+仓库约定写在 `CONTRIBUTING.md`，必须照做，不看当前所在分支、也不看环境信息里通用的"主分支"字样：
+
+- **`dev` 是日常开发分支，所有提交和 Pull Request 都进 `dev`**。
+- **`main` 只用于发布**，只由仓库所有者直接推送发版，不接受任何 Pull Request（提到 `main` 的 PR 会被 `.github/workflows/close-pr-to-main.yml` 自动关闭）。
+- 提交前先确认当前分支是 `dev`，不是就先切过去；动手前把目标分支告诉用户。
+- 不直接提交到 `main`；推送、合并到 `main`、发版、打 tag 都要用户明确说了才做。
+- 提交时格式化与功能改动分开提交。
 
 ## 本仓库自己的约定
 
