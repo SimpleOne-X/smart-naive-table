@@ -1,6 +1,10 @@
 # Changelog
 
-## 3.0.0-beta.2 - 待发布
+## 3.0.0 - 2026-10-04
+
+> 3.0.0 是相对 2.1.1 的一次 **major** 升级。`3.0.0-beta.1`(P0)与 `3.0.0-beta.2`(P1 / P2 及追加)两个预发布版**没有单独发布到 npm**,下面这两节合起来就是 3.0.0 相对 2.1.1 的全部变更;升级步骤见 [MIGRATION.md](./MIGRATION.md),未完成项见 [README 的里程碑](./README.md#里程碑)。
+
+## 3.0.0-beta.2(并入 3.0.0)
 
 > 在 `3.0.0-beta.1` 之上追加 P1。**新能力(条件构造器、批量栏、放大)全部是可选属性、默认关闭**;但 beta.1 → beta.2 有 **11 处行为变化是不传任何新属性也会生效的**,集中写在下面的「行为变化」一节(每项带回退方式):「更多」下拉的锚定、库自己的气泡可按 Esc 关、已生效条件 chips 的位置(只影响开了 `filterChips` 的用户)、列宽拖拽把手(只影响开了 `resizable` 的用户)、当前行高亮色(D1)、`@row-click` 的触发范围(D2)、请求失败后的页码(D3)、每页条数可选项按 `fillHeight` 区分(D4)、序号列声明在数据列之后时的位置、窄档拖拽卡片里的序号、窄档卡片末尾的合计卡(后三项只影响用了对应能力的宿主)。
 >
@@ -67,7 +71,7 @@
 - 新增 `MaximizeLayer`(函数组件,只在开了放大时多包一层 `div.smart-table-layer`;不开放大时 DOM 不变)、`maximize.ts`、`useEscClose.ts`、`conditionBuilder.ts`、`ConditionPanel.vue`、`ConditionBar.vue`;`ConditionRow` 新增 `size` / `valueOnly` / `placeholder` / `lead` / `searchIcon` 与 `#field` 插槽;`ColumnFilter` 新增 `closeRequest`。
 - 对照页(`/prototype.html`)补上模块 2 / 3 / 4 的条件构造器、批量栏(批量审核 + 批量删除确认框)与放大,与设计原型逐项对照;模块 1 仍是独立搜索表单卡。
 
-## 3.0.0-beta.1 - 待发布
+## 3.0.0-beta.1(并入 3.0.0)
 
 > 这是一次 **major** 升级:下面「默认行为变更」里的每一项,**不传任何属性、升级后也会变**。每项都写了回退方式,都是一行属性。
 >

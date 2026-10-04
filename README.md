@@ -48,7 +48,7 @@
   <a href="#文档索引">文档</a>
 </p>
 
-> **版本状态**：当前是 `3.0.0-beta.2`，**尚未发布到 npm**；npm 上现在的 `latest` 是 2.1.1。本页描述的是 3.0 的当前实现，进度与未完成项见[里程碑](#里程碑)。
+> **版本状态**：当前是 `3.0.0`（npm `latest`）。3.0 是 major 升级，不改任何代码也会有行为变化，升级步骤见 [MIGRATION.md](./MIGRATION.md)；本页描述的是 3.0 的当前实现，进度与未完成项见[里程碑](#里程碑)。
 >
 > **从 2.x 升级？** 3.0.0 相对 2.x 有破坏性变更（涉及默认值与外观，如默认每页条数、分页形态），请先看 [升级指南 MIGRATION.md](./MIGRATION.md)。
 
@@ -168,7 +168,7 @@
 ## 安装
 
 ```bash
-npm i smart-naive-table@beta   # 3.0 预发布版发布后的安装方式；不带 @beta 装到的是 2.1.x
+npm i smart-naive-table   # 3.0.0；仍要用 2.x 时装 smart-naive-table@2
 ```
 
 项目中需已安装 `vue >= 3.3` 和 `naive-ui >= 2.44`（`peerDependencies` 是 `vue ^3.3.0`、`naive-ui ^2.44.0`；验证过的版本是 naive-ui 2.45.3）。ESM 输出，自带 TypeScript 类型。
@@ -853,7 +853,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 
 这一节是**版本路线图与当前进度**，不是变更日志；逐项变更见 [CHANGELOG.md](./CHANGELOG.md)，升级步骤见 [MIGRATION.md](./MIGRATION.md)。
 
-**当前阶段：`3.0.0-beta.2`，未发布。** npm 上的最新稳定版仍是 2.1.1；3.0 的预发布版（`3.0.0-beta.x`）发布时走 `beta` 标签，不会占 `latest`（见 `.github/workflows/publish.yml`）。设计上的下一步是先试用 beta、收反馈，再发 `3.0.0` 正式版。
+**当前阶段：`3.0.0`（npm `latest`）。** 3.0 是 major 升级，升级步骤见 [MIGRATION.md](./MIGRATION.md)。下面「已知未完成 / 限制」是 3.0.0 里仍没做的部分，之后的版本再补。
 
 **3.0 已具备的能力范围**（对应 [规格](./docs/smart-naive-table-spec.md) 的 P0 / P1 / P2）：
 

@@ -1985,7 +1985,7 @@ function changesHtml() {
   return `<div class="chg" data-raw>
     ${state.lang === 'en' ? '<p class="chg-note">This page is available in Chinese only. The upgrade guide is MIGRATION.md in the repository root.</p>' : ''}
     <p class="chg-lead">相对 2.1.1:<b>${CHG.breaking.length}</b> 项破坏性变更已实现 · <b>${CHG.fixes.length}</b> 项缺陷修复会改变行为 · <b>${CHG.planned.length}</b> 项设计已定、库待实现。回退方式多数是一行属性;升级步骤见仓库根目录 <code>MIGRATION.md</code>,详细说明见 <code>CHANGELOG.md</code>。</p>
-    <h3>破坏性变更 · 已实现(3.0.0-beta),不改代码升级后也会变</h3>${chgTable(H5, CHG.breaking)}
+    <h3>破坏性变更 · 已实现(3.0.0),不改代码升级后也会变</h3>${chgTable(H5, CHG.breaking)}
     <h3>缺陷修复 · 行为会变,但旧行为本来就是错的</h3>${chgTable(['#', '修复', '升级后可见的变化'], CHG.fixes)}
     <h3>设计已定、库待实现 · 落地时同样是破坏性变更</h3>
     <p class="chg-note">原型里已经是定稿行为,库现状还是 2.1.1 的样子;必须在 3.0.0 正式版之前落地,否则按 semver 只能等 4.0 或做成默认关闭的开关。</p>${chgTable(H5, CHG.planned)}

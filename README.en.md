@@ -48,7 +48,7 @@ Search, filters, sorting, pagination, dict tags, column settings and editing all
   <a href="#documentation">Docs</a>
 </p>
 
-> **Version status**: the current version is `3.0.0-beta.2` and it is **not published to npm yet**; the npm `latest` is still 2.1.1. This page describes the current 3.0 implementation; progress and unfinished items are in [Milestones](#milestones).
+> **Version status**: the current version is `3.0.0` (npm `latest`). 3.0 is a major upgrade: some behavior changes even if you change no code. See [MIGRATION.md](./MIGRATION.md) for the upgrade steps. This page describes the current 3.0 implementation; progress and unfinished items are in [Milestones](#milestones).
 >
 > **Upgrading from 2.x?** 3.0.0 has breaking changes relative to 2.x (defaults and looks, e.g. the default page size and the pager style). Read the [migration guide MIGRATION.md](./MIGRATION.md) first.
 
@@ -168,7 +168,7 @@ Turn on `card-on-narrow` and the same `columns` serve both desktop and phones â€
 ## Install
 
 ```bash
-npm i smart-naive-table@beta   # how to install the 3.0 prerelease once published; without @beta you get 2.1.x
+npm i smart-naive-table   # 3.0.0; to stay on 2.x install smart-naive-table@2
 ```
 
 Requires `vue >= 3.3` and `naive-ui >= 2.44` in your project (`peerDependencies` are `vue ^3.3.0` and `naive-ui ^2.44.0`; the verified version is naive-ui 2.45.3). ESM output, TypeScript types included.
@@ -859,7 +859,7 @@ All `labels` keys are optional; missing keys fall back to the English defaults (
 
 This section is the **version roadmap and current progress**, not a changelog; per-item changes are in [CHANGELOG.md](./CHANGELOG.md) and upgrade steps in [MIGRATION.md](./MIGRATION.md).
 
-**Current stage: `3.0.0-beta.2`, unpublished.** The latest stable version on npm is still 2.1.1; 3.0 prereleases (`3.0.0-beta.x`) are published under the `beta` dist-tag and do not take `latest` (see `.github/workflows/publish.yml`). The planned next step is to use the beta, collect feedback, then release `3.0.0` stable.
+**Current stage: `3.0.0` (npm `latest`).** 3.0 is a major upgrade; see [MIGRATION.md](./MIGRATION.md) for the upgrade steps. The "Known gaps / limits" table below lists what 3.0.0 still does not do; later versions will cover it.
 
 **What 3.0 already has** (matching P0 / P1 / P2 of the [spec](./docs/smart-naive-table-spec.md)):
 
