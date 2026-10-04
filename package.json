@@ -1,6 +1,6 @@
 {
   "name": "smart-naive-table",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Columns-driven data table for Vue 3 + Naive UI: auto search form, remote pagination adapter, dict cell rendering, persistent column settings, density toggle, i18n via labels.",
   "type": "module",
   "license": "Apache-2.0",
@@ -36,6 +36,7 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "node": "./dist/index.node.js",
       "import": "./dist/index.js"
     }
   },
@@ -50,7 +51,8 @@
     "format": "prettier --write \"{src,tests,playground,tools}/**/*.{ts,mjs,vue,css}\" \"*.{json,ts}\"",
     "format:check": "prettier --check \"{src,tests,playground,tools}/**/*.{ts,mjs,vue,css}\" \"*.{json,ts}\"",
     "preview": "vite preview",
-    "prepublishOnly": "npm run build"
+    "check:dist": "node tools/check-dist.mjs",
+    "prepublishOnly": "npm run build && npm run check:dist"
   },
   "peerDependencies": {
     "naive-ui": "^2.44.0",

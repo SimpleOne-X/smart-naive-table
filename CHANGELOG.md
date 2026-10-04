@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.0.1 - 待发布
+
+### 修复
+
+- **纯 Node 里 `import 'smart-naive-table'` 报 `ERR_UNKNOWN_FILE_EXTENSION`(`.css`)**:`dist/index.js` 带 `import './index.css'`(样式随 JS 一起到消费方),纯 Node(消费方的 vitest、把本包外部化的服务端构建)不认识 `.css`,2.1.1 / 3.0.0 都有。`package.json` 的 `exports` 新增 `node` 条件,指向同内容、去掉 CSS 导入的 `dist/index.node.js`;浏览器 / 打包工具仍走 `dist/index.js`,行为与产物都不变。
+  - 范围:只解决 `import` 报错。`SmartTable` 的**服务端渲染仍不支持**(组件渲染时会用到 `document` 等浏览器 API),`dist/index.node.js` 也不含样式。
+  - 构建:`npm run build` 之后新增 `npm run check:dist`(CI 与 `prepublishOnly` 都会跑),检查 `exports` 配对、两份产物只差那一条 CSS 导入、`dist/index.node.js` 能在纯 Node 加载。
+
 ## 3.0.0 - 2026-10-04
 
 > 3.0.0 是相对 2.1.1 的一次 **major** 升级。下面分「追加部分」(P1 / P2 与行为变化)和「基础部分」(P0)两块,合起来就是 3.0.0 相对 2.1.1 的全部变更;升级步骤见 [MIGRATION.md](./MIGRATION.md),未完成项见 [README 的里程碑](./README.md#里程碑)。

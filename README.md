@@ -845,7 +845,8 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 |---|---|
 | Vue | `>= 3.3`（`peerDependencies: ^3.3.0`；本仓库开发环境 3.5） |
 | Naive UI | `>= 2.44`（`peerDependencies: ^2.44.0`）。**单测与浏览器验证在 2.45.3 上做**，2.44.0 ~ 2.45.2 之间的版本没有单独测，建议锁定验证过的版本 |
-| 模块格式 | 仅 ESM（`exports` 只有 `import`），自带类型声明 |
+| 模块格式 | 仅 ESM，自带类型声明。`exports` 有 `node` 与 `import` 两个条件、指向同内容的两份构建：浏览器 / 打包工具走带样式导入的 `dist/index.js`，纯 Node 走不带样式导入的 `dist/index.node.js` |
+| 纯 Node / 服务端 | 在 vitest 等纯 Node 环境、或打包时把本包外部化的服务端构建里，直接 `import` 不再报 `.css` 不认识。**服务端渲染 `SmartTable` 目前不支持**：组件渲染时会用到 `document` 等浏览器 API；`dist/index.node.js` 也不含样式 |
 | 浏览器 | **只在 Chromium 内核（Chrome / Edge）上验证过**，包括 390 × 844 的窄档（触屏用 CDP 设备模拟）。Firefox / Safari、真实手指触屏、屏幕阅读器**没有测过** |
 | Node（开发 / CI） | 24 |
 

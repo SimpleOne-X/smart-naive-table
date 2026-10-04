@@ -851,7 +851,8 @@ All `labels` keys are optional; missing keys fall back to the English defaults (
 |---|---|
 | Vue | `>= 3.3` (`peerDependencies: ^3.3.0`; the repo is developed on 3.5) |
 | Naive UI | `>= 2.44` (`peerDependencies: ^2.44.0`). **Unit tests and browser verification run on 2.45.3**; versions between 2.44.0 and 2.45.2 were not tested individually, so pin the verified version |
-| Module format | ESM only (`exports` has only `import`), type declarations included |
+| Module format | ESM only, type declarations included. `exports` has two conditions, `node` and `import`, pointing at two builds with the same code: browsers / bundlers use `dist/index.js`, which imports its stylesheet; plain Node uses `dist/index.node.js`, which does not |
+| Plain Node / server | In plain-Node environments such as vitest, or in server builds that externalize this package, a bare `import` no longer fails on `.css`. **Server-side rendering of `SmartTable` is not supported yet**: the component uses browser APIs such as `document` while rendering, and `dist/index.node.js` carries no styles |
 | Browsers | **Verified on Chromium only (Chrome / Edge)**, including the 390 × 844 narrow tier (touch via CDP device emulation). Firefox / Safari, real finger touch and screen readers are **not tested** |
 | Node (dev / CI) | 24 |
 
