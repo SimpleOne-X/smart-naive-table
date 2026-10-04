@@ -1,4 +1,4 @@
-// 搜索表单折叠态的列数判断(C5)。n-grid 的折叠判定(Grid.mjs:198)在「1 列 × 1 行」时一上来就满,
+// 搜索表单折叠态的列数判断。n-grid 的折叠判定(Grid.mjs:198)在「1 列 × 1 行」时一上来就满,
 // 折叠态 0 个字段;库不知道当前列数。
 // 不自己按视口宽度 + 默认断点推算(宿主用 NConfigProvider 的 breakpoints 自定义断点时会算错),
 // 也不用 naive 的 useBreakpoints(不是公开导出):渲染后直接读 n-grid 根元素 computed 的

@@ -2,3 +2,5 @@ node_modules/
 dist/
 *.local
 .omc/
+tools/parity/out/
+.playwright-mcp/

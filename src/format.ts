@@ -8,13 +8,13 @@ function pad(n: number): string {
 const DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
 /**
- * 纯日期串按「本地零点」解析成 Date;不是这个形状返回 null,调用方照旧走原来的解析。
+ * 纯日期串按「本地零点」解析成 Date;不是这个形状返回 null,调用方走 new Date(value) 解析。
  * 为什么不直接 new Date(s) / Date.parse(s):ES 规范把不带时间的 ISO 日期串当成 UTC 零点,
  * UTC 以西的时区里那一刻还是本地的前一天 —— '2026-09-21' 会被显示成 9 月 20 日,日期过滤也按前一天算。
  * new Date(y, m, d) 这种分量构造恒按本地时区解释,与 formatDate 的 getFullYear/getDate、
  * 过滤值整天边界(filter.ts dayRange)是同一套本地基准。
  * 分量构造会把越界值进位(2026-02-30 → 3 月 2 日)、把 0–99 年当成 1900–1999 年:这类日期分量
- * 对不回去的值同样返回 null,让调用方按修复前的方式解析,结果与修复前一致。
+ * 对不回去的值同样返回 null,让调用方按 new Date(value) 解析。
  */
 export function parseDateOnlyLocal(value: string): Date | null {
   const m = DATE_ONLY_RE.exec(value)

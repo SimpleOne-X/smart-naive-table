@@ -50,6 +50,31 @@ function smallIcon(paths: string[], strokeWidth: number): FunctionalComponent {
 export const ChevronDownIcon = smallIcon(['m4 6 4 4 4-4'], 1.8)
 export const CloseIcon = smallIcon(['M4 4l8 8M12 4l-8 8'], 1.8)
 export const PlusIcon = smallIcon(['M8 3v10M3 8h10'], 1.6)
+// 「更多条件」:双尖括号 »(不用「…」:工具栏的「更多」菜单按钮已经是文字 + 下箭头,两个「更多」不能同形)
+export const MoreConditionsIcon = lineIcon(['m7 7 5 5-5 5', 'M14 7l5 5-5 5'])
+// 构造器里文本输入框右侧的放大镜(原型 I_SEARCH:16 视口、14px、笔画 1.6)
+export const SearchIcon: FunctionalComponent = () =>
+  h(
+    'svg',
+    {
+      viewBox: '0 0 16 16',
+      width: '14',
+      height: '14',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': 1.6,
+      'stroke-linecap': 'round',
+      'aria-hidden': 'true',
+    },
+    [h('circle', { cx: 7, cy: 7, r: 4.5 }), h('path', { d: 'M10.5 10.5 14 14' })],
+  )
+// 放大 = 四角括号向外展开,还原 = 向内收拢(只有折线、没有箭头;与「复制」图标不混)
+export const MaximizeIcon = lineIcon([
+  'M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3',
+])
+export const RestoreIcon = lineIcon([
+  'M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3',
+])
 // 漏斗:表头过滤触发图标(实心,过滤生效时整体变主题色)
 export const FilterIcon: FunctionalComponent = () =>
   h(

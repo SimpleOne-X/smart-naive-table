@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { mergePageSizes, pageSizeValue, resolveDefaultPageSize } from '../src/pageSize'
+import {
+  DEFAULT_PAGE_SIZES,
+  FILL_PAGE_SIZES,
+  mergePageSizes,
+  pageSizeValue,
+  resolveDefaultPageSize,
+  resolvePageSizes,
+} from '../src/pageSize'
 
 describe('pageSizeValue / mergePageSizes(并入当前值)', () => {
   it('pageSizeValue:数字取自己,对象取 value', () => {
@@ -57,5 +64,36 @@ describe('resolveDefaultPageSize(D4 的解析优先级)', () => {
   })
   it('空的 pageSizes 不算「给了」', () => {
     expect(resolveDefaultPageSize({ pageSizes: [], globalPageSizes: [] })).toBe(100)
+  })
+})
+
+describe('resolvePageSizes(D4:每页条数可选项按 fillHeight 区分)', () => {
+  it('常量:不开 fillHeight [100, 500, 1000];开了 [100, 1000, 10000]', () => {
+    expect(DEFAULT_PAGE_SIZES).toEqual([100, 500, 1000])
+    expect(FILL_PAGE_SIZES).toEqual([100, 1000, 10000])
+  })
+  it('宿主没给:按 fillHeight 取', () => {
+    expect(resolvePageSizes({ fillHeight: false })).toEqual([100, 500, 1000])
+    expect(resolvePageSizes({ fillHeight: true })).toEqual([100, 1000, 10000])
+  })
+  it('实例给了:照实例的,不分 fillHeight', () => {
+    expect(resolvePageSizes({ user: [10, 20], fillHeight: true })).toEqual([10, 20])
+    expect(resolvePageSizes({ user: [10, 20], fillHeight: false })).toEqual([10, 20])
+  })
+  it('全局显式给了:照全局的,不分 fillHeight;实例优先于全局', () => {
+    expect(resolvePageSizes({ global: [20, 40], globalGiven: true, fillHeight: true })).toEqual([
+      20, 40,
+    ])
+    expect(
+      resolvePageSizes({ user: [5], global: [20, 40], globalGiven: true, fillHeight: true }),
+    ).toEqual([5])
+  })
+  it('全局值不是「显式给的」(只是内置兜底)→ 不算宿主给的,仍按 fillHeight', () => {
+    expect(
+      resolvePageSizes({ global: [100, 500, 1000], globalGiven: false, fillHeight: true }),
+    ).toEqual([100, 1000, 10000])
+  })
+  it('实例给了空数组也算「给了」(与 ?? 语义一致,不回落默认)', () => {
+    expect(resolvePageSizes({ user: [], fillHeight: true })).toEqual([])
   })
 })

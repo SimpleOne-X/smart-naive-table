@@ -29,6 +29,11 @@ export interface UseFiltersReturn {
   getFilter: (key: string) => FilterValue | null
   /** 传 null 或无生效条件的值 → 清除该列。值没变则不触发 onChange。 */
   setFilter: (key: string, value: FilterValue | null) => void
+  /**
+   * 一次改多列(模式 2 的「搜索 / 重置」):补丁里值为 null 或无生效条件的键被清掉。只触发**一次** onChange(key 为空串,与 clearFilters 同口径),
+   * 远程模式只重查一次。返回是否真的有变化(没变化时不触发 onChange,调用方要「点搜索总是重查」就自己补一次)。
+   */
+  setMany: (patch: Record<string, FilterValue | null>) => boolean
   /** 全部恢复到各列 defaultValue(没有 defaultValue 的列即清空)。 */
   clearFilters: () => void
   activeKeys: ComputedRef<string[]>
@@ -69,6 +74,18 @@ export function useFilters<T>(opts: UseFiltersOpts<T>): UseFiltersReturn {
     opts.onChange?.(key, effective, next)
   }
 
+  function setMany(patch: Record<string, FilterValue | null>): boolean {
+    const next = { ...state.value }
+    for (const [key, value] of Object.entries(patch)) {
+      if (value && isFilterActive(value)) next[key] = value
+      else delete next[key]
+    }
+    if (filterStateEqual(next, state.value)) return false
+    state.value = next
+    opts.onChange?.('', null, next)
+    return true
+  }
+
   function clearFilters() {
     const next = deriveInitFilters(opts.defs())
     if (filterStateEqual(next, state.value)) return
@@ -78,5 +95,5 @@ export function useFilters<T>(opts: UseFiltersOpts<T>): UseFiltersReturn {
 
   const activeKeys = computed(() => Object.keys(state.value))
 
-  return { state, getFilter, setFilter, clearFilters, activeKeys }
+  return { state, getFilter, setFilter, setMany, clearFilters, activeKeys }
 }

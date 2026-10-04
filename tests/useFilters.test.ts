@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
-import { deriveFilterDefs, deriveInitFilters } from '../src/useColumns'
+import { deriveFilterDefs, deriveInitFilters, type FilterDef } from '../src/useColumns'
 import { useFilters } from '../src/useFilters'
 import type { FilterValue, SmartTableColumn } from '../src/types'
 
@@ -203,5 +203,60 @@ describe('useFilters', () => {
     columns.value = [...columns.value]
     await nextTick()
     expect(api.state.value).toEqual({})
+  })
+})
+
+describe('useFilters.setMany(模式 2 的「搜索 / 重置」:一次改多列,只触发一次 onChange)', () => {
+  const defs = (): FilterDef[] => [
+    {
+      key: 'a',
+      field: 'a',
+      optionsKey: 'a',
+      mode: 'condition',
+      multiple: false,
+      type: 'input',
+      actions: ['equal'],
+    },
+    {
+      key: 'b',
+      field: 'b',
+      optionsKey: 'b',
+      mode: 'condition',
+      multiple: false,
+      type: 'input',
+      actions: ['equal'],
+    },
+  ]
+  const v = (value: string): FilterValue => ({
+    logic: 'and',
+    conditions: [{ action: 'equal', value }],
+  })
+
+  it('补丁里的键一次生效,onChange 只调一次(key 为空串、value 为 null,与 clearFilters 同口径),返回 true', () => {
+    const calls: Array<[string, unknown, unknown]> = []
+    const f = useFilters({ defs, onChange: (k, val, st) => calls.push([k, val, st]) })
+    expect(f.setMany({ a: v('1'), b: v('2') })).toBe(true)
+    expect(f.state.value).toEqual({ a: v('1'), b: v('2') })
+    expect(calls).toHaveLength(1)
+    expect(calls[0][0]).toBe('')
+    expect(calls[0][1]).toBeNull()
+  })
+
+  it('null / 无生效条件的值 = 清掉该键;补丁里没有的键不动', () => {
+    const f = useFilters({ defs })
+    f.setMany({ a: v('1'), b: v('2') })
+    f.setMany({ a: null })
+    expect(f.state.value).toEqual({ b: v('2') })
+    f.setMany({ b: { logic: 'and', conditions: [{ action: 'equal', value: '' }] } })
+    expect(f.state.value).toEqual({})
+  })
+
+  it('没有实际变化 → 不触发 onChange,返回 false(调用方要「点搜索总是重查」就自己补一次)', () => {
+    let n = 0
+    const f = useFilters({ defs, onChange: () => n++ })
+    f.setMany({ a: v('1') })
+    expect(n).toBe(1)
+    expect(f.setMany({ a: v('1'), b: null })).toBe(false)
+    expect(n).toBe(1)
   })
 })

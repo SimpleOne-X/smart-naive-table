@@ -20,7 +20,7 @@ describe('resolveDefaults 优先级', () => {
     expect(r.align).toBe('left')
     expect(r.indexWidth).toBe(80)
     expect(r.titleAlign).toBe('center') // 未给 → 兜底
-    expect(r.pageSizes).toEqual([100, 500, 1000]) // P-1:B1 落地后翻转,锁的是 2.1.1 的旧默认值
+    expect(r.pageSizes).toEqual([100, 500, 1000]) // 内置默认每页条数
   })
 
   it('undefined 字段不得覆盖兜底', () => {

@@ -22,7 +22,7 @@ function cond(action: FilterAction, value: unknown) {
 
 /**
  * 依次切到给定时区跑 fn,结束后恢复。Node 在给 process.env.TZ 赋值时重置时区缓存,同一进程里即可切换;
- * 但 delete process.env.TZ 不会触发重置,所以原来没设 TZ 时写回解析出的系统时区名。
+ * 但 delete process.env.TZ 不会触发重置,所以初始没设 TZ 时写回解析出的系统时区名。
  * 每个时区先断言切换真的生效(运行时解析出的时区就是目标时区),防止测试在「切不动时区」的环境里假绿。
  */
 function inTimeZones(zones: string[], fn: (tz: string) => void) {
@@ -110,9 +110,9 @@ describe('matchCondition', () => {
   })
 
   it('过滤值按 UTC 锚定、单元格按本地解析的旧实现会漂移的场景:东半球时区下,裸 datetime 串接近午夜也要按本地日历日匹配', () => {
-    // 复现:TZ=Asia/Shanghai(UTC+8)时,'2024-03-05T02:00:00' 本地是 3 月 5 日凌晨,
-    // 但当年若按「过滤值锚 UTC 零点、单元格用 Date.parse 的本地时间」两套基准比较,
-    // 换算成 UTC 是 3 月 4 日 18:00,落在 UTC 的 3 月 5 日区间之外,会被误判成不匹配。
+    // TZ=Asia/Shanghai(UTC+8)时,'2024-03-05T02:00:00' 本地是 3 月 5 日凌晨;
+    // 若按「过滤值锚 UTC 零点、单元格用 Date.parse 的本地时间」两套基准比较,
+    // 换算成 UTC 是 3 月 4 日 18:00,落在 UTC 的 3 月 5 日区间之外,会被误判成不匹配。两边必须同按本地日历日。
     const originalTZ = process.env.TZ
     try {
       process.env.TZ = 'Asia/Shanghai'
@@ -134,17 +134,17 @@ describe('matchCondition', () => {
       expect(matchCondition(cond('equal', '2024/03/06'), cell, 'yyyy/MM/dd')).toBe(false)
       expect(matchCondition(cond('gte', '2024/03/05'), cell, 'yyyy/MM/dd')).toBe(true)
       // 不传 dateValueFormat 时按缺省 'yyyy-MM-dd' 解析,yyyy/MM/dd 形状的值解析不出来,
-      // 退回标量比较(旧行为,不会比不做这个功能更差)
+      // 退回标量比较(不会比不做这个功能更差)
       expect(matchCondition(cond('equal', '2024/03/05'), cell)).toBe(false)
     } finally {
       process.env.TZ = originalTZ
     }
   })
 
-  // final review fix(2.1.1 起就有的老缺陷,不是本轮引入的):单元格是纯日期串(后端 DATE 字段常见的序列化形状)
-  // 时,旧实现用 Date.parse 解析 —— ES 规范把不带时间的 ISO 日期串当成 UTC 零点,UTC 以西的时区里那一刻
-  // 还是本地的前一天;而过滤值的整天边界按本地零点切,于是「等于 2026-09-21」选不中 '2026-09-21' 这一行。
-  // 必须在 UTC 以西的时区里跑才有意义(本机 UTC+8 下这个缺陷不显形),所以这里逐个切时区。
+  // 单元格是纯日期串(后端 DATE 字段常见的序列化形状)时:Date.parse 按 ES 规范把不带时间的 ISO 日期串当成 UTC 零点,
+  // UTC 以西的时区里那一刻还是本地的前一天;而过滤值的整天边界按本地零点切,所以单元格必须按本地日历日解析,
+  // 「等于 2026-09-21」才选得中 '2026-09-21' 这一行。
+  // 必须在 UTC 以西的时区里跑才有意义(本机 UTC+8 下看不出差别),所以这里逐个切时区。
   it('单元格是纯日期串(yyyy-MM-dd)时按本地零点解析:UTC 以西的时区里日期条件也选中原日历日(final review fix)', () => {
     inTimeZones(
       [
@@ -374,15 +374,15 @@ describe('新增 7 个操作符', () => {
   })
 
   it('like:不走正则回溯,%-heavy pattern 在不匹配输入上也是线性时间,不会卡死(ReDoS 回归)', () => {
-    // 旧的「翻译成正则再交给引擎」实现在这类 pattern 上会指数级回溯(k=10 时单次调用 ~40s)。
+    // 翻译成正则再交给引擎的做法在这类 pattern 上会指数级回溯(k=10 时单次调用 ~40s),所以 like 用线性匹配。
     // 这里不断言具体耗时,调用本身能在测试超时内返回就是线性实现的证明。
     const pattern = '%a'.repeat(10) + '%b'
     const cell = 'a'.repeat(40)
     expect(matchCondition(cond('like', pattern), cell)).toBe(false)
   })
 
-  // final review fix:pattern 里的 % 必须先按通配符处理。旧实现先比「字面字符是否相等」,单元格同一位置
-  // 恰好也是字面 % 时就走了字面匹配分支,没记回溯锚点 —— 后面再有字符对不上就直接判不匹配。
+  // pattern 里的 % 必须先按通配符处理:单元格同一位置恰好也是字面 % 时,不能走字面匹配分支
+  // (那样不记回溯锚点,后面再有字符对不上就直接判不匹配)。
   it('like:pattern 的 % 永远是通配符,单元格同一位置恰好也是字面 % 时照样匹配(final review fix)', () => {
     expect(matchCondition(cond('like', '%'), 'abc%')).toBe(true)
     expect(matchCondition(cond('like', '%'), '%abc')).toBe(true) // 单个 % 匹配一切:单元格以字面 % 开头也一样

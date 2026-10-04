@@ -1,4 +1,5 @@
 import { nextTick, onScopeDispose, watch } from 'vue'
+import { confineRowDrag, DRAGGING_BODY_CLASS, fitGhost, GHOST_CLASS } from './rowDragConfine'
 
 /**
  * 行拖拽(sortablejs 懒加载)。要点是**绑定时机**:
@@ -22,22 +23,52 @@ export interface RowDragOptions<T> {
   rows: () => T[] | undefined
   /** 拖拽手柄选择器(可选;不传则整行可拖) */
   handle?: () => string | undefined
+  /** 行数组前面还有几行不属于它的行(如可编辑表格里待保存的新增行):DOM 下标要减掉这个偏移才是数组下标。缺省 0。 */
+  offset?: () => number
+  /** 不可拖的行的选择器(sortablejs 的 filter);缺省都可拖。 */
+  filter?: () => string | undefined
   /** 拖完回调:行数组已按新顺序重排 */
   onSort: (e: { from: number; to: number; reordered: T[] }) => void
   /** 加载 sortablejs;缺省懒加载 `import('sortablejs')`。测试注入可控的加载器以精确制造时序 */
   load?: () => Promise<SortableFactory>
 }
 
+/** sortablejs 回调里本模块用到的字段(`originalEvent` 是运行时才有的、@types 里没有) */
+export interface SortableDragEvent {
+  item?: HTMLElement
+  originalEvent?: {
+    clientX?: number
+    clientY?: number
+    touches?: ArrayLike<{ clientX: number; clientY: number }>
+  }
+  oldIndex?: number
+  newIndex?: number
+}
+
+/** 本模块传给 sortablejs 的选项(最小子集) */
+export interface SortableOptions {
+  animation: number
+  easing?: string
+  handle?: string
+  filter?: string
+  preventOnFilter?: boolean
+  forceFallback?: boolean
+  fallbackOnBody?: boolean
+  fallbackTolerance?: number
+  fallbackClass?: string
+  ghostClass?: string
+  chosenClass?: string
+  dragClass?: string
+  scrollSensitivity?: number
+  onChoose?: (evt: SortableDragEvent) => void
+  onStart?: (evt: SortableDragEvent) => void
+  onUnchoose?: (evt: SortableDragEvent) => void
+  onEnd: (evt: SortableDragEvent) => void
+}
+
 /** 本模块用到的 sortablejs 最小接口 */
 export interface SortableFactory {
-  create(
-    el: HTMLElement,
-    options: {
-      animation: number
-      handle?: string
-      onEnd: (evt: { oldIndex?: number; newIndex?: number }) => void
-    },
-  ): { destroy(): void }
+  create(el: HTMLElement, options: SortableOptions): { destroy(): void }
 }
 
 const loadSortable = async (): Promise<SortableFactory> => (await import('sortablejs')).default
@@ -48,7 +79,15 @@ export function useRowDrag<T>(options: RowDragOptions<T>) {
   let pending: Promise<void> = Promise.resolve()
   let round = 0 // 每次对齐 / 销毁 +1;异步回来序号对不上 = 已过期
 
+  // 一次拖动期间的收尾(解除指针约束、清 body 上的类);幂等,拖动中被卸载 / 重绑也要走它
+  let finish: (() => void) | null = null
+  function endDrag() {
+    finish?.()
+    finish = null
+  }
+
   function teardown() {
+    endDrag()
     sortable?.destroy()
     sortable = null
     boundEl = null
@@ -71,12 +110,52 @@ export function useRowDrag<T>(options: RowDragOptions<T>) {
     const Sortable = await (options.load ?? loadSortable)()
     if (my !== round) return // 加载期间来了新一轮或已卸载:不再绑定,避免重复实例 / 泄漏
     sortable = Sortable.create(tbody, {
-      animation: 150,
+      // 手感:邻行 180ms 滑开,缓动「起步快、收尾慢」,不做弹跳(克制的动效);拖影怎么被约束见 rowDragConfine.ts 头注释
+      animation: 180,
+      easing: 'cubic-bezier(0.2, 0, 0, 1)',
       handle: options.handle?.(),
-      onEnd: (evt: { oldIndex?: number; newIndex?: number }) => {
-        const from = evt.oldIndex
-        const to = evt.newIndex
-        if (from == null || to == null || from === to) return
+      filter: options.filter?.(),
+      preventOnFilter: false,
+      // 拖影必须在 DOM 里才能约束在表体内;原生 HTML5 拖放的拖影是浏览器画的位图,会跟着指针飘出表格
+      forceFallback: true,
+      // 留在 tbody 里:挂到 body 下会丢掉 n-data-table 子树里的 --n-* 主题变量,拖影成了没样式的裸行
+      fallbackOnBody: false,
+      // 原生 DnD 有 ~4px 的起拖阈值;fallback 默认 0,点一下手柄(手一抖)就会起拖
+      fallbackTolerance: 4,
+      fallbackClass: GHOST_CLASS,
+      dragClass: GHOST_CLASS,
+      ghostClass: 'smart-table-drag-placeholder',
+      chosenClass: 'smart-table-drag-chosen',
+      // 指针被夹在表体内,贴不到滚动容器的边;默认 30px 的灵敏区小于「抓点到行边」的距离就永远触发不了自动滚动
+      scrollSensitivity: 64,
+      onChoose: (evt) => {
+        endDrag()
+        const down = evt.originalEvent && (evt.originalEvent.touches?.[0] ?? evt.originalEvent)
+        if (!evt.item || down?.clientX == null || down.clientY == null) return
+        const release = confineRowDrag(tbody, evt.item, {
+          clientX: down.clientX,
+          clientY: down.clientY,
+        })
+        finish = () => {
+          release()
+          document.body.classList.remove(DRAGGING_BODY_CLASS)
+        }
+      },
+      onStart: (evt) => {
+        if (evt.item) fitGhost(tbody, evt.item)
+        document.body.classList.add(DRAGGING_BODY_CLASS)
+        // 没拿到按下坐标(没有约束)时 finish 为空,这里补上清理
+        finish ??= () => document.body.classList.remove(DRAGGING_BODY_CLASS)
+      },
+      // 点一下没拖动也会走到(不触发 onEnd):在这里收尾
+      onUnchoose: endDrag,
+      onEnd: (evt: SortableDragEvent) => {
+        endDrag()
+        const off = options.offset?.() ?? 0
+        const from = evt.oldIndex == null ? undefined : evt.oldIndex - off
+        // 落到新增行上方:夹到数据行的最前面(Vue 随后按数组顺序把 DOM 归位)
+        const to = evt.newIndex == null ? undefined : Math.max(0, evt.newIndex - off)
+        if (from == null || to == null || from < 0 || from === to) return
         // 直接改可复用的响应式行数组:Vue 据此重排 = DOM 最终真相(与 Sortable 的 DOM 移动一致,
         // 固定列多 tbody 也靠这次 patch 归一)。宿主收 rowDragSort 再落库/refresh。
         const arr = options.rows()

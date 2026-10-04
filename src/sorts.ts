@@ -1,6 +1,7 @@
 // 排序态的纯函数(UI 无关、可单测)。
 // 官方语义(naive-ui 2.45.3 use-sorter.mjs,已核):多列优先级 = 列声明的 sorter.multiple,
 // 大者优先,与点击顺序无关;非 multiple 的 sorter 是「单列互斥」。
+import type { VNodeChild } from 'vue'
 import type { SmartTableColumn, SortItem } from './types'
 import { isSpecialColumn } from './useColumns'
 
@@ -48,6 +49,30 @@ export function collectSorters<T>(columns: SmartTableColumn<T>[]): Map<string, S
   }
   walk(columns)
   return out
+}
+
+/**
+ * 窄档排序抽屉的行:可排序叶子列各一行(含多级表头下的叶子;特殊列与 hideInTable 的列跳过),
+ * 行序 = 声明的优先级(sorter.multiple 大者在前,单列互斥的排在后面,同级按声明序)。手机上不能改优先级,只能启停各列。
+ */
+export function sortDrawerRows<T>(
+  columns: SmartTableColumn<T>[],
+  info: Map<string, SorterInfo>,
+): Array<{ key: string; title?: string | (() => VNodeChild) }> {
+  const rows: Array<{ key: string; title?: string | (() => VNodeChild); priority: number }> = []
+  const walk = (cols: SmartTableColumn<T>[]) => {
+    for (const c of cols) {
+      if (isSpecialColumn(c) || c.hideInTable) continue
+      if (c.children?.length) walk(c.children)
+      else if (info.has(c.key))
+        rows.push({ key: c.key, title: c.title, priority: info.get(c.key)!.priority })
+    }
+  }
+  walk(columns)
+  return rows
+    .map((r, index) => ({ r, index }))
+    .sort((a, b) => b.r.priority - a.r.priority || a.index - b.index)
+    .map(({ r: { key, title } }) => ({ key, title }))
 }
 
 /** 按声明的优先级从大到小排序(稳定;未知列按 0 算,排在有优先级的列之后)。 */
@@ -100,7 +125,7 @@ export function sortTransition(
 }
 
 /**
- * 由列上的 defaultSortOrder 推导初始排序态(C2:官方在存在受控 sortOrder 的列时会忽略 defaultSortOrder,
+ * 由列上的 defaultSortOrder 推导初始排序态(官方在存在受控 sortOrder 的列时会忽略 defaultSortOrder,
  * 库给每个 sorter 列都写受控 sortOrder,所以必须自己接住它)。
  * 库的选择(官方初值不做单列互斥,use-sorter.mjs:31-37):单列互斥的 sorter 只留最后声明的那一个;multiple 列可并存。
  * 只在 SmartTable 首次 setup 时读一次 —— 列若是异步加载进来的,defaultSortOrder 不会生效,请用实例方法 sort()。

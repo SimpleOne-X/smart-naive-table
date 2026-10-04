@@ -180,7 +180,7 @@ describe('ColumnFilter 自定义过滤面板', () => {
     // 值变空(active: true -> false)、再变回非空(false -> true)——这两次翻转都只影响漏斗图标的
     // CSS class,和自定义面板内容毫无关系,但 `:is="() => def.render!(...)"` 这种写法下,面板所在的
     // v-if 分支每次父组件重渲染都会生成一个新的箭头函数对象当"组件类型",Vue 据此判定成不同组件,
-    // 整个卸载重挂——拖拽/连续输入中途的面板就会被打断重建。本次没有外部可观察的因果(面板内容本该
+    // 整个卸载重挂——拖拽/连续输入中途的面板就会被打断重建。这里没有外部可观察的因果(面板内容本该
     // 和 active 无关),只有通过 mountCount 才能抓到。
     await wrapper.setProps({
       value: { logic: 'and', conditions: [{ action: 'equal', value: '' }] },
@@ -342,7 +342,7 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
     const rows = w.findAllComponents(ConditionRow)
     rows[0].vm.$emit('update:value', 'a')
     rows[1].vm.$emit('update:value', 'b')
-    rows[1].vm.$emit('update:logic', 'or') // 有意改动(L0-5):且 / 或 从下方的分段按钮改成第 2 行起首列的下拉,事件在条件行上
+    rows[1].vm.$emit('update:logic', 'or') // 且 / 或 是第 2 行起首列的下拉,事件在条件行上
     await nextTick()
     docClick(confirmBtn())
     expect(lastEmitted(w)).toEqual(v('or', ['contains', 'a'], ['contains', 'b']))
@@ -394,7 +394,7 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
       { label: 'B', value: 2 },
     ]
     // 真实派生里 options 列的值控件类型是 'select'(deriveFilterDefs);夹具也按这个来 —— 否则数字值会灌进 NInput,Vue 报 prop 类型 warn。
-    // 文件顶部现成的 buildOptionsDef() 是 type: 'input'(Q-12),所以这里显式改成 select;下面 isNull 那条专门覆盖 select + 无值算子。
+    // 文件顶部现成的 buildOptionsDef() 是 type: 'input',所以这里显式改成 select;下面 isNull 那条专门覆盖 select + 无值算子。
     const optionsDef = (): FilterDef => ({ ...buildOptionsDef(), type: 'select' })
 
     it('[Review Focus 3] 当前值是 notEqual:打开时自动展开高级条件并原样显示,确认不覆盖', async () => {
@@ -831,7 +831,7 @@ describe('ColumnFilter 面板排布(L0-5,对齐原型 .hpop)', () => {
     expect(add.querySelector('svg')).not.toBeNull()
     expect(add.textContent!.trim()).toBe('添加条件')
     expect(add.classList.contains('n-button--primary-type')).toBe(false)
-    // 官方 small 档(第 4 批,与同一面板里 small 的值控件一致):字 14 / 图标 18 / 高取主题 heightSmall 28
+    // 官方 small 档(与同一面板里 small 的值控件一致):字 14 / 图标 18 / 高取主题 heightSmall 28
     expect(add.getAttribute('style')).toContain('--n-font-size: 14px')
     expect(add.getAttribute('style')).toContain('--n-icon-size: 18px')
     expect(add.getAttribute('style')).toContain('height: 28px')
@@ -956,10 +956,10 @@ describe('ColumnFilter 面板排布(L0-5,对齐原型 .hpop)', () => {
         multi.unmount()
       })
 
-      // 简报之外、经批准的偏离(Task 10 的 trapTab):同名(name)的原生单选组在浏览器里只算一个 Tab 停靠点 ——
+      // 同名(name)的原生单选组在浏览器里只算一个 Tab 停靠点 ——
       // 从「高级条件 ▾」Shift+Tab 回到单选组时焦点落在「选中的那个」(或方向键移过去的那个),不一定是第 1 个 radio。
-      // trapTab 原来只认 cur === 第一个可聚焦控件,焦点在第 2 个 radio 上再 Shift+Tab 就逃出面板(Chromium 实测落到页面上),
-      // 之后 Esc 也关不掉面板(与 Task 10 Step 13 同一类问题)。jsdom 不模拟原生 Tab 移动焦点,所以这里断言的是 trapTab 自己的绕回。
+      // 所以焦点在任一 radio 上 Shift+Tab 时 trapTab 都要绕回;否则焦点会逃出面板落到页面上,之后 Esc 也关不掉面板。
+      // jsdom 不模拟原生 Tab 移动焦点,所以这里断言的是 trapTab 自己的绕回。
       it('[批准的偏离 · Task 10 trapTab] 焦点在非首个 radio(同名单选组)上 Shift+Tab:绕回面板最后一个控件,不逃出面板', async () => {
         const w = await openSingle({ logic: 'and', conditions: [{ action: 'equal', value: 2 }] })
         const inputs = qa('.smart-table-filter-options input[type="radio"]')
@@ -1049,10 +1049,10 @@ describe('ColumnFilter 面板不出屏(L0-9)', () => {
     w.unmount()
   })
 
-  // 简报之外的偏离(Step 5 真实浏览器实测发现):滚动时 vueuc 不是在 scroll 事件里同步挪 follower,而是 Binder.js 的
+  // 滚动时 vueuc 不是在 scroll 事件里同步挪 follower,而是 Binder.js 的
   // onScroll → beforeNextFrameOnce 排一个 rAF,在 rAF 里 Follower.syncPosition 改写 .v-binder-follower-content 的 transform。
-  // 我们挂在 window 捕获阶段的 scroll 监听总是先于它触发,我们的 rAF 排在它前面 → 量到的是挪之前的位置,夹取永远落后一拍
-  // (实测:滚动停下后面板右缘停在 567 / 视口 520)。这里按真实顺序模拟:先派发 scroll(我们排 rAF),再排「vueuc 的」rAF 去挪 follower。
+  // 我们挂在 window 捕获阶段的 scroll 监听总是先于它触发,我们的 rAF 排在它前面 → 若只在自己的 rAF 里夹取,量到的是挪之前的位置,夹取会落后一拍。
+  // 这里按真实顺序模拟:先派发 scroll(我们排 rAF),再排「vueuc 的」rAF 去挪 follower。
   it('[Step 5 实测偏离] 滚动时 follower 在 vueuc 自己的 rAF 里(排在我们的 rAF 之后)才挪:挪完要重新夹取,不能落后一拍', async () => {
     let rect = new DOMRect(100, 100, 400, 200)
     Object.defineProperty(window, 'innerWidth', { value: 1440, configurable: true })
@@ -1081,5 +1081,83 @@ describe('ColumnFilter 面板不出屏(L0-9)', () => {
     await flushPromises()
     expect(panel().style.transform).toBe('translateX(-268px)')
     w.unmount()
+  })
+})
+
+describe('ColumnFilter closeRequest(拖动列宽开始时收起面板:气泡锚在漏斗上,列宽一变就对不上)', () => {
+  it('面板开着时 closeRequest 变大 → 面板收起、草稿丢弃(不 emit)、焦点不还给漏斗(别抢走用户刚按下的把手)', async () => {
+    const wrapper = mount(ColumnFilter, {
+      props: {
+        def: buildOptionsDef(),
+        value: null,
+        labels,
+        getOptions: () => [{ label: 'A', value: 'a' }],
+        isLoadingOptions: () => false,
+      },
+      attachTo: document.body,
+    })
+    const btn = () => wrapper.find('.smart-table-filter-trigger button')
+    await wrapper.find('.smart-table-filter-trigger').trigger('click')
+    await nextTick()
+    expect(btn().attributes('aria-expanded')).toBe('true')
+
+    await wrapper.setProps({ closeRequest: 1 })
+    await nextTick()
+    expect(btn().attributes('aria-expanded')).toBe('false')
+    expect(wrapper.emitted('update:value')).toBeUndefined()
+    expect(document.activeElement).not.toBe(btn().element)
+
+    wrapper.unmount()
+  })
+
+  it('面板没开时 closeRequest 变大什么都不做', async () => {
+    const wrapper = mount(ColumnFilter, {
+      props: {
+        def: buildOptionsDef(),
+        value: null,
+        labels,
+        getOptions: () => [],
+        isLoadingOptions: () => false,
+      },
+      attachTo: document.body,
+    })
+    await wrapper.setProps({ closeRequest: 1 })
+    await nextTick()
+    expect(wrapper.find('.smart-table-filter-trigger button').attributes('aria-expanded')).toBe(
+      'false',
+    )
+    wrapper.unmount()
+  })
+})
+
+describe('ColumnFilter 弹层阴影只有一份', () => {
+  // 官方 raw 气泡只去掉底色 / 圆角 / 内边距,box-shadow 仍在外壳 .n-popover 上。面板自己画同一份阴影(会单独平移出屏),
+  // 所以外壳的阴影必须关掉,面板上也不能再有手抄的内联底色 / 圆角 / 阴影(它们取自外壳的官方 --n-* 变量,由样式表给)。
+  // jsdom 不加载 SFC 样式,算不出最终的视觉值:真实浏览器里的 box-shadow / 圆角实测见任务汇报。
+  it('外壳 .n-popover 的 box-shadow 为 none;面板不带内联的底色 / 圆角 / 阴影 / 文字色', async () => {
+    const wrapper = mount(ColumnFilter, {
+      props: {
+        def: buildDef(),
+        value: null,
+        labels,
+        getOptions: () => [],
+        isLoadingOptions: () => false,
+      },
+      attachTo: document.body,
+    })
+    await wrapper.find('.smart-table-filter-trigger').trigger('click')
+    await flushPromises()
+    const panel = document.body.querySelector<HTMLElement>('.smart-table-filter')!
+    const shell = panel.closest<HTMLElement>('.n-popover')!
+    expect(shell.style.boxShadow).toBe('none')
+    for (const prop of [
+      'background',
+      'backgroundColor',
+      'borderRadius',
+      'boxShadow',
+      'color',
+    ] as const)
+      expect(panel.style[prop]).toBe('')
+    wrapper.unmount()
   })
 })

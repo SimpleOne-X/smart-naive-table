@@ -110,7 +110,7 @@ describe('useColumns 消费全局默认', () => {
       ],
     )
     expect(col(api, 'amt').sortOrder).toBe('descend')
-    expect(col(api, 'st').sortOrder).toBe('ascend') // C1:多列都回显,不再只认第一列
+    expect(col(api, 'st').sortOrder).toBe('ascend') // 多列都回显
     expect(col(api, 'name').sortOrder).toBe(false)
   })
 
@@ -151,7 +151,7 @@ describe('useColumns 表头过滤入口', () => {
     expect(typeof title).toBe('function')
     const vnode = title(undefined)
     const children = vnode.children as VNode[]
-    // 有意改动(L0-4):标题文字多包了一层 span.smart-table-th-text(只让文字省略、漏斗不被裁),原断言直接读 children[0] === 'N'
+    // 标题文字包在 span.smart-table-th-text 里(只让文字省略、漏斗不被裁),children[0] 是这层 span
     expect((children[0] as VNode).props?.class).toBe('smart-table-th-text')
     expect((children[0] as VNode).children).toEqual(['N'])
     expect((children[1] as VNode).props?.['data-key']).toBe('name')
@@ -169,7 +169,7 @@ describe('useColumns 表头过滤入口', () => {
       { renderFilter },
     )
     const title = col(api, 'name').title as (c: unknown) => VNode
-    // 有意改动(L0-4):标题文字在 span.smart-table-th-text 里,取它的 children
+    // 标题文字在 span.smart-table-th-text 里,取它的 children
     const text = () => ((title(undefined).children as VNode[])[0] as VNode).children
     expect(text()).toEqual(['姓名'])
     lang = 'en'
@@ -196,7 +196,7 @@ describe('useColumns 列宽拖拽', () => {
     const api = build(
       [
         { key: 'name', title: 'N' },
-        { key: 'mid', title: 'M' }, // E1:最后一个可拖的非固定列是吸收列(没有把手),夹具里补一个它,name 才仍是普通可拖列
+        { key: 'mid', title: 'M' }, // 最后一个可拖的非固定列是吸收列(没有把手),夹具里补一个它,name 才仍是普通可拖列
         { key: 'amt', title: 'A', resizable: false },
       ],
       undefined,
@@ -364,7 +364,7 @@ describe('useColumns 列宽拖拽', () => {
     it('吸收列 = 最后一个可见、非固定的叶子列:freezeWidths 跳过它(不冻结成实测宽);钉住后它不写 width,下限(声明宽)计入 scrollX', () => {
       const api = build(three(), undefined, {}, undefined, resizable)
       api.freezeWidths((k) => ({ name: 210, amt: 150, op: 80 })[k])
-      expect(api.widths.value).toEqual({ name: 210, op: 80 }) // amt 没被冻结:冻结成 Naive 摊出来的实测宽会让它成为下限,拖别的列时它不肯缩(S1 实测溢出 61px)
+      expect(api.widths.value).toEqual({ name: 210, op: 80 }) // amt 没被冻结:冻结成 Naive 摊出来的实测宽会让它成为下限,拖别的列时它不肯缩(表现为整表溢出)
       expect('width' in col(api, 'amt')).toBe(false) // 声明的 width:100 也被摘掉,交给浏览器弹性分配
       expect(col(api, 'name').width).toBe(210)
       expect(col(api, 'op').width).toBe(80)
@@ -376,7 +376,7 @@ describe('useColumns 列宽拖拽', () => {
       const api = build(three(), undefined, {}, undefined, resizable)
       expect(col(api, 'amt').resizable).toBe(false)
       expect(col(api, 'name').resizable).toBe(true)
-      // 没钉住:吸收列照 2.1.1 写声明宽(Naive 自己按 width:100% 摊余量)
+      // 没钉住:吸收列写声明宽(Naive 自己按 width:100% 摊余量)
       expect(col(api, 'amt').width).toBe(100)
     })
 
@@ -577,7 +577,7 @@ describe('useColumns 列宽拖拽', () => {
       { key: 'amt', title: 'A', width: 100 },
     ]
     expect(api.widths.value).toEqual({ name: 260 })
-    // 有意翻转(P-2):amt 现在是吸收列,钉住后不写 width;要锁的是它没继承陈旧的 240 —— 下限是它自己声明的 100
+    // amt 是吸收列,钉住后不写 width;要锁的是它没继承陈旧的 240 —— 下限是它自己声明的 100
     expect('width' in col(api, 'amt')).toBe(false)
     expect(col(api, 'name').width).toBe(260)
     expect(api.scrollX.value).toBe(260 + 100)

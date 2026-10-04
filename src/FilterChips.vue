@@ -4,12 +4,15 @@
 // 「+N」渲染出来后自己也占位,若它折到了第二行就再让出一个位置(shrinkForMore),直到稳定;
 // 容器宽度变了再量一次(只在宽度变化时重量,否则测量时行高变化会触发死循环)。
 // 盯的是行容器 .smart-table-chips(块级、宽度跟着父级走),不是列表:列表是 flex: 0 1 auto、按内容收缩,
-// 折成「+N」后视口再变宽,列表自己的宽度不变,盯着它的 ResizeObserver 不会触发,折起来的 chip 就回不来了(final review fix)。
+// 折成「+N」后视口再变宽,列表自己的宽度不变,盯着它的 ResizeObserver 不会触发,折起来的 chip 就回不来了。
 // 键盘:chip 是 role="button" tabindex="0",Enter / Space 等同点击;「孤儿」chip(列已不存在)没有面板可开,点击是空操作,× 照常清除。
-// 外观(设计原型 .chips / .chip):主色可点的 NTag small(22px 高)、间距 8px 12px、行下方 12px、「清除全部」紧跟在 chips 后面;孤儿 chip 与「+N」保持默认灰。
-// 「+N」键盘可开(Fix round 1):NPopover 的 trigger="click" 只认真实 click 事件(naive-ui 源码
+// 外观(设计原型 .chips / .chip):主色可点的 NTag small(22px 高)、间距 8px 12px、「清除全部」紧跟在 chips 后面;孤儿 chip 与「+N」保持默认灰。
+// 位置:chips 在表格下方、与分页同一行(左 chips、右分页),由 SmartTable 决定把它放进 pagination.prefix 还是自画一行;
+// 本组件自己不带外边距,只占满父级 flex 行里剩下的宽度(flex: 1 1 0)—— 折叠(「+N」)就是量这段宽度。
+// 窄档(wrap,容器 < 600,原型 foldChips 的 `state.tier === 'narrow'` 分支):chips 自成一行、可换行,不折成「+N」,「清除全部」与 chips 同一个换行流。
+// 「+N」键盘可开:NPopover 的 trigger="click" 只认真实 click 事件(naive-ui 源码
 // popover/src/Popover.mjs 的 click 分支只挂 onClick),role="button" 的 div 上按 Enter / Space
-// 浏览器不会自动转成 click —— 这里改成受控 show(v-model:show),键盘直接翻状态而不是伪造 click。
+// 浏览器不会自动转成 click —— 这里用受控 show(v-model:show),键盘直接翻状态而不是伪造 click。
 // 打开后把焦点移到气泡内第一个 chip,让 Tab 能从那里继续走完剩下的隐藏 chip(与 ColumnFilter.vue
 // 的 focusFirst 同一套思路:panelRef 从 null 变非 null 时聚焦,因为内容是 displayDirective="if" 的
 // teleport 内容,show 变 true 的那一刻还不在 DOM 里)。
@@ -17,6 +20,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type PropTy
 import { NButton, NPopover, NTag } from 'naive-ui'
 import type { SmartTableLabels } from './types'
 import { countFitting, shrinkForMore, type ChipItem } from './filterChips'
+import { useEscClose } from './useEscClose'
 
 const props = defineProps({
   items: { type: Array as PropType<ChipItem[]>, required: true },
@@ -24,6 +28,8 @@ const props = defineProps({
   hasDefaults: { type: Boolean, default: false },
   /** 当前过滤态已经等于各列声明的默认值(有默认值的表上,此时不需要「恢复默认」)。 */
   atDefaults: { type: Boolean, default: false },
+  /** 窄档:chips 换行显示、不折叠成「+N」(原型窄档 chips 单独一行放在分页上方,可换行)。 */
+  wrap: { type: Boolean, default: false },
 })
 
 // 行末按钮出现的规则(原型一致):有默认值的表 = 偏离默认才出现「恢复默认」(1 个 chip 也出现);没有默认值的表 = ≥ 2 个 chip 才出现「清除全部」
@@ -57,6 +63,7 @@ function onChipKeydown(e: KeyboardEvent, c: ChipItem) {
 /* ---- 「+N」气泡:受控 show,键盘可开,开启后聚焦气泡内第一个 chip ---- */
 
 const moreOpen = ref(false)
+useEscClose(moreOpen)
 const moreContentRef = ref<HTMLElement | null>(null)
 
 function onMoreKeydown(e: KeyboardEvent) {
@@ -73,6 +80,12 @@ watch(moreContentRef, (el) => {
 })
 
 async function recompute() {
+  if (props.wrap) {
+    // 窄档不折:全部显示、让它换行
+    visible.value = Number.POSITIVE_INFINITY
+    measuring.value = false
+    return
+  }
   measuring.value = true
   await nextTick()
   const chips = Array.from(listRef.value?.children ?? []).filter((el): el is HTMLElement =>
@@ -81,7 +94,7 @@ async function recompute() {
   let n = chips.length ? countFitting(chips.map((el) => el.offsetTop)) : props.items.length
   visible.value = n
   measuring.value = false
-  // 「+N」自己也占位:它折到了第二行就再让出一个位置,直到放得下;让到 0 = 只显示 +N(F10)
+  // 「+N」自己也占位:它折到了第二行就再让出一个位置,直到放得下;让到 0 = 只显示 +N
   while (n > 0 && n < props.items.length) {
     await nextTick()
     const more = listRef.value?.querySelector<HTMLElement>('.smart-table-chip--more')
@@ -96,9 +109,11 @@ async function recompute() {
   }
 }
 
-watch(() => props.items.map((i) => `${i.key}:${i.index}:${i.text}`).join('|'), recompute, {
-  flush: 'post',
-})
+watch(
+  () => [props.wrap, ...props.items.map((i) => `${i.key}:${i.index}:${i.text}`)].join('|'),
+  recompute,
+  { flush: 'post' },
+)
 
 let observer: ResizeObserver | null = null
 let lastWidth = -1
@@ -117,7 +132,7 @@ onBeforeUnmount(() => observer?.disconnect())
 </script>
 
 <template>
-  <div ref="rowRef" class="smart-table-chips">
+  <div ref="rowRef" class="smart-table-chips" :class="{ 'smart-table-chips--wrap': wrap }">
     <div ref="listRef" class="smart-table-chips__list">
       <n-tag
         v-for="c in shown"
@@ -189,12 +204,13 @@ onBeforeUnmount(() => observer?.disconnect())
 
 <style scoped>
 /* 清除按钮紧跟在 chips 后面(原型是同一个 wrap 行里的下一个元素);list 按内容收缩而不是撑满,放不下时 chips 在 list 里折行(测量用),
-   最终显示的是一行 + 「+N」。行与表格之间 12px。 */
+   最终显示的是一行 + 「+N」。没有外边距:与表格 / 分页的间距由 SmartTable 给(分页自带 12px,自画行 margin-top 12px)。 */
 .smart-table-chips {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  flex: 1 1 0;
+  min-width: 0;
 }
 .smart-table-chips__list {
   display: flex;
@@ -203,6 +219,15 @@ onBeforeUnmount(() => observer?.disconnect())
   gap: 8px 12px;
   flex: 0 1 auto;
   min-width: 0;
+}
+/* 窄档:chips 占满一整行(在分页上方),自己换行;list 退成 contents,chip 与「清除」落在同一个换行流里(原型 .chips-list { display: contents }) */
+.smart-table-chips--wrap {
+  flex: 0 0 100%;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.smart-table-chips--wrap .smart-table-chips__list {
+  display: contents;
 }
 .smart-table-chip {
   cursor: pointer;

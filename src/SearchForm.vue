@@ -18,12 +18,14 @@ import {
   NSwitch,
   useThemeVars,
 } from 'naive-ui'
-import type { SelectMixedOption } from 'naive-ui/es/select/src/interface'
-import type { CardProps } from 'naive-ui'
+import type { CardProps, SelectGroupOption, SelectOption } from 'naive-ui'
 import type { SmartTableLabels, SmartTableOption, SearchFormConfig } from './types'
 import type { SearchDef } from './useColumns'
 import { optionLabel } from './useOptions'
 import { countTracks, effectiveCollapsedRows } from './searchCols'
+
+// 官方没有公开导出 SelectMixedOption(只在 select/src/interface 里,深导入会随版本改路径),用公开的两个选项类型拼出同一个联合。
+type SelectMixedOption = SelectOption | SelectGroupOption
 
 const props = defineProps({
   fields: { type: Array as PropType<SearchDef[]>, required: true },
@@ -49,7 +51,7 @@ const isInline = computed(() => props.config.layout === 'inline')
 const collapsible = computed(() => !isInline.value && props.config.collapsible === true)
 const collapsed = ref(true)
 
-// C5:渲染后读 n-grid 根元素 computed 的 grid-template-columns 轨道数(0 = 未知),让窄屏 1 列的折叠态至少露出首个字段。
+// 渲染后读 n-grid 根元素 computed 的 grid-template-columns 轨道数(0 = 未知),让窄屏 1 列的折叠态至少露出首个字段。
 // 用 ResizeObserver 跟随视口 / 容器变化重读;只在轨道数变了时才改 collapsed-rows,所以它自己引起的高度变化不会循环触发。
 const gridHostRef = ref<HTMLElement | null>(null)
 const gridTracks = ref(0)

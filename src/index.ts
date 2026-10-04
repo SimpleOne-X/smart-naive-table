@@ -1,6 +1,16 @@
 export { default as SmartTable } from './SmartTable.vue'
+export { default as SmartSelectTable } from './SmartSelectTable.vue'
+export { matchKeyword } from './selectTable'
 export { useSmartTable, cleanParams } from './useSmartTable'
 export { useTableCrud } from './useTableCrud'
+export {
+  inferEditor,
+  inferEditorInfo,
+  validateEdit,
+  validateEditAsync,
+  createEditStore,
+} from './editable'
+export type { EditorInfo, EditorVia, EditStore, ValidateResult } from './editable'
 export { useOptions, findOption, optionLabel } from './useOptions'
 export { defaultLabels, mergeLabels, zhCNLabels } from './labels'
 export { formatDate, formatDatetime, formatMoney, applyFormat } from './format'
@@ -23,6 +33,8 @@ export type { FilterSerializer, SerializedFilter, FilterableField, ActionValueKi
 export { useFilters } from './useFilters'
 export { deriveFilterDefs, deriveInitFilters, filterOptionsKey } from './useColumns'
 export type { FilterDef } from './useColumns'
+export { RECOMMENDED_ACTIONS } from './conditionBuilder'
+export type { SearchContainer } from './conditionBuilder'
 export { SMART_TABLE_DEFAULTS, createSmartTableDefaults, useSmartTableDefaults } from './config'
 export type { SmartTableDefaults } from './config'
 
@@ -46,9 +58,20 @@ export type {
   FilterFieldType,
   FilterRenderCtx,
   FilterConfig,
+  SmartTableCardRole,
   SmartTableDataColumn,
   SmartTableSpecialColumn,
   SmartTableColumn,
+  EditorKind,
+  EditRules,
+  EditableConfig,
+  SmartSelectTableProps,
+  SelectTableProps,
+  CellChange,
+  EditChanges,
+  EditChangeItem,
+  EditSavePayload,
+  EditInvalid,
   SortItem,
   Density,
   SearchFormConfig,

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-// 2.1.1 行为的「特征测试」:锁住后面要被有意翻转的默认值。
-// 每条标题里的 [Bn] / [Cn] = 由哪个任务翻转。翻转时在同一个提交里改断言,
-// 并在提交说明里写明这是有意的默认行为变更(见计划 Global Constraints)。
+// 默认值与基础行为的特征测试:锁住内置默认值(分页、密度、工具栏)与排序等行为。
+// 标题里的 [Bn] / [Cn] 是对应默认值 / 行为的编号;这些默认值改动属于有意的行为变更,
+// 要在同一个提交里改断言,并在提交说明里写明。
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { NDataTable } from 'naive-ui'

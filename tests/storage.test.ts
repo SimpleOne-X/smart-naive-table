@@ -152,7 +152,7 @@ describe('loadState / saveState 的密度(B2 / Q-1)', () => {
   it('[E6] loadState 的第二参数 fallbackDensity:记录里没有 density 字段时取它(宿主的 defaultDensity),有字段时取字段', () => {
     localStorage.setItem('protable:nodens2', JSON.stringify({ v: 2, cols: [], widths: {} }))
     expect(loadState('nodens2', 'comfortable')?.density).toBe('comfortable')
-    expect(loadState('nodens2')?.density).toBe('compact') // 不传 = 内置默认,与 B2 一致
+    expect(loadState('nodens2')?.density).toBe('compact') // 不传 = 内置默认 compact
     saveState('hasdens', 'compact', [])
     expect(loadState('hasdens', 'comfortable')?.density).toBe('compact')
   })

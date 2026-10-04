@@ -4,6 +4,7 @@ import {
   deriveInitSorts,
   normalizeSorterEvent,
   orderByPriority,
+  sortDrawerRows,
   sortToParams,
   sortTransition,
 } from '../src/sorts'
@@ -191,5 +192,33 @@ describe('sortToParams(C1:远程参数)', () => {
         { field: 'n', order: 'asc' },
       ],
     })
+  })
+})
+
+describe('sortDrawerRows(窄档排序抽屉的行)', () => {
+  it('可排序叶子列各一行;行序 = 声明的优先级(multiple 大者在前),单列互斥的排在后面;保留声明里的标题', () => {
+    const columns: SmartTableColumn<any>[] = [
+      { key: 'id', title: 'id' },
+      { key: 's', title: () => 'S', sorter: true },
+      { key: 'n', title: 'N', sorter: { compare: cmp, multiple: 1 } },
+      {
+        key: 'grp',
+        title: 'grp',
+        children: [{ key: 'g', title: 'G', sorter: { compare: cmp, multiple: 2 } }],
+      },
+      { type: 'index' },
+    ]
+    const rows = sortDrawerRows(columns, collectSorters(columns))
+    expect(rows.map((r) => r.key)).toEqual(['g', 'n', 's'])
+    expect(rows[0].title).toBe('G')
+    expect(typeof rows[2].title).toBe('function')
+  })
+
+  it('hideInTable 的列没有表头,不进抽屉', () => {
+    const columns: SmartTableColumn<any>[] = [
+      { key: 'a', title: 'a', sorter: true },
+      { key: 'b', title: 'b', sorter: true, hideInTable: true },
+    ]
+    expect(sortDrawerRows(columns, collectSorters(columns)).map((r) => r.key)).toEqual(['a'])
   })
 })

@@ -6,7 +6,7 @@ import ColumnSettings from '../src/ColumnSettings.vue'
 import { defaultLabels } from '../src/labels'
 import type { SettingItem } from '../src/useColumns'
 
-// N11:列设置「至少保留一列」。原型:只剩一列可见时,那一列的勾选框禁用(无提示)。
+// 列设置「至少保留一列」。原型:只剩一列可见时,那一列的勾选框禁用(无提示)。
 
 const items = (...shows: boolean[]): SettingItem[] =>
   shows.map((show, i) => ({ key: `c${i}`, title: `列${i}`, show }))

@@ -8,6 +8,7 @@ import ColumnSettings from '../src/ColumnSettings.vue'
 import Toolbar from '../src/Toolbar.vue'
 import FilterChips from '../src/FilterChips.vue'
 import { saveState } from '../src/storage'
+import { defaultLabels } from '../src/labels'
 import { SMART_TABLE_DEFAULTS } from '../src/config'
 import type { SmartTableColumn } from '../src/types'
 
@@ -62,7 +63,7 @@ describe('SmartTable 列宽拖拽事件透传', () => {
     const merged = dataTable.props('onUnstableColumnResize') as unknown
 
     expect(typeof merged).toBe('function')
-    // 真正的回归点:Naive 内部对这个 prop 是当函数直接调用的(见 Header.mjs 的
+    // 要点:Naive 内部对这个 prop 是当函数直接调用的(见 Header.mjs 的
     // onUnstableColumnResize(widthAfterResize, limitWidth, column, getColumnWidth)),
     // 数组会在这里直接抛 TypeError。
     expect(() =>
@@ -644,7 +645,7 @@ describe('SmartTable 排序(多列 / 默认排序 / 编程式)', () => {
     const { wrapper } = mountRemote(multiCols, { 'onUpdate:sorter': onSorter })
     await flushPromises()
     const payload = [{ columnKey: 'g', order: 'descend', sorter: multiCols[0].sorter }]
-    // 取 NDataTable 实际收到的监听器(2.1.1 里它是 [宿主, 库] 的数组)并像 Naive 那样逐个调用
+    // 取 NDataTable 实际收到的监听器(函数或数组都兼容)并像 Naive 那样逐个调用
     const handler = wrapper.findComponent(NDataTable).props('onUpdate:sorter') as unknown
     for (const fn of Array.isArray(handler) ? handler : [handler])
       (fn as (s: unknown) => void)(payload)
@@ -703,7 +704,7 @@ describe('SmartTable 密度(B2:宿主的值必须能生效)', () => {
 })
 
 describe('SmartTable 密度的写入端(Q-1:保存列设置 / 列宽不把宿主的密度写进存储)', () => {
-  // 有意改动(N11):夹具从 1 列改成 2 列 —— 列设置「至少保留一列」后,单列夹具里取消 name 会被拒绝、根本不写存储,
+  // 夹具是 2 列:列设置「至少保留一列」,单列夹具里取消 name 会被拒绝、根本不写存储,
   // 下面「不写 density / 保留旧 density」的断言就成了空转;留一个 code 列,取消 name 才是真的保存了列设置。
   const base = {
     columns: [
@@ -919,6 +920,121 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
     wrapper.unmount()
   })
 
+  describe('[D4 / B1 修订 2026-10-03] 每页条数可选项按 fillHeight 区分', () => {
+    // fillHeight 映射官方 virtual-scroll:vueuc 的 VirtualList 在 setup 里读 window.matchMedia,jsdom 没有
+    // 选每页条数时 onPageChanged() 会让虚拟滚动表体 scrollTo({ top: 0 }),jsdom 的 Element 没有 scrollTo
+    const hadScrollTo = 'scrollTo' in Element.prototype
+    beforeEach(() => {
+      vi.stubGlobal('matchMedia', () => ({
+        matches: false,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }))
+      if (!hadScrollTo) Element.prototype.scrollTo = () => {}
+    })
+    afterEach(() => {
+      vi.unstubAllGlobals()
+      if (!hadScrollTo) delete (Element.prototype as { scrollTo?: unknown }).scrollTo
+    })
+    const sizesOf = (w: ReturnType<typeof mount>) => sizeValues(picker(w))
+    const withGlobal = (defaults: Record<string, unknown>) => ({
+      provide: { [SMART_TABLE_DEFAULTS as symbol]: defaults },
+    })
+
+    it('宿主没给:不开 fillHeight [100, 500, 1000];开了 [100, 1000, 10000];默认每页都是 100', () => {
+      const off = mount(SmartTable, { props: { ...base, data: rows } })
+      expect(sizesOf(off)).toEqual([100, 500, 1000])
+      expect(pagerProps(off).pageSize).toBe(100)
+      const on = mount(SmartTable, { props: { ...base, data: rows, fillHeight: true } })
+      expect(sizesOf(on)).toEqual([100, 1000, 10000])
+      expect(pagerProps(on).pageSize).toBe(100)
+      off.unmount()
+      on.unmount()
+    })
+
+    it('simple: false 的官方选择器(pagination.pageSizes)同样按 fillHeight', () => {
+      const on = mount(SmartTable, {
+        props: { ...base, data: rows, fillHeight: true, pagination: { simple: false } },
+      })
+      expect(pagerProps(on).pageSizes).toEqual([100, 1000, 10000])
+      on.unmount()
+    })
+
+    it('实例 pagination.pageSizes 显式给了:照宿主的,开不开 fillHeight 都一样', () => {
+      for (const fillHeight of [false, true]) {
+        const w = mount(SmartTable, {
+          props: { ...base, data: rows, fillHeight, pagination: { pageSizes: [20, 50] } },
+        })
+        expect(sizesOf(w)).toEqual([20, 50]) // 默认每页取 pageSizes[0] = 20,已在列表里,不并入 100
+        w.unmount()
+      }
+    })
+
+    it('全局 createSmartTableDefaults({ pageSizes }) 显式给了:照全局的,开 fillHeight 也不改', () => {
+      for (const fillHeight of [false, true]) {
+        const w = mount(SmartTable, {
+          props: { ...base, data: rows, fillHeight },
+          global: withGlobal({ pageSizes: [10, 100, 200] }),
+        })
+        expect(sizesOf(w)).toEqual([10, 100, 200])
+        w.unmount()
+      }
+    })
+
+    it('全局只给了别的字段(没给 pageSizes)→ 仍按 fillHeight', () => {
+      const w = mount(SmartTable, {
+        props: { ...base, data: rows, fillHeight: true },
+        global: withGlobal({ density: 'compact' }),
+      })
+      expect(sizesOf(w)).toEqual([100, 1000, 10000])
+      w.unmount()
+    })
+
+    it('实例的 pageSizes 优先于全局的 pageSizes', () => {
+      const w = mount(SmartTable, {
+        props: { ...base, data: rows, fillHeight: true, pagination: { pageSizes: [5, 100] } },
+        global: withGlobal({ pageSizes: [10, 100, 200] }),
+      })
+      expect(sizesOf(w)).toEqual([5, 100])
+      w.unmount()
+    })
+
+    it('fillHeight 挂载后切换:可选项跟着变;当前每页条数不在新列表里时自动并入', async () => {
+      const w = mount(SmartTable, { props: { ...base, data: rows } })
+      expect(sizesOf(w)).toEqual([100, 500, 1000])
+      await w.setProps({ fillHeight: true })
+      expect(sizesOf(w)).toEqual([100, 1000, 10000])
+      // 在开着 fillHeight 时选 10000,再关掉 → 10000 不在 [100, 500, 1000] 里,并入(升序)
+      picker(w).props.onUpdatePageSize(10000)
+      await nextTick()
+      await w.setProps({ fillHeight: false })
+      expect(pagerProps(w).pageSize).toBe(10000)
+      expect(sizesOf(w)).toEqual([100, 500, 1000, 10000])
+      w.unmount()
+    })
+
+    it('远程模式开 fillHeight:首个请求仍是 pageSize 100;选 10000 → 回第 1 页按 10000 重查', async () => {
+      const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 2 }))
+      const w = mount(SmartTable, { props: { ...base, fetcher, fillHeight: true } })
+      await flushPromises()
+      expect(fetcher.mock.calls[0][0]).toMatchObject({ page: 1, pageSize: 100 })
+      picker(w).props.onUpdatePageSize(10000)
+      await flushPromises()
+      expect(fetcher.mock.calls.at(-1)![0]).toMatchObject({ page: 1, pageSize: 10000 })
+      w.unmount()
+    })
+
+    it('宿主只给 pageSizes 时默认每页取它的第一项(与 fillHeight 无关,B1 回退一行)', async () => {
+      const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 2 }))
+      const w = mount(SmartTable, {
+        props: { ...base, fetcher, fillHeight: true, pagination: { pageSizes: [10, 20] } },
+      })
+      await flushPromises()
+      expect(fetcher.mock.calls[0][0]).toMatchObject({ pageSize: 10 })
+      w.unmount()
+    })
+  })
+
   it('[D3 #2] 宿主 pagination.pageSizes 里的 { label, value } 对象原样保留,不被当非数字项丢掉', () => {
     const obj = { label: '每页 50 条', value: 50 }
     const wrapper = mount(SmartTable, {
@@ -1064,8 +1180,8 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
   it('[Fix round 2] 本地模式 + simple:false:宿主经 NDataTable 原生链路收到的每页条数通知只触发一次,不是两次', async () => {
     // simple:false 时没有内层嵌套选择器(suffix 只在 simple 下画),宿主看到的是 NDataTable 自己渲染的
     // 官方 NPagination;它内部的 mergedOnUpdatePageSize/doUpdatePageSize(use-table-data.mjs)本来就会
-    // 按 attrs 级拼写通知一遍 —— Fix round 1 在 onSize 里加的 notifyPageSizeListeners 如果也挂在这条路径上,
-    // 就会被通知两次(Fix round 2 要修的回归)。直接触发 NDataTable 内部真实绑定给官方 NPagination 的
+    // 按 attrs 级拼写通知一遍 —— onSize 里的 notifyPageSizeListeners 如果也挂在这条路径上,
+    // 宿主就会被通知两次。直接触发 NDataTable 内部真实绑定给官方 NPagination 的
     // 'onUpdate:pageSize' prop(即 mergedOnUpdatePageSize 本身),比在 jsdom 里模拟下拉点击更贴近「走原生
     // 链路」,又不需要重新实现 NDataTable 内部每一层。
     const attrsUpdatePageSize = vi.fn()
@@ -1340,7 +1456,7 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
       props: { columns: cols, data: rows, rowKey: 'id', filterChips: true },
     })
     inst(wrapper).setFilter('name', value('contains', 'a'))
-    inst(wrapper).setFilter('dept', value('equal', 'x')) // 有意改动(L0-6):「清除全部」≥ 2 个 chip 才出现,原来只设 1 个条件
+    inst(wrapper).setFilter('dept', value('equal', 'x')) // 「清除全部」≥ 2 个 chip 才出现,所以设 2 个条件
     await nextTick()
     const btn = wrapper.find('.smart-table-chips__clear')
     expect(btn.text()).toBe('Clear all')
@@ -1387,7 +1503,7 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
     })
     await flushPromises()
     inst(wrapper).setFilter('ghost', value('equal', 'x'))
-    inst(wrapper).setFilter('ghost2', value('equal', 'y')) // 有意改动(L0-6):「清除全部」≥ 2 个 chip 才出现,原来只有 1 个孤儿键
+    inst(wrapper).setFilter('ghost2', value('equal', 'y')) // 「清除全部」≥ 2 个 chip 才出现,所以设 2 个孤儿键
     await flushPromises()
     expect(JSON.stringify(fetcher.mock.calls.at(-1)![0])).toContain('ghost')
     const btn = wrapper.find('.smart-table-chips__clear')
@@ -1564,6 +1680,184 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
     } finally {
       offsetTopSpy.mockRestore()
     }
+  })
+})
+
+describe('SmartTable chips 的位置:表格下方、与分页同一行(规格变更 2026-10-02)', () => {
+  // chips 不放在「工具栏下方、表格上方」的独立一行(放上面时 chips 出现 / 消失会把表格整体顶下去再弹回来),而是在表格下方、与分页同一行。
+  // 几何(y 坐标、同一水平线)jsdom 算不了,只能在真实浏览器里验;这里锁 DOM 结构与归属。
+  const cols = [
+    { key: 'name', title: '姓名', filter: true },
+    { key: 'dept', title: '部门', filter: true },
+  ] as SmartTableColumn<unknown>[]
+  const f = (action: string, v: unknown) => ({
+    logic: 'and' as const,
+    conditions: [{ action: action as never, value: v }],
+  })
+  const set = (w: ReturnType<typeof mount>, k: string, v: unknown) =>
+    (w.vm as unknown as { setFilter: (k: string, v: unknown) => void }).setFilter(k, v)
+  const kidsOf = (e: unknown) =>
+    Array.from((e as Element).children).map((c) => c.className.split(' ')[0])
+  /** a 在 b 之前(文档顺序) */
+  const before = (a: Element, b: Element) =>
+    !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+  const mountWith = async (
+    extra: Record<string, unknown> = {},
+    slots?: Record<string, unknown>,
+  ) => {
+    const w = mount(SmartTable, {
+      props: {
+        columns: cols,
+        data: rows,
+        rowKey: 'id',
+        filterChips: true,
+        title: '标题',
+        ...extra,
+      },
+      slots: slots as never,
+    })
+    set(w, 'name', f('contains', 'a'))
+    await nextTick()
+    return w
+  }
+
+  it('默认:chips 在表格之后,且渲染在分页的 prefix 里(与分页同一行,左 chips 右分页)', async () => {
+    const w = await mountWith()
+    const el = w.element as HTMLElement
+    const table = el.querySelector('.n-data-table-wrapper')!
+    const toolbar = el.querySelector('.smart-table-toolbar')!
+    const chips = el.querySelector('.smart-table-chips')!
+    expect(chips).toBeTruthy()
+    expect(before(toolbar, table)).toBe(true)
+    expect(before(table, chips)).toBe(true) // chips 在表格之后
+    const pager = el.querySelector('.n-data-table__pagination > .n-pagination')!
+    expect(pager.contains(chips)).toBe(true)
+    expect(chips.closest('.n-pagination-prefix')).toBeTruthy()
+    // prefix 在页码之前(左),页码在其后(右)
+    expect(before(chips, pager.querySelector('.n-pagination-item')!)).toBe(true)
+    expect(el.querySelector('.smart-table-chips-foot')).toBeNull()
+    expect(w.classes()).toContain('smart-table--chips-pager')
+    w.unmount()
+  })
+
+  it('chips 不再出现在工具栏与表格之间(旧位置)', async () => {
+    const w = await mountWith()
+    const el = w.element as HTMLElement
+    const card = el.querySelector('.smart-table-card .n-card-content')!
+    const kids = Array.from(card.children)
+    const iTable = kids.findIndex((k) => k.classList.contains('n-data-table'))
+    expect(iTable).toBeGreaterThan(0)
+    // 表格之前的兄弟里没有 chips
+    expect(
+      kids
+        .slice(0, iTable)
+        .some(
+          (k) => k.querySelector('.smart-table-chips') || k.classList.contains('smart-table-chips'),
+        ),
+    ).toBe(false)
+    w.unmount()
+  })
+
+  it('没有分页(pagination: false)时 chips 仍在表格下方自成一行', async () => {
+    const w = await mountWith({ pagination: false })
+    const el = w.element as HTMLElement
+    const table = el.querySelector('.n-data-table')!
+    const foot = el.querySelector('.smart-table-chips-foot')!
+    expect(foot).toBeTruthy()
+    expect(foot.querySelector('.smart-table-chips')).toBeTruthy()
+    expect(before(table, foot)).toBe(true)
+    expect(table.contains(foot)).toBe(false)
+    expect(el.querySelector('.n-data-table__pagination')).toBeNull()
+    expect(w.classes()).not.toContain('smart-table--chips-pager')
+    w.unmount()
+  })
+
+  it('宿主显式 paginateSinglePage: false 且只有 1 页(分页不画)→ 自画一行;多于 1 页 → 回到分页同行', async () => {
+    const one = await mountWith({ paginateSinglePage: false })
+    expect(one.element.querySelector('.n-data-table__pagination')).toBeNull()
+    expect(one.element.querySelector('.smart-table-chips-foot .smart-table-chips')).toBeTruthy()
+    one.unmount()
+    // 官方默认 paginateSinglePage 是 true:没有显式关闭时单页也画分页,chips 恒在分页那一行
+    const dflt = await mountWith()
+    expect(dflt.element.querySelectorAll('.n-data-table__pagination').length).toBe(1)
+    dflt.unmount()
+    const multi = await mountWith({ paginateSinglePage: false, pagination: { pageSize: 1 } })
+    set(multi, 'name', f('notEqual', 'zzz')) // 2 行都命中、每页 1 行 → 2 页
+    await nextTick()
+    expect(
+      multi.element.querySelector(
+        '.n-data-table__pagination .n-pagination-prefix .smart-table-chips',
+      ),
+    ).toBeTruthy()
+    expect(multi.element.querySelector('.smart-table-chips-foot')).toBeNull()
+    multi.unmount()
+  })
+
+  it('无数据(空表)时分页照画,chips 仍在分页同一行', async () => {
+    const w = mount(SmartTable, {
+      props: { columns: cols, data: [], rowKey: 'id', filterChips: true },
+    })
+    set(w, 'name', f('contains', 'zzz'))
+    await nextTick()
+    expect(
+      w.element.querySelector('.n-data-table__pagination .n-pagination-prefix .smart-table-chips'),
+    ).toBeTruthy()
+    w.unmount()
+  })
+
+  it('宿主的 #pagination-prefix 保留:chips 在前、宿主 prefix 紧挨页码在后;没有 chip 时宿主 prefix 单独留在 prefix 里', async () => {
+    const w = await mountWith({}, { 'pagination-prefix': () => 'TOTAL' })
+    const prefix = w.element.querySelector('.n-pagination-prefix')!
+    expect(kidsOf(prefix)).toEqual(['smart-table-chips', 'smart-table-pager-host-prefix'])
+    expect(prefix.querySelector('.smart-table-pager-host-prefix')!.textContent).toBe('TOTAL')
+    set(w, 'name', null)
+    await nextTick()
+    const after = w.element.querySelector('.n-pagination-prefix')!
+    expect(kidsOf(after)).toEqual(['smart-table-pager-host-prefix'])
+    w.unmount()
+  })
+
+  it('宿主自己写了 pagination.prefix(盖掉库给的 prefix)→ chips 不去抢,自画一行', async () => {
+    const w = await mountWith({ pagination: { prefix: () => 'HOST' } })
+    expect(w.element.querySelector('.n-pagination-prefix')!.textContent).toBe('HOST')
+    expect(w.element.querySelector('.n-pagination-prefix .smart-table-chips')).toBeNull()
+    expect(w.element.querySelector('.smart-table-chips-foot .smart-table-chips')).toBeTruthy()
+    w.unmount()
+  })
+
+  it('没开 chips / 没有条件:没有 chips、没有自画行;没开 chips 时分页 prefix 与旧版一致(不额外包一层)', async () => {
+    const off = mount(SmartTable, {
+      props: { columns: cols, data: rows, rowKey: 'id' },
+      slots: { 'pagination-prefix': () => 'TOTAL' },
+    })
+    expect(off.element.querySelector('.smart-table-chips')).toBeNull()
+    expect(off.element.querySelector('.smart-table-chips-foot')).toBeNull()
+    expect(off.element.querySelector('.n-pagination-prefix')!.innerHTML).toBe('TOTAL')
+    expect(off.classes()).not.toContain('smart-table--chips-pager')
+    off.unmount()
+    const none = mount(SmartTable, {
+      props: { columns: cols, data: rows, rowKey: 'id', filterChips: true },
+    })
+    expect(none.element.querySelector('.smart-table-chips')).toBeNull()
+    expect(none.element.querySelector('.smart-table-chips-foot')).toBeNull()
+    none.unmount()
+  })
+
+  it('FilterChips 的 wrap(窄档):全部 chip 都显示、不折成「+N」,根上带 --wrap', async () => {
+    const items = Array.from({ length: 6 }, (_, i) => ({
+      key: `k${i}`,
+      index: 0,
+      text: `字段${i} 等于 值${i}`,
+    }))
+    const w = mount(FilterChips, {
+      props: { items: items as never, labels: defaultLabels, wrap: true },
+    })
+    await nextTick()
+    await nextTick()
+    expect(w.classes()).toContain('smart-table-chips--wrap')
+    expect(w.findAll('.smart-table-chip')).toHaveLength(6)
+    expect(w.find('.smart-table-chip--more').exists()).toBe(false)
+    w.unmount()
   })
 })
 
@@ -1750,11 +2044,11 @@ describe('SmartTable 翻页后滚回卡片顶部(E4:只在不开 fillHeight 时)
     wrapper.unmount()
   })
 
-  // [Fix round 1 review] 本地模式 + simple:false 时没有内层嵌套选择器(suffix 只在 simple 下画),宿主看到的是
-  // NDataTable 自己渲染的官方 NPagination,改每页条数直接绑的是 applyLocalSize(与 [Fix round 2] 测试锁定的是
-  // 同一条「原生链路」)。此前 applyLocalSize 内没有调 onPageChanged(),这条路径下改每页条数不会触发「滚回卡片
-  // 顶部 / fillHeight 表体复位」(review 在真实浏览器复现:DemoFill 页面切每页条数,视口停在原地不动)。
-  // 跟 [Fix round 2] 一样,直接取 NDataTable 内部真实绑定给官方 NPagination 的 'onUpdate:pageSize' prop 调用,
+  // 本地模式 + simple:false 时没有内层嵌套选择器(suffix 只在 simple 下画),宿主看到的是
+  // NDataTable 自己渲染的官方 NPagination,改每页条数直接绑的是 applyLocalSize(与上面「宿主只通知一次」的测试锁定的是
+  // 同一条「原生链路」)。这条路径下改每页条数也必须调 onPageChanged(),触发「滚回卡片
+  // 顶部 / fillHeight 表体复位」;否则在 DemoFill 页面切每页条数时,视口会停在原地不动。
+  // 与上面那条一样,直接取 NDataTable 内部真实绑定给官方 NPagination 的 'onUpdate:pageSize' prop 调用,
   // 而不是在 jsdom 里模拟下拉点击 —— 这样才是在验真实接线,不是在验测试自己搭的双替身。
   it('[Fix round 1 review] 本地 + simple:false:原生选择器改每页条数,滚回卡片顶部恰好触发一次(不是零次)', async () => {
     const wrapper = mount(SmartTable, {

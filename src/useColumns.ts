@@ -43,7 +43,7 @@ import type { ResolvedSmartTableDefaults } from './config'
 
 /**
  * 带图标的表头的最小宽度:左内边距 12 + 标题 44 + 漏斗簇 30(可过滤)+ 箭头簇 21(可排序)+ 右内边距 16。
- * 可拖拽列的拖拽下限取它与 resizeMinWidth 的较大者,免得把图标挤出格子(B12)。
+ * 可拖拽列的拖拽下限取它与 resizeMinWidth 的较大者,免得把图标挤出格子。
  */
 export function headerIconFloor(hasFilter: boolean, hasSorter: boolean): number {
   if (!hasFilter && !hasSorter) return 0
@@ -51,7 +51,7 @@ export function headerIconFloor(hasFilter: boolean, hasSorter: boolean): number 
 }
 
 /**
- * 列设置「至少保留一列」(N11,原型一致):隐藏 key 这一列之后,设置里还得剩一列是显示的。
+ * 列设置「至少保留一列」(与设计原型一致):隐藏 key 这一列之后,设置里还得剩一列是显示的。
  * 只看设置里能管的列(hideInSetting 的列用户碰不到,不算);已经隐藏的 / 不存在的键不受限。
  */
 export function canHideColumn(
@@ -155,6 +155,22 @@ const DEFAULT_ACTIONS: Record<FilterFieldType, FilterAction[]> = {
   select: ['equal', 'notEqual'],
 }
 
+/**
+ * 过滤值控件的类型:显式 `filter.type` 优先;有字典 → select;否则按 `format` 推断(date / datetime → date,money → number),缺省 input。
+ * 列头漏斗与模式 2 条件构造器共用同一套推断。
+ */
+export function inferFilterType<T>(
+  col: SmartTableDataColumn<T>,
+  hasOptions: boolean,
+  explicit?: FilterFieldType,
+): FilterFieldType {
+  if (explicit) return explicit
+  if (hasOptions) return 'select'
+  if (col.format === 'date' || col.format === 'datetime') return 'date'
+  if (col.format === 'money') return 'number'
+  return 'input'
+}
+
 /** 一列的过滤项(表头面板渲染 + 本地过滤 + 远程序列化共用)。 */
 export interface FilterDef<T = any> {
   /** 过滤态的键 / 远程参数字段名(filter.key ?? 列 key)。 */
@@ -199,15 +215,7 @@ export function deriveFilterDefs<T>(columns: SmartTableColumn<T>[]): FilterDef<T
       const cfg: FilterConfig<T> = col.filter === true ? {} : col.filter
       const hasOptions = !!(cfg.options ?? col.options)
       const mode: FilterMode = cfg.mode ?? (hasOptions ? 'options' : 'condition')
-      const type: FilterFieldType =
-        cfg.type ??
-        (hasOptions
-          ? 'select'
-          : col.format === 'date' || col.format === 'datetime'
-            ? 'date'
-            : col.format === 'money'
-              ? 'number'
-              : 'input')
+      const type = inferFilterType(col, hasOptions, cfg.type)
       defs.push({
         key: cfg.key ?? col.key,
         field: col.key,
@@ -275,6 +283,25 @@ export interface UseColumnsOpts<T> {
   hostWidth?: () => number
   /** 拖拽进行中的临时增量(SmartTable 维护,松手清零);退路里吸收列要让出这部分。 */
   dragDelta?: () => number
+  /**
+   * 可编辑表格(SmartTable 提供 useEditable 的接线):给数据列加 cellProps 与带编辑态的 render。
+   * 没传 / enabled() 为 false 时,列产出与不开 editable 时完全一致。
+   */
+  editable?: {
+    enabled: () => boolean
+    cellProps: (
+      col: SmartTableDataColumn<T>,
+      row: T,
+      index: number,
+      host?: (row: T, index: number) => Record<string, unknown>,
+    ) => Record<string, unknown>
+    renderCell: (
+      col: SmartTableDataColumn<T>,
+      row: T,
+      index: number,
+      display: () => VNodeChild,
+    ) => VNodeChild
+  }
 }
 
 export interface UseColumnsReturn<T> {
@@ -365,7 +392,7 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
   })
 
   /**
-   * 拖过列宽后吸收余量的列(B8,E1 / spike S1 的 dk 方案):最后一个**可见、非固定、`resizable !== false`** 的叶子数据列。
+   * 拖过列宽后吸收余量的列(spike S1 的 dk 方案):最后一个**可见、非固定、`resizable !== false`** 的叶子数据列。
    * elastic = true:钉住后**不写 width**,由 table-layout:fixed 把剩余宽度自然分给它;它的「钉住宽度」只是下限。
    * 没有这样的列(全部 fixed / 全部不可拖)→ 退路:最后一个叶子列,写显式宽度(elastic = false)。
    * 宿主给「操作」列写 `resizable: false` 就退出吸收(吸收列顺延到前一列);fixed: 'right' 的操作列天然不参与。
@@ -488,7 +515,7 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
           walk(col.children)
           continue
         }
-        // 吸收列不钉(B8):它是弹性的;退路里的吸收列也不能冻结成实测宽,否则拖别的列时它不肯缩
+        // 吸收列不钉:它是弹性的;退路里的吸收列也不能冻结成实测宽,否则拖别的列时它不肯缩
         if (col.key === absorber.value?.key) continue
         if (next[col.key] !== undefined) continue
         const w = measure(col.key)
@@ -524,7 +551,7 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
   /**
    * 列被移除(不再声明)后,widths 里那份旧宽度要跟着清掉 —— 不然要是之后一个新列复用了
    * 同一个 key,会莫名其妙地继承一份自己从没拖过的宽度;effectiveChecks/mergeCols 对
-   * 列设置(checks)本身已经做了这层过滤,widths 之前一直没有对应的清理入口。
+   * 列设置(checks)本身已经做了这层过滤,widths 需要在这里单独清理。
    * immediate:mount 时也顺手清一遍上一次会话留下的、对应列已经不在了的陈旧宽度。
    */
   watch(
@@ -577,6 +604,11 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
       // 同名属性 —— 这里必须同样从 rest 里摘掉,否则会原样透传给 n-data-table,撞上它自己
       // 内部的 filter/filterOptions/uncontrolledFilterStateRef 机制。
       filter: _filter,
+      // 可编辑表格的列声明(editable 接管),不能原样透传给 n-data-table
+      editor: _editor,
+      readonly: _readonly,
+      rules: _rules,
+      editorProps: _editorProps,
       children,
       ...naiveRest
     } = col
@@ -606,8 +638,22 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
       return result as DataTableColumn<T>
     }
 
+    // 可编辑表格:必填列的表头标题前自动加红色 *(纯推断自 rules.required;只读 / 不可编辑的列不加)
+    if (
+      opts.editable?.enabled() &&
+      col.rules?.required &&
+      col.readonly !== true &&
+      col.editor !== false
+    ) {
+      const bt = result.title as string | ((c: unknown) => VNodeChild) | undefined
+      result.title = (c: unknown) => [
+        h('span', { class: 'smart-table-xreq', 'aria-hidden': 'true' }, '*'),
+        typeof bt === 'function' ? bt(c) : bt,
+      ]
+    }
+
     // 表头过滤入口:标题后挂漏斗,同时让漏斗贴着标题而不是被 th 撑开。标题文字再单独包一层 .smart-table-th-text:
-    // 列被拖窄时只让文字省略(单行 + ellipsis),不折行撑高表头,也不会连漏斗一起裁掉(L0-4)。
+    // 列被拖窄时只让文字省略(单行 + ellipsis),不折行撑高表头,也不会连漏斗一起裁掉。
     const filterDef = opts.filterDefs?.().find((f) => f.field === key)
     if (filterDef && opts.renderFilter) {
       const baseTitle = result.title as string | ((c: unknown) => VNodeChild) | undefined
@@ -623,13 +669,13 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
     // 列宽拖拽:列显式 resizable 优先于表级开关;拖过的宽度回填成 width,
     // 刷新页面后(Naive 内部拖拽态已清空)仍由它还原。
     const resizable = naiveRest.resizable ?? opts.resizable?.() ?? false
-    // 吸收列永远没有拖拽把手(E1):Naive 把拖过的列记进内部 resizableWidthsRef,此后这一列的 <col> 宽度只认拖拽值、
+    // 吸收列永远没有拖拽把手:Naive 把拖过的列记进内部 resizableWidthsRef,此后这一列的 <col> 宽度只认拖拽值、
     // 不看我们传的 width,也没有清除入口 —— 弹性的吸收列一旦被拖过就再也弹性不起来。所以吸收列始终 resizable:false
     // (必须始终,不能只在钉住态:第一次拖就拖吸收列时,freezeWidths 使表格进入钉住态,同一帧里把手被卸载、拖拽被中断)
     const draggable = resizable && absorber.value?.key !== key
     result.resizable = draggable
     // 没有下限时能被拖成 0 宽,列头直接消失且拖不回来
-    // 带图标的列取 max(resizeMinWidth, 图标下限),免得图标被挤出格子(B12);列上显式写了 minWidth 的不覆盖
+    // 带图标的列取 max(resizeMinWidth, 图标下限),免得图标被挤出格子;列上显式写了 minWidth 的不覆盖
     if (draggable && result.minWidth === undefined) {
       const hasSorter = naiveRest.sorter != null && (naiveRest.sorter as unknown) !== false
       result.minWidth = Math.max(d.resizeMinWidth, headerIconFloor(!!filterDef, hasSorter))
@@ -665,6 +711,21 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
         if (value === null || value === undefined) return d.emptyText
         return applyFormat(format!, value, row)
       }
+    }
+
+    // 可编辑表格:数据列带上 cellProps(选中 / 点击 / 脏标记 / 校验态)与带编辑态的 render;常规显示(字典 / 格式 / 自定义)作为非编辑态
+    const ed = opts.editable
+    if (ed?.enabled()) {
+      const display = result.render as ((row: T, index: number) => VNodeChild) | undefined
+      const hostCellProps = naiveRest.cellProps as
+        ((row: T, index: number) => Record<string, unknown>) | undefined
+      result.cellProps = (row: T, index: number) => ed.cellProps(col, row, index, hostCellProps)
+      result.render = (row: T, index: number): VNodeChild =>
+        ed.renderCell(col, row, index, () => {
+          if (display) return display(row, index)
+          const v = (row as Record<string, unknown>)[key]
+          return v === null || v === undefined ? '' : String(v)
+        })
     }
     return result as DataTableColumn<T>
   }
@@ -735,12 +796,34 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
     return result.filter((r): r is NonNullable<typeof r> => r !== undefined)
   })
 
-  const naiveColumns = computed<DataTableColumn<T>[]>(() => [
-    ...specialCols.value.map(specialToNaive),
-    ...orderedVisibleData.value.map(({ col, fixed, managed }) =>
-      toNaive(col, managed ? { fixed } : undefined),
-    ),
-  ])
+  /**
+   * 最终的 Naive 列:勾选 / 展开列恒在最前;序号列(type: 'index')在声明里排在某个数据列之后时,就跟在那一列后面
+   * (如「勾选 → 拖拽手柄 → 序号 → …」);前面没有数据列(或那些列都被隐藏)时在最前。
+   */
+  const naiveColumns = computed<DataTableColumn<T>[]>(() => {
+    const data = orderedVisibleData.value
+    const front: SmartTableSpecialColumn<T>[] = []
+    const after = new Map<number, SmartTableSpecialColumn<T>[]>()
+    const seen: string[] = []
+    for (const c of opts.columns()) {
+      if (!isSpecialColumn(c)) {
+        if (c.key) seen.push(c.key)
+        continue
+      }
+      let pos = -1
+      if (c.type === 'index')
+        for (let k = seen.length - 1; k >= 0 && pos < 0; k--)
+          pos = data.findIndex((d) => d.col.key === seen[k])
+      if (pos < 0) front.push(c)
+      else after.set(pos, [...(after.get(pos) ?? []), c])
+    }
+    const out: DataTableColumn<T>[] = front.map(specialToNaive)
+    data.forEach(({ col, fixed, managed }, i) => {
+      out.push(toNaive(col, managed ? { fixed } : undefined))
+      for (const sc of after.get(i) ?? []) out.push(specialToNaive(sc))
+    })
+    return out
+  })
 
   /** auto scrollX = 特殊列宽度 + Σ可见叶子列(最终宽度 ?? 下限);吸收列按它的下限(退路则按显式宽度)计入,保证 scroll-x 始终 ≥ 各列下限之和。 */
   const scrollX = computed(() => {

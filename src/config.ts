@@ -3,6 +3,7 @@
 // 不 provide 时全部取内置兜底(BUILTIN_DEFAULTS)。
 import { inject, type InjectionKey, type MaybeRefOrGetter } from 'vue'
 import { defaultFilterSerializer, type FilterSerializer } from './filter'
+import { DEFAULT_PAGE_SIZES } from './pageSize'
 import type { Density, SmartTableLabels } from './types'
 
 export interface SmartTableDefaults {
@@ -16,7 +17,10 @@ export interface SmartTableDefaults {
   tag?: { size?: 'small' | 'medium' | 'large'; bordered?: boolean }
   /** 默认每页条数;缺省时取宿主显式给的 pageSizes[0],再缺省取 100。优先级见 pageSize.ts 的 resolveDefaultPageSize。 */
   defaultPageSize?: number
-  /** 分页可选每页条数;内置兜底 [100,500,1000]。 */
+  /**
+   * 分页可选每页条数。不给时按 fillHeight 区分:没开 [100, 500, 1000],开了 [100, 1000, 10000](一页 10000 行只有虚拟滚动扛得住);
+   * 显式给了就照这里的,不分 fillHeight(实例 `pagination.pageSizes` 优先)。
+   */
   pageSizes?: number[]
   /** 是否显示每页条数选择器;内置兜底 true。 */
   showSizePicker?: boolean
@@ -54,8 +58,9 @@ export type ResolvedSmartTableDefaults = {
   emptyText: string
   tag: { size: 'small' | 'medium' | 'large'; bordered: boolean }
   defaultPageSize?: number
+  /** 没开 fillHeight 的内置兜底 [100,500,1000];开了 fillHeight 的内置值在 pageSize.ts 的 FILL_PAGE_SIZES,由 resolvePageSizes 在宿主没显式给 pageSizes 时选用。 */
   pageSizes: number[]
-  /** 宿主是否显式注入了 pageSizes(决定要不要拿 pageSizes[0] 当默认每页条数)。 */
+  /** 宿主是否显式注入了 pageSizes(决定要不要拿 pageSizes[0] 当默认每页条数,以及 fillHeight 下是否照宿主的)。 */
   pageSizesGiven: boolean
   showSizePicker: boolean
   fixedFallbackWidth: number
@@ -77,7 +82,7 @@ export const BUILTIN_DEFAULTS: ResolvedSmartTableDefaults = {
   titleAlign: 'center',
   emptyText: '—',
   tag: { size: 'small', bordered: false },
-  pageSizes: [100, 500, 1000],
+  pageSizes: [...DEFAULT_PAGE_SIZES],
   pageSizesGiven: false,
   showSizePicker: true,
   fixedFallbackWidth: 120,

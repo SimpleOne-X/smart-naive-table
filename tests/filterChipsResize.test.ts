@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-// final review fix:FilterChips 折成「+N」后,容器变宽要能重新展开。
-// 13f 把 chips 列表改成 flex: 0 1 auto(按内容收缩,让「清除全部」紧跟在最后一个 chip 后面)之后,
-// 列表自己的宽度只跟着内容走 —— 视口变宽时它不变,盯着它的 ResizeObserver 永远不触发,折起来的 chip 回不来。
+// FilterChips 折成「+N」后,容器变宽要能重新展开。
+// chips 列表是 flex: 0 1 auto(按内容收缩,让「清除全部」紧跟在最后一个 chip 后面),
+// 列表自己的宽度只跟着内容走 —— 视口变宽时它不变,所以组件必须盯 chips 行容器而不是列表,否则折起来的 chip 回不来。
 // jsdom 没有真实布局:这里用 offsetTop 桩模拟「一行放得下几个」,用 ResizeObserver 桩模拟「哪个元素真的变了宽」
 // (视口变宽 = chips 行容器变宽,列表本身不变),验证组件盯的是行容器、且「宽度没变不重量」的守卫还在。
 // 真实布局只能在浏览器里验:npm run dev 后打开 /prototype.html?m=3,用 4 个条件把视口 1440 → 1000(折成「+2」)→ 1440,应恢复成 4 个 chip。

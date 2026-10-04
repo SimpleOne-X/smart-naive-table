@@ -3,7 +3,7 @@
 //   options   —— Arco 风格,勾选候选项(等价于若干 equal 条件取「或」);底部「高级条件」展开同一份多条件编辑
 //   condition —— Bootstrap Blazor 风格,多行 [操作符 + 值](最多 5 条,≥ 2 条出现且/或)
 // 面板内改的是草稿,点「确定」才提交,避免每敲一个字就打一次远程请求;Esc / 点外部丢弃草稿。
-// 键盘 / 焦点 / ARIA:公开的 NPopover 不管(焦点不进面板、Esc 不关闭,见设计文档 9.1),这里自己做(D6)。
+// 键盘 / 焦点 / ARIA:公开的 NPopover 不管(焦点不进面板、Esc 不关闭,见设计文档 9.1),这里自己做。
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch, type PropType } from 'vue'
 import { NButton, NCheckbox, NPopover, NRadio, NRadioGroup, NTooltip, useThemeVars } from 'naive-ui'
 import type {
@@ -48,6 +48,8 @@ const props = defineProps({
   dateValueFormat: { type: String, default: 'yyyy-MM-dd' },
   /** 每次变大 = 请求打开面板(已生效条件 chips 点击时用)。 */
   openRequest: { type: Number, default: 0 },
+  /** 每次变大 = 请求收起面板、丢弃草稿、不抢焦点(拖动列宽开始时用:气泡锚在漏斗上,列宽一变就对不上)。 */
+  closeRequest: { type: Number, default: 0 },
 })
 
 const emit = defineEmits<{
@@ -86,14 +88,14 @@ const advanced = ref(false)
 function loadDraft(from: FilterValue | null) {
   draft.value = draftFromValue(from, firstAction())
   if (props.def.mode === 'options') {
-    // 勾选表达不了当前值(notEqual / isNull / 且 的多条 equal …)→ 自动展开高级条件原样显示,不静默丢条件(C3)
+    // 勾选表达不了当前值(notEqual / isNull / 且 的多条 equal …)→ 自动展开高级条件原样显示,不静默丢条件
     const representable = isOptionsRepresentable(from)
     advanced.value = !representable
     checked.value = representable ? filterValueToOptions(from) : []
   }
 }
 
-/* ---- 键盘 / 焦点(D6) ---- */
+/* ---- 键盘 / 焦点 ---- */
 
 /** 面板里可 Tab 到的控件(tabindex=-1 的面板容器自己不算)。 */
 const FOCUSABLE =
@@ -111,7 +113,7 @@ function rowControl(panel: HTMLElement, j: number): HTMLElement | null | undefin
 /**
  * 被点的控件随这次更新被卸载(删除行的 ×、「高级条件 / 返回列表」切换)或被禁用(加到上限的「添加」)时,
  * 浏览器把焦点丢到 body —— 面板 teleport 在 body 末尾,焦点落到 body 之后 Esc / Tab 都到不了面板上的监听
- * (Step 13 真实浏览器实测:Esc 关不掉面板)。只在焦点原本就在面板里时介入:更新后焦点不在面板里的可用控件上,
+ * (真实浏览器实测:Esc 关不掉面板)。只在焦点原本就在面板里时介入:更新后焦点不在面板里的可用控件上,
  * 就移到 pick 给的控件(找不到则面板容器)。
  */
 function keepFocusInPanel(pick: (panel: HTMLElement) => HTMLElement | null | undefined) {
@@ -125,7 +127,7 @@ function keepFocusInPanel(pick: (panel: HTMLElement) => HTMLElement | null | und
   })
 }
 
-/* ---- 不出屏(L0-9):NPopover 把面板居中在漏斗上,触发器靠近视口边缘时会被裁出屏幕;量出位置后给面板加一个水平平移夹回来 ---- */
+/* ---- 不出屏:NPopover 把面板居中在漏斗上,触发器靠近视口边缘时会被裁出屏幕;量出位置后给面板加一个水平平移夹回来 ---- */
 
 const shiftX = ref(0)
 let clampRaf = 0
@@ -133,7 +135,7 @@ let clampRaf = 0
  * 盯住 follower 的 style:滚动时 vueuc 不在 scroll 事件里同步挪 follower,而是在自己排的 rAF 里
  * (Binder.js onScroll → beforeNextFrameOnce → Follower.syncPosition 改写 follower 的 transform)。
  * 下面 window 捕获阶段的 scroll 监听总是先于 vueuc 的监听触发,我们的 rAF 排在它前面,量到的是挪之前的位置 ——
- * 只靠它夹取会永远落后一拍(Step 5 实测:滚动停下后面板右缘停在 567 / 视口 520)。follower 的 style 一被改写就重新夹取:
+ * 只靠它夹取会永远落后一拍(实测:滚动停下后面板右缘停在 567 / 视口 520)。follower 的 style 一被改写就重新夹取:
  * MutationObserver 的回调是微任务,紧跟 vueuc 的 rAF 回调、在这一帧绘制之前执行,所以同一帧就夹回来,不会先画出被裁的一帧。
  * 只盯 follower 自己的 style(不含子树),我们改的是面板(子元素)的 transform,不会自己触发自己。
  */
@@ -223,6 +225,12 @@ watch(
     if (n > 0 && n !== o) show.value = true
   },
 )
+watch(
+  () => props.closeRequest,
+  (n, o) => {
+    if (n !== o && show.value) close(false)
+  },
+)
 
 function close(focusBack: boolean) {
   returnFocus = focusBack
@@ -250,7 +258,7 @@ function renderCustomPanel() {
  * 焦点是否在面板的首 / 尾控件 edge 上。同名的原生单选组(单选过滤的 NRadioGroup / NRadio)在浏览器里只算一个 Tab 停靠点:
  * 焦点在组里「选中的那个」或方向键移过去的那个 radio 上,不一定是 querySelectorAll 排出来的第一个 / 最后一个,
  * 但从它 Tab / Shift+Tab 出去会直接跳出整组 —— 所以 edge 所在单选组里的任意一个 radio 都算到了边上。
- * (Task 13e 改用官方 NRadio 后才出现;只认 cur === edge 时,Chromium 实测焦点在第 2 个 radio 上 Shift+Tab 会逃出面板,之后 Esc 也关不掉。)
+ * (只认 cur === edge 时,Chromium 实测焦点在第 2 个 radio 上 Shift+Tab 会逃出面板,之后 Esc 也关不掉。)
  */
 function atEdge(cur: Element | null, edge: HTMLElement): boolean {
   if (cur === edge) return true
@@ -299,7 +307,7 @@ function onPanelKeydown(e: KeyboardEvent) {
 }
 
 /**
- * 漏斗触发器上的 Esc(F3):面板打开期间,焦点还停在漏斗按钮上时(自定义面板 def.render 不自动聚焦,焦点就留在这里;
+ * 漏斗触发器上的 Esc:面板打开期间,焦点还停在漏斗按钮上时(自定义面板 def.render 不自动聚焦,焦点就留在这里;
  * 这时 keydown 到不了面板容器上的捕获监听)也要能关:关闭、丢弃草稿、焦点留在漏斗。面板没开时什么也不做,不拦别人的 Esc。
  */
 function onTriggerKeydown(e: KeyboardEvent) {
@@ -410,10 +418,19 @@ function reset() {
 </script>
 
 <template>
-  <n-popover v-model:show="show" trigger="click" placement="bottom" :show-arrow="false" raw>
+  <!-- raw 去掉官方气泡的底色 / 圆角 / 内边距,面板自己画;box-shadow 在官方基础 .n-popover 上、raw 不去,
+       这里关掉,改由面板画同一份官方阴影:面板为避免出屏会单独平移,阴影得跟着它走,留在外壳上会错位成一块空阴影 -->
+  <n-popover
+    v-model:show="show"
+    trigger="click"
+    placement="bottom"
+    :show-arrow="false"
+    raw
+    style="box-shadow: none"
+  >
     <template #trigger>
       <!-- data-data-table-filter:官方点表头时据此跳过排序(Header.mjs:107-108 的 happensIn(e, 'dataTableFilter'))。
-           不用 @click.stop:它会吞掉宿主挂在 th / 祖先上的 click 监听(Q-6)。 -->
+           不用 @click.stop:它会吞掉宿主挂在 th / 祖先上的 click 监听。 -->
       <span
         ref="triggerRef"
         class="smart-table-filter-trigger"
@@ -428,7 +445,7 @@ function reset() {
           <template #trigger>
             <!-- 原生 button(设计原型 .th-filter):22×22、图标 15px、闲置色取表头图标色(与排序箭头同灰)、打开 / 悬停只加底色、
                  已筛选才变主色。不用 NButton:它的 padding / 文字色变量写在内联样式里,压不过库自己的 CSS。
-                 aria-haspopup / aria-expanded:屏幕阅读器得知这个按钮会弹出对话框、当前是否展开(D6) -->
+                 aria-haspopup / aria-expanded:屏幕阅读器得知这个按钮会弹出对话框、当前是否展开 -->
             <button
               type="button"
               class="smart-table-filter-btn"
@@ -437,8 +454,8 @@ function reset() {
               :aria-expanded="show"
             >
               <FilterIcon />
-              <!-- 条数角标:绝对定位在按钮右上角(原型 .hf-n),不占行内宽度,所以多条件时表头既不变宽也不变高(L0-4)。
-                   文字色取主题的 baseColor(亮白 / 暗黑),不写死 #fff:暗色下叠在主色上对比度太低(Q-2)。
+              <!-- 条数角标:绝对定位在按钮右上角(原型 .hf-n),不占行内宽度,所以多条件时表头既不变宽也不变高。
+                   文字色取主题的 baseColor(亮白 / 暗黑),不写死 #fff:暗色下叠在主色上对比度太低。
                    aria-hidden:条数已在按钮的 aria-label 里,不要读两遍 -->
               <span
                 v-if="activeCount > 1"
@@ -454,7 +471,7 @@ function reset() {
       </span>
     </template>
 
-    <!-- 面板容器:role=dialog + aria-label;tabindex=-1 让它能被鼠标聚焦 —— 点空白处时浏览器自动把焦点给它(不落到 body),不需要任何 mousedown 处理(E3,S3 实测) -->
+    <!-- 面板容器:role=dialog + aria-label;tabindex=-1 让它能被鼠标聚焦 —— 点空白处时浏览器自动把焦点给它(不落到 body),不需要任何 mousedown 处理(实测) -->
     <div
       ref="panelRef"
       class="smart-table-filter"
@@ -465,13 +482,7 @@ function reset() {
       role="dialog"
       tabindex="-1"
       :aria-label="panelLabel"
-      :style="{
-        background: themeVars.popoverColor,
-        borderRadius: themeVars.borderRadius,
-        boxShadow: themeVars.boxShadow2,
-        color: themeVars.textColor2,
-        transform: shiftX ? `translateX(${shiftX}px)` : undefined,
-      }"
+      :style="{ transform: shiftX ? `translateX(${shiftX}px)` : undefined }"
       @click.stop
       @keydown.capture="onPanelKeydown"
     >
@@ -614,12 +625,12 @@ function reset() {
 .smart-table-filter-trigger {
   display: inline-flex;
   align-items: center;
-  /* 标题 → 漏斗 8px(Q-5);漏斗 → 排序箭头 6px 由 SmartTable 的样式给 */
+  /* 标题 → 漏斗 8px;漏斗 → 排序箭头 6px 由 SmartTable 的样式给 */
   margin-left: 8px;
   /* 表头默认 center 对齐时,漏斗不该把标题挤偏 */
   vertical-align: middle;
 }
-/* 漏斗按钮(L0-3,设计原型 .th-filter):22×22(G6,图标 15px 两侧各留 3.5px,B12 的拖拽下限 102 / 123 就是按它算的)。
+/* 漏斗按钮(设计原型 .th-filter):22×22(图标 15px 两侧各留 3.5px,列宽拖拽下限 102 / 123 就是按它算的)。
    颜色走表头的主题变量(触发器在 th 的子树里,--n-th-* 可用):闲置 = thIconColor(与排序箭头同灰),
    悬停 / 面板打开只加 thButtonColorHover 底色(不变色),已筛选 = thIconColorActive(主色)。 */
 .smart-table-filter-btn {
@@ -654,7 +665,7 @@ function reset() {
   outline: 2px solid color-mix(in srgb, var(--n-th-icon-color-active) 55%, transparent);
   outline-offset: 2px;
 }
-/* 条数角标(L0-4,原型 .hf-n):绝对定位,不占宽、不占高。文字色在模板里经 :style 取 themeVars.baseColor(Q-2);
+/* 条数角标(原型 .hf-n):绝对定位,不占宽、不占高。文字色在模板里经 :style 取 themeVars.baseColor;
    背景取表头的激活图标色(= 主色) */
 .smart-table-filter-badge {
   position: absolute;
@@ -673,7 +684,12 @@ function reset() {
 }
 /* 面板(设计原型 .hpop):外壳 padding 0,正文 12px 12px 0,底部 footer 自带 8px 12px 内边距与分隔线。
    options 面板宽度由内容定(最小 168),condition 面板固定 400(窄屏不越出视口)。 */
+/* 底色 / 圆角 / 阴影 / 文字色取外壳 .n-popover 上的官方弹层变量(主题与 themeOverrides 一并跟随,亮暗自动) */
 .smart-table-filter {
+  background-color: var(--n-color);
+  border-radius: var(--n-border-radius);
+  box-shadow: var(--n-box-shadow);
+  color: var(--n-text-color);
   min-width: 168px;
   max-width: calc(100vw - 16px);
   /* 表头文字常是 center,弹层内容一律左对齐 */
@@ -700,7 +716,12 @@ function reset() {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 240px;
+  /* overflow-y: auto 会把 overflow-x 也变成 auto,贴边的复选框聚焦光圈(官方 box-shadow: 0 0 0 2px 向外扩)会被裁掉;
+     四周留 4px 放光圈,再用等量负外边距抵消,版面位置和 240 的可视高度不变 */
+  box-sizing: border-box;
+  max-height: 248px;
+  margin: -4px;
+  padding: 4px;
   overflow-y: auto;
 }
 .smart-table-filter-conditions {
@@ -709,7 +730,7 @@ function reset() {
   gap: 12px;
 }
 /* 工具行:与上方内容 8px、与下方 8px;按钮是官方 small 档(`button/styles/_common.mjs`:`heightSmall` 28 / `paddingSmall` 0 10px /
-   `fontSizeSmall` 14 / `iconSizeSmall` 18),原型 `.hp-tools .n-btn.text` 同款(第 4 批已改)。官方文字按钮(text)把高度与内边距重置成 initial,
+   `fontSizeSmall` 14 / `iconSizeSmall` 18),原型 `.hp-tools .n-btn.text` 同款。官方文字按钮(text)把高度与内边距重置成 initial,
    所以高度由模板里取主题 heightSmall(`toolsBtnStyle`),内边距在这里写 paddingSmall 的值;颜色保持官方文字按钮的 textColor2 / 悬停主色 */
 .smart-table-filter-tools {
   display: flex;

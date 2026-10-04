@@ -1,15 +1,18 @@
 <script setup lang="ts">
 // 列设置面板:显隐勾选 + 原生 HTML5 拖拽排序 + 固定切换 + 恢复默认。零拖拽库依赖。
-// 至少保留一列(N11,原型一致):只剩一个已勾选的列时,那一列的勾选框禁用(没有提示文字,禁用态本身就是说明)。
+// 至少保留一列(与设计原型一致):只剩一个已勾选的列时,那一列的勾选框禁用(没有提示文字,禁用态本身就是说明)。
 import { ref, type PropType, type VNodeChild } from 'vue'
 import { NButton, NCheckbox, NPopover, NTooltip, useThemeVars } from 'naive-ui'
 import type { SmartTableLabels } from './types'
 import { canHideColumn, type SettingItem } from './useColumns'
 import { ColumnsIcon, DragIcon } from './icons'
+import { useEscClose } from './useEscClose'
 
 const props = defineProps({
   items: { type: Array as PropType<SettingItem[]>, required: true },
   labels: { type: Object as PropType<Required<SmartTableLabels>>, required: true },
+  /** 触发按钮尺寸:窄档卡片模式下由工具栏传 large(触控 40×40),缺省 small。 */
+  size: { type: String as PropType<'small' | 'large'>, default: 'small' },
 })
 
 const emit = defineEmits<{
@@ -20,6 +23,8 @@ const emit = defineEmits<{
 }>()
 
 const themeVars = useThemeVars()
+const show = ref(false)
+useEscClose(show) // NPopover 不管键盘;放大态下的 Esc 分层要靠它(先收气泡)
 const dragFrom = ref<number | null>(null)
 const dragOver = ref<number | null>(null)
 
@@ -47,11 +52,11 @@ function toggleFixed(item: SettingItem, side: 'left' | 'right') {
 </script>
 
 <template>
-  <n-popover trigger="click" placement="bottom-end" :show-arrow="false">
+  <n-popover v-model:show="show" trigger="click" placement="bottom-end" :show-arrow="false">
     <template #trigger>
       <n-tooltip trigger="hover">
         <template #trigger>
-          <n-button quaternary circle size="small" :aria-label="labels.columnSettings">
+          <n-button quaternary circle :size="size" :aria-label="labels.columnSettings">
             <template #icon><ColumnsIcon /></template>
           </n-button>
         </template>

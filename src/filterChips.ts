@@ -12,7 +12,7 @@ export interface ChipItem {
   text: string
   /**
    * 孤儿:过滤态里有、但列声明里已经没有对应的过滤项(列被移除 / 改了 filter.key / 总开关关了)。
-   * 没有面板可开,但它仍会进远程请求参数 —— 所以也要让用户看得见、清得掉(Q-7)。只在孤儿上设置。
+   * 没有面板可开,但它仍会进远程请求参数 —— 所以也要让用户看得见、清得掉。只在孤儿上设置。
    */
   orphan?: true
 }
@@ -86,7 +86,7 @@ export function countFitting(tops: number[]): number {
 
 /**
  * 「+N」标签本身也占位:让出一个位置只是估算,渲染出来后若 +N 仍折到了第二行(offsetTop 与第一行不同),
- * 再让出一个位置,可以让到 0(连首个 chip + +N 都放不下时只显示 +N,F10);放得下就原样返回。组件在 +N 渲染后重测,直到稳定(Q-7)。
+ * 再让出一个位置,可以让到 0(连首个 chip + +N 都放不下时只显示 +N);放得下就原样返回。组件在 +N 渲染后重测,直到稳定。
  */
 export function shrinkForMore(visible: number, firstTop: number, moreTop: number): number {
   return moreTop === firstTop ? visible : Math.max(0, visible - 1)

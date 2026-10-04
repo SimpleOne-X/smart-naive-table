@@ -13,7 +13,7 @@ const DEFAULT_DATE_VALUE_FORMAT = 'yyyy-MM-dd'
  * n-date-picker 的 value-format)把纯日期串解析成 { y, m, d }。只支持 yyyy/MM/dd 三个
  * token 各出现一次、之间用任意字面分隔符隔开的形状 —— 覆盖 'yyyy-MM-dd'/'yyyy/MM/dd'/
  * 'dd/MM/yyyy' 这类常见自定义格式。解析不出来(用了 yy/M/d 这类短 token,或 host 传了别的
- * 花样格式)就返回 null,调用方照旧退回按原始值的标量比较 —— 不会比不做这个解析更差。
+ * 花样格式)就返回 null,调用方退回按原始值的标量比较 —— 不会比不做这个解析更差。
  */
 function buildDateOnlyPattern(
   format: string,
@@ -70,7 +70,7 @@ export function isBlank(v: unknown): boolean {
   return false
 }
 
-/** 不需要填值的操作符:值为空也算「写了」,不能被 activeConditions 当成没填丢掉(C4)。
+/** 不需要填值的操作符:值为空也算「写了」,不能被 activeConditions 当成没填丢掉。
  * Object.freeze:readonly 只是编译期约束,运行时(JS 消费方或反序列化后的代码)仍能 push —— 冻结防止被意外改写。 */
 export const NO_VALUE_ACTIONS: readonly FilterAction[] = Object.freeze(['isNull', 'isNotNull'])
 
@@ -100,7 +100,7 @@ export function isFilterActive(value: FilterValue | null | undefined): boolean {
 /**
  * 字符串 → 时间戳(解析不了是 NaN)。纯日期串(yyyy-MM-dd)按本地零点,不交给 Date.parse ——
  * 后者按 ES 规范把它当 UTC 零点,UTC 以西的时区里会落到本地前一天(与 formatDate 的展示基准共用 parseDateOnlyLocal)。
- * 带时间部分的串照旧 Date.parse:裸 datetime 按本地,带 Z / 偏移的按其时刻。
+ * 带时间部分的串走 Date.parse:裸 datetime 按本地,带 Z / 偏移的按其时刻。
  */
 function parseTime(s: string): number {
   return parseDateOnlyLocal(s)?.getTime() ?? Date.parse(s)
@@ -192,10 +192,10 @@ function matchEndsWith(cell: unknown, value: unknown): boolean {
 
 /**
  * 经典通配符匹配(双指针 + 单个「最近一个 % 的回溯点」),线性时间,不走正则。
- * 早期实现把 % 翻成 `.*`、_ 翻成 `.` 交给正则引擎,%-heavy 的 pattern(如 `%a%a%a…%b`)
+ * 不把 % 翻成 `.*`、_ 翻成 `.` 交给正则引擎:%-heavy 的 pattern(如 `%a%a%a…%b`)
  * 在不匹配的输入上会触发 NFA 回溯的指数级退化(ReDoS)——pattern 本身可来自过滤面板,
- * host 后端一旦透传给前端(或 P1 的条件构造器直接暴露给终端用户),一条精心构造的 like
- * 条件就能把主线程卡死数十秒。这里换成教科书式的「通配符匹配」双指针算法:
+ * host 后端一旦透传给前端(或模式 2 的条件构造器直接暴露给终端用户),一条精心构造的 like
+ * 条件就能把主线程卡死数十秒。这里用教科书式的「通配符匹配」双指针算法:
  * 遇到字面字符直接比较(忽略大小写),遇到 % 记下当前匹配位置作为回溯锚点,
  * 后续字面字符不匹配时从锚点回溯并把「已吞掉的字符数」加一重试 —— 最坏 O(text.length * pattern.length),
  * 没有递归 / 回溯爆炸。
@@ -379,7 +379,7 @@ export function optionsToFilterValue(values: unknown[]): FilterValue | null {
 /**
  * 过滤值 → 已勾选的选项值(optionsToFilterValue 的逆运算,用于回显)。
  * 认得单条 in(其数组即勾选集合);其余沿用「只取 equal 条件」——调用方应先用
- * isOptionsRepresentable 判断能否无损表达,不能时不要用它的结果覆盖原条件(C3)。
+ * isOptionsRepresentable 判断能否无损表达,不能时不要用它的结果覆盖原条件。
  */
 export function filterValueToOptions(value: FilterValue | null | undefined): unknown[] {
   const conds = activeConditions(value)

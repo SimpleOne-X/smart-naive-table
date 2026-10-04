@@ -36,7 +36,7 @@ export function loadState(
   }
 }
 
-/** 存储里**真的存过**的 density;没有记录、或记录里没有这个字段 → undefined。写回时用它,免得把回退值当成用户的选择写进去(Q-1)。 */
+/** 存储里**真的存过**的 density;没有记录、或记录里没有这个字段 → undefined。写回时用它,免得把回退值当成用户的选择写进去。 */
 export function peekStoredDensity(storageKey: string): Density | undefined {
   try {
     const raw = localStorage.getItem(PREFIX + storageKey)
