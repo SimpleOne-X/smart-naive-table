@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   close:
-    if: github.event.pull_request.user.login != 'SmartCode-X'
+    if: github.event.pull_request.user.login != 'SimpleOne-X'
     runs-on: ubuntu-latest
     steps:
       - name: 关闭并提示改投 dev 分支

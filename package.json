@@ -7,11 +7,11 @@
   "author": "HuGuoDong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SmartCode-X/smart-naive-table.git"
+    "url": "git+https://github.com/SimpleOne-X/smart-naive-table.git"
   },
-  "homepage": "https://github.com/SmartCode-X/smart-naive-table#readme",
+  "homepage": "https://github.com/SimpleOne-X/smart-naive-table#readme",
   "bugs": {
-    "url": "https://github.com/SmartCode-X/smart-naive-table/issues"
+    "url": "https://github.com/SimpleOne-X/smart-naive-table/issues"
   },
   "publishConfig": {
     "access": "public"

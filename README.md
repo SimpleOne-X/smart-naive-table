@@ -6,7 +6,7 @@
 搜索、过滤、排序、分页、字典标签、列设置、可编辑，全部从列配置里长出来。
 
 [![npm](https://img.shields.io/npm/v/smart-naive-table?color=18a058)](https://www.npmjs.com/package/smart-naive-table)
-[![license](https://img.shields.io/github/license/SmartCode-X/smart-naive-table?color=18a058)](./LICENSE)
+[![license](https://img.shields.io/github/license/SimpleOne-X/smart-naive-table?color=18a058)](./LICENSE)
 ![Vue 3](https://img.shields.io/badge/Vue-3.3%2B-42b883)
 ![Naive UI](https://img.shields.io/badge/Naive%20UI-2.44%2B-18a058)
 ![TypeScript](https://img.shields.io/badge/TypeScript-ready-3178c6)

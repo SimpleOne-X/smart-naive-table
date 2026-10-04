@@ -6,7 +6,7 @@
 Search, filters, sorting, pagination, dict tags, column settings and editing all grow out of your column config.
 
 [![npm](https://img.shields.io/npm/v/smart-naive-table?color=18a058)](https://www.npmjs.com/package/smart-naive-table)
-[![license](https://img.shields.io/github/license/SmartCode-X/smart-naive-table?color=18a058)](./LICENSE)
+[![license](https://img.shields.io/github/license/SimpleOne-X/smart-naive-table?color=18a058)](./LICENSE)
 ![Vue 3](https://img.shields.io/badge/Vue-3.3%2B-42b883)
 ![Naive UI](https://img.shields.io/badge/Naive%20UI-2.44%2B-18a058)
 ![TypeScript](https://img.shields.io/badge/TypeScript-ready-3178c6)
