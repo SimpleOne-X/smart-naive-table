@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 「拖过列宽后的余量」场景页(B8 / Task 12 的浏览器验证用):同一份静态数据,四种列配置 × 容器宽度 × 隐藏最后一列。
+// 「拖过列宽后的余量」场景页(浏览器验证用):同一份静态数据,四种列配置 × 容器宽度 × 隐藏最后一列。
 import { computed, ref, watch } from 'vue'
 import { NButton, NRadioButton, NRadioGroup, NSpace } from 'naive-ui'
 import { SmartTable, type SmartTableColumn } from '../src/index'

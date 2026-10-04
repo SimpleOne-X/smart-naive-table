@@ -1,4 +1,4 @@
-// 原型 docs/smart-naive-table-design.html 第 1165–1230 行的数据生成器,原样移植(2000 行确定性伪随机,前 8 行为 DATA_BASE)。
+// 原型 docs/smart-naive-table-design.html 里的数据生成器(mulberry32 / DATA_BASE 一段),原样移植(2000 行确定性伪随机,前 8 行为 DATA_BASE)。
 export interface Row {
   no: string
   name: string
@@ -104,6 +104,26 @@ const DATA_BASE: Row[] = [
   },
 ]
 
+/** 负责人候选(原型 OWNERS):搜索区的多选、模块 3 的自定义过滤面板、CRUD 弹窗共用。 */
+export const OWNERS = [
+  '张伟',
+  '李娜',
+  '王强',
+  '刘洋',
+  '陈静',
+  '赵磊',
+  '周敏',
+  '吴凡',
+  '郑浩',
+  '孙婷',
+  '黄磊',
+  '何欣',
+]
+/** 原型 TODAY:演示数据锚在 2026-09,用固定日期,不随系统时钟漂移。 */
+export const TODAY = '2026-09-29'
+/** 模块 1 单据日期的默认「本月」(原型 SF_DEFS_SEARCH.bizDate.def)。 */
+export const MONTH_RANGE: [string, string] = ['2026-09-01', '2026-09-30']
+
 const DATA_TOTAL = 2000
 function mulberry32(seed: number) {
   return function () {
@@ -141,20 +161,6 @@ function genRows(base: Row[], total: number): Row[] {
     'DN200',
   ]
   const BOLT_SPEC = ['M8', 'M10', 'M12', 'M16', 'M20', 'M24']
-  const OWNERS = [
-    '张伟',
-    '李娜',
-    '王强',
-    '刘洋',
-    '陈静',
-    '赵磊',
-    '周敏',
-    '吴凡',
-    '郑浩',
-    '孙婷',
-    '黄磊',
-    '何欣',
-  ]
   const MEMOS = [
     '加急',
     '待核价',
@@ -226,7 +232,7 @@ export function addRow(): string {
     status: '未审核',
     dept: '采购部',
     amount: 0,
-    bizDate: '2026-09-29',
+    bizDate: TODAY,
     memo: '',
   }
   DATA.unshift(row)
@@ -237,4 +243,103 @@ export function delRow(no: string): boolean {
   if (i < 0) return false
   DATA.splice(i, 1)
   return true
+}
+
+/** 原型 CRUD 弹窗的表单形状(物料单据一行,金额在表单里允许为空)。 */
+export interface RowForm {
+  no: string
+  name: string
+  owner: string
+  status: string
+  dept: string
+  amount: number | null
+  bizDate: string
+  memo: string
+}
+export const blankForm = (): RowForm => ({
+  no: '',
+  name: '',
+  owner: '张伟',
+  status: '未审核',
+  dept: '采购部',
+  amount: null,
+  bizDate: TODAY,
+  memo: '',
+})
+
+const formToRow = (f: RowForm): Row => ({
+  no: f.no.trim(),
+  name: f.name.trim(),
+  owner: f.owner,
+  status: f.status,
+  dept: f.dept,
+  amount: Number(f.amount ?? 0),
+  bizDate: f.bizDate,
+  memo: f.memo.trim(),
+})
+/** 原型 crudSubmit(新增):后端业务规则「编码唯一」,重复抛错(弹窗保持打开)。 */
+export function createRow(f: RowForm): void {
+  const row = formToRow(f)
+  if (DATA.some((r) => r.no === row.no)) throw new Error(`物料编码 ${row.no} 已存在`)
+  DATA.unshift(row)
+}
+/** 原型 crudSubmit(编辑):按原编码就地更新;改编码时同样查重。 */
+export function updateRow(f: RowForm, orig: string): void {
+  const row = formToRow(f)
+  if (DATA.some((r) => r.no === row.no && r.no !== orig))
+    throw new Error(`物料编码 ${row.no} 已存在`)
+  const target = DATA.find((r) => r.no === orig)
+  if (target) Object.assign(target, row)
+}
+
+/** 原型 CSV_HEAD / exportCsv:导出 = 后端按当前条件取全部行(金额两位小数),UTF-8 BOM 方便 Excel 直接打开。 */
+export const CSV_HEAD = [
+  '物料编码',
+  '物料名称',
+  '负责人',
+  '单据状态',
+  '部门',
+  '金额',
+  '单据日期',
+  '备注',
+]
+const csvQ = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`
+export const rowsToCsv = (rows: Row[]) =>
+  [
+    CSV_HEAD,
+    ...rows.map((r) => [
+      r.no,
+      r.name,
+      r.owner,
+      r.status,
+      r.dept,
+      r.amount.toFixed(2),
+      r.bizDate,
+      r.memo,
+    ]),
+  ]
+    .map((l) => l.map(csvQ).join(','))
+    .join('\r\n')
+
+/** 原型 batchApprove:勾选行里「未审核」的改为「已审核」,返回真正变化的行数。 */
+export function approveRows(nos: readonly string[]): number {
+  const set = new Set(nos)
+  let n = 0
+  for (const r of DATA)
+    if (set.has(r.no) && r.status === '未审核') {
+      r.status = '已审核'
+      n++
+    }
+  return n
+}
+/** 原型 batchDel:删除全部已勾选行(含其它页的),返回删除条数。 */
+export function delRows(nos: readonly string[]): number {
+  const set = new Set(nos)
+  let n = 0
+  for (let i = DATA.length - 1; i >= 0; i--)
+    if (set.has(DATA[i].no)) {
+      DATA.splice(i, 1)
+      n++
+    }
+  return n
 }

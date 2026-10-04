@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// fillHeight 场景页(Task 12b 的浏览器验证用):父容器定高,表格铺满并在卡片内虚拟滚动;
+// fillHeight 场景页(浏览器验证用):父容器定高,表格铺满并在卡片内虚拟滚动;
 // 关掉 fillHeight 可对照「翻页后滚回卡片顶部」;关掉「父容器定高」可看没定高时的兜底。
 import { ref } from 'vue'
 import { NSpace, NSwitch } from 'naive-ui'
