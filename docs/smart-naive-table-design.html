@@ -1851,6 +1851,7 @@ html[data-theme="dark"] { --n-td-striped: rgb(36, 36, 39); }   /* dark:composite
 /* 必填列表头的红色 *(列声明 rules.required 推断,无需配置;标杆 vxe-table showAsterisk 默认 true)。取官方 NFormItem required-mark-placement="left" 的写法:*+ 空格在标题前、颜色 asteriskColor = errorColor(form/styles/light.mjs:22、form/src/styles/form-item.cssr.mjs 的 asterisk),字号继承标题;空格 U+00A0 ≈ 4px,这里写成 margin-right:4px */
 .th-ast { margin-right: 4px; color: var(--n-error); font-weight: 400; user-select: none; }
 [data-xl] .rc.xsum { cursor: default; }
+.rc.xsum { cursor: default; }   /* 模块 5 窄档的合计卡(已定,设计文档 13):不是数据行,不可点 */
 </style>
 </head>
 <body>
@@ -2570,7 +2571,7 @@ const MC = {
   toolbar: { cols: 'material', title: '物料单据' },
   filter:  { cols: 'material', title: '物料单据' },
   sort:    { cols: 'material', title: '物料单据' },
-  wide:    { cols: 'wide', title: '物料清单', expand: true, summary: true, virtual: false, actions: false, acts: 'wide', batch: 'export',
+  wide:    { cols: 'wide', title: '物料清单', expand: true, summary: true, allSum: true, virtual: false, actions: false, acts: 'wide', batch: 'export',
              pager: { defaultPageSize: 20, pageSizes: [20, 50, 100], showSizePicker: true, prefix: PAGER_CFG.prefix } },
   dict:    { cols: 'dict', title: '物料字典', actions: false, select: false, acts: false },   // 卡片内搜索(工具栏一行式条件搜索),没有独立搜索表单卡
   persist: { cols: 'material', title: '物料单据', storageKey: 'smart-naive-table-design:cols:v2' },   // storageKey:列设置与列宽持久化到真实 localStorage
@@ -2778,8 +2779,10 @@ function sortRows(rows, sorts) {
 function apiRun(req) {
   const rows = sortRows(applyConditions(rowsOf(req.mod), req.conds, req.mod), req.sorts);
   const total = rows.length, page = clampPage(req.page, pageCountOf(total, req.size));
-  return { items: rows.slice((page - 1) * req.size, page * req.size), total, page, size: req.size };
+  return { items: rows.slice((page - 1) * req.size, page * req.size), total, page, size: req.size, summary: MC[req.mod].allSum ? sumAllOf(rows, req.mod) : undefined };
 }
+/* 全部合计(已定,设计文档 13):后端对「当前查询命中的全部行」按列声明 sum 求和,不是当前页;随分页结果一起返回,没声明 sum 的列没有键 */
+const sumAllOf = (rows, mod) => Object.fromEntries(leavesOf(colKind(mod)).filter(c => c.sum).map(c => [c.key, rows.reduce((n, r) => n + (Number(r[c.key]) || 0), 0)]));
 const apiAll = (mod) => sortRows(applyConditions(rowsOf(mod), queryOf(mod).conds, mod), queryOf(mod).sorts);   // 导出:后端按同一条件导出全部行
 /* 各模块的查询(不含页码):生效条件 + 排序。变了就回第 1 页 */
 const queryOf = (mod) => ({ conds: condsOfKey(mod).filter(isActive), sorts: sortsOf(mod) });
@@ -2805,7 +2808,7 @@ function load(k) {
       toast(e.message, 'error');
       return;
     }
-    Object.assign(r, { items: res.items, total: res.total, page: res.page, size: res.size, loading: false, loaded: true });
+    Object.assign(r, { items: res.items, total: res.total, page: res.page, size: res.size, summary: res.summary, loading: false, loaded: true });
     state.pager[k].page = res.page;
     if (state.mod === pagerKeyToMod(k)) renderPreview();
   }, MC[k].latency?.(req) ?? API_DELAY);
@@ -3705,18 +3708,32 @@ function rowHtml(r, on, i) {
   return `<tr data-i="${i}" data-no="${esc(r.no)}"${trCls ? ` class="${trCls}"` : ''} aria-rowindex="${i + 2}">${tds}</tr>`;
 }
 /* 合计行(summary):最后一行,底色 thColor;当前页求和(Body.mjs:494-517:summary(rawPaginatedData) 追加在分页数据末尾) */
-function sumRowHtml(rows) {
+function sumRowHtml(rows, label = '合计', all = null) {
   let first = true;
   const tds = vt.plan.map(it => {
     const side = `${fxCls(it)}`;
     if (!it.c) return `<td${clsAttr('sum', side)}${fxSty(it)}></td>`;
     const c = it.c;
     let txt = '', lab = false;
-    if (first) { txt = '合计'; first = false; lab = true; }   // 标签格不套 num 的右对齐(模块 14 的第一个数据列是数字列「工序号」)
-    if (c.sum) { const v = rows.reduce((n, r) => n + Number(r[c.key]), 0); txt = c.money ? fmtMoney(v) : c.dec !== undefined ? v.toFixed(c.dec) : v.toLocaleString('en-US'); }
+    if (first) { txt = label; first = false; lab = true; }   // 标签格不套 num 的右对齐(模块 14 的第一个数据列是数字列「工序号」)
+    if (c.sum) { const v = all ? all[c.key] : rows.reduce((n, r) => n + Number(r[c.key]), 0); txt = sumTxt(c, v); }
     return `<td${clsAttr('sum', c.num && !lab && 'num', side)}${fxSty(it)}>${txt}</td>`;
   }).join('');
   return `<tr class="sum-row">${tds}</tr>`;
+}
+const sumTxt = (c, v) => (c.money ? fmtMoney(v) : c.dec !== undefined ? v.toFixed(c.dec) : v.toLocaleString('en-US'));
+/* 已定(设计文档 13):开了 allSum 且后端随分页结果返回了 summary → 两行「本页合计 / 全部合计」;后端没给 → 只有「本页合计」一行(标签写明「本页」,免得被当成总数) */
+function sumRowsHtml(rows) {
+  if (!MCx().allSum) return sumRowHtml(rows);
+  const all = state.remote[state.mod]?.summary;
+  return all ? sumRowHtml(rows, '本页合计') + sumRowHtml(rows, '全部合计', all) : sumRowHtml(rows, '本页合计');
+}
+/* 窄档:列表末尾的合计卡(与模块 14 的合计卡同外观);两张卡对应表格里的两行 */
+function sumCardsHtml(rows) {
+  const cols = leavesOf(colKind()).filter(c => c.sum), all = state.remote[state.mod]?.summary;
+  const page = (c) => rows.reduce((n, r) => n + (Number(r[c.key]) || 0), 0);
+  const card = (title, get) => `<div class="rc xsum"><div class="rc-head"><span class="rc-title">${title}</span></div><dl class="rc-desc">${cols.map(c => `<div><dt>${c.label}</dt><dd>${sumTxt(c, get(c))}</dd></div>`).join('')}</dl></div>`;
+  return card('本页合计', page) + (all ? card('全部合计', (c) => all[c.key]) : '');
 }
 const padRowHtml = (n) => `<tr class="vs-pad" aria-hidden="true" style="height:0px"><td colspan="${n}"></td></tr>`;
 
@@ -3802,7 +3819,7 @@ function tableEHtml() {
   if (narrow) {
     main = `<div class="tbl-cards" data-vs="cards"${m.drag ? ' data-rdlist' : ''}>${!rows.length
       ? (empty ? emptyHtml() : '')
-      : virtual ? '<div class="vs-pad" aria-hidden="true"></div><div class="vs-pad" aria-hidden="true"></div>' : rows.map((r, i) => cardHtml(r, cols, ck, i)).join('') + (m.excel && m.summary ? xlSumCardHtml(rows) : '')}</div>`;
+      : virtual ? '<div class="vs-pad" aria-hidden="true"></div><div class="vs-pad" aria-hidden="true"></div>' : rows.map((r, i) => cardHtml(r, cols, ck, i)).join('') + (m.excel && m.summary ? xlSumCardHtml(rows) : !m.excel && m.allSum ? sumCardsHtml(rows) : '')}</div>`;
   } else {
     const flexKey = frozen ? fillColKey(cols) : (cols.find(c => c.flex) ?? cols[0]).key;   // 没拖过:弹性列 = 名称(被隐藏时退到第一个可见列);拖过:弹性列 = 吸收列
     const minW = tableMinW();
@@ -3811,7 +3828,7 @@ function tableEHtml() {
     let body = '';
     if (rows.length) {
       if (virtual) body = padRowHtml(nCol) + padRowHtml(nCol);
-      else body = rows.map((r, i) => rowHtml(r, ck.has(r.no), i) + (state.expanded[r.no] ? expRowHtml(r, nCol) : '')).join('') + (m.summary ? sumRowHtml(m.excel ? rows.filter(r => !state.xl.dels.has(r.no)) : rows) : '');
+      else body = rows.map((r, i) => rowHtml(r, ck.has(r.no), i) + (state.expanded[r.no] ? expRowHtml(r, nCol) : '')).join('') + (m.summary ? sumRowsHtml(m.excel ? rows.filter(r => !state.xl.dels.has(r.no)) : rows) : '');
     }
     main = `<div class="tbl-table"><div class="tbl-scroll" data-vs="table"><table class="n-table${visibleUnits().some(u => u.children) ? ' hd2' : ''}" style="min-width:${minW}px;${fxVars(plan)}" aria-rowcount="${rows.length + 1}">${colgroup}
       <thead>${theadHtml(plan, all, half)}</thead>
@@ -5311,7 +5328,7 @@ const EN_PAIRS = [
   ['备注', 'Remarks'], ['关键字', 'Keyword'], ['仅看加急', 'Urgent only'], ['规格说明', 'Specification'], ['物料分类', 'Category'], ['单位', 'Unit'], ['品牌', 'Brand'], ['型号', 'Model'], ['库存', 'Stock'],
   ['可用', 'Available'], ['在途', 'In transit'], ['锁定', 'Locked'], ['安全库存', 'Safety stock'], ['单价', 'Unit price'], ['供应商', 'Supplier'], ['仓库', 'Warehouse'], ['库位', 'Location'], ['批次号', 'Batch No.'],
   ['生产日期', 'Mfg. date'], ['有效期至', 'Valid until'], ['重量(kg)', 'Weight (kg)'], ['体积(m³)', 'Volume (m³)'], ['采购周期(天)', 'Lead time (days)'], ['创建时间', 'Created at'], ['创建人', 'Creator'],
-  ['距今', 'Age'], ['收货明细', 'Receipt details'], ['收货单号', 'Receipt No.'], ['数量', 'Qty'], ['收货日期', 'Receipt date'], ['合计', 'Total'], ['今天', 'Today'],
+  ['距今', 'Age'], ['收货明细', 'Receipt details'], ['收货单号', 'Receipt No.'], ['数量', 'Qty'], ['收货日期', 'Receipt date'], ['合计', 'Total'], ['本页合计', 'Page total'], ['全部合计', 'Grand total'], ['今天', 'Today'],
   // 字典标签
   ['已审核', 'Approved'], ['未审核', 'Pending'], ['已关闭', 'Closed'], ['采购部', 'Purchasing'], ['生产部', 'Production'], ['仓储部', 'Storage'], ['质检部(已停用)', 'QC (disabled)'], ['生产系', 'Manufacturing'], ['职能系', 'Support'],
   ['加急', 'Urgent'],
