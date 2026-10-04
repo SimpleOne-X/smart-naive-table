@@ -5,7 +5,9 @@ import type { UseTableCrudOptions, UseTableCrudReturn } from './types'
  * CRUD 弹窗状态机(UI 无关):visible/mode/model/submit/removeRow。
  * 成功自动关窗并回调 onSuccess;失败保窗并回调 onError。包内不弹任何 UI。
  */
-export function useTableCrud<Row, Form>(opts: UseTableCrudOptions<Row, Form>): UseTableCrudReturn<Row, Form> {
+export function useTableCrud<Row, Form>(
+  opts: UseTableCrudOptions<Row, Form>,
+): UseTableCrudReturn<Row, Form> {
   const visible = ref(false)
   const mode = ref<'create' | 'edit'>('create')
   const model = ref(opts.form()) as Ref<Form>
@@ -72,5 +74,16 @@ export function useTableCrud<Row, Form>(opts: UseTableCrudOptions<Row, Form>): U
     visible.value = false
   }
 
-  return { visible, mode, model, editingRow, submitting, openCreate, openEdit, submit, removeRow, close }
+  return {
+    visible,
+    mode,
+    model,
+    editingRow,
+    submitting,
+    openCreate,
+    openEdit,
+    submit,
+    removeRow,
+    close,
+  }
 }

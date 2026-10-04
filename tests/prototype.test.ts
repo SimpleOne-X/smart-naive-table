@@ -12,18 +12,34 @@ import type { SmartTableParams } from '../src/types'
 
 MOCK_DELAY.ms = 0 // 单测不等 420ms
 
-const params = (p: Record<string, unknown> = {}) => ({ page: 1, pageSize: 100, ...p }) as SmartTableParams
+const params = (p: Record<string, unknown> = {}) =>
+  ({ page: 1, pageSize: 100, ...p }) as SmartTableParams
 
 describe('对照页数据(与原型同一份生成器)', () => {
   it('2000 行,前 8 行是原型的 DATA_BASE,编码不重复', () => {
     expect(DATA).toHaveLength(2000)
-    expect(DATA[0]).toMatchObject({ no: 'M1000-A', name: '不锈钢法兰', status: '已审核', dept: '采购部', amount: 12800 })
+    expect(DATA[0]).toMatchObject({
+      no: 'M1000-A',
+      name: '不锈钢法兰',
+      status: '已审核',
+      dept: '采购部',
+      amount: 12800,
+    })
     expect(DATA[7].no).toBe('M1099')
     expect(new Set(DATA.map((r) => r.no)).size).toBe(2000)
   })
 
   it('FIELD_DEFS 是原型的 8 个字段(含只出现在搜索里的「备注」)', () => {
-    expect(FIELD_DEFS.map((f) => f.key)).toEqual(['no', 'name', 'owner', 'status', 'dept', 'amount', 'bizDate', 'memo'])
+    expect(FIELD_DEFS.map((f) => f.key)).toEqual([
+      'no',
+      'name',
+      'owner',
+      'status',
+      'dept',
+      'amount',
+      'bizDate',
+      'memo',
+    ])
   })
 
   it('addRow 把「新建物料」放最前并返回编码;delRow 删掉它', () => {
@@ -121,7 +137,14 @@ describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', ()
   // jsdom 没有 matchMedia / ResizeObserver(naive-ui 与虚拟滚动要用),给个最小桩
   const real = { matchMedia: window.matchMedia, ResizeObserver: (globalThis as any).ResizeObserver }
   beforeEach(() => {
-    window.matchMedia = ((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} })) as any
+    window.matchMedia = ((q: string) => ({
+      matches: false,
+      media: q,
+      addEventListener() {},
+      removeEventListener() {},
+      addListener() {},
+      removeListener() {},
+    })) as any
     ;(globalThis as any).ResizeObserver = class {
       observe() {}
       unobserve() {}
@@ -139,15 +162,29 @@ describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', ()
     return mount(ProtoApp, { attachTo: document.body })
   }
 
-  it.each([1, 2, 3, 4] as const)('模块 %i:侧栏 4 个模块、标题、工具栏、表头都渲染出来', async (m) => {
-    const w = mountApp(m)
-    await flushPromises()
-    expect(w.findAll('#modList .mod')).toHaveLength(4)
-    expect(w.find('.smart-table-title').text()).toBe('物料单据')
-    const heads = w.findAll('thead th').map((th) => th.text())
-    expect(heads).toEqual(expect.arrayContaining(['物料编码', '物料名称', '负责人', '单据状态', '部门', '金额', '单据日期', '操作']))
-    w.unmount()
-  })
+  it.each([1, 2, 3, 4] as const)(
+    '模块 %i:侧栏 4 个模块、标题、工具栏、表头都渲染出来',
+    async (m) => {
+      const w = mountApp(m)
+      await flushPromises()
+      expect(w.findAll('#modList .mod')).toHaveLength(4)
+      expect(w.find('.smart-table-title').text()).toBe('物料单据')
+      const heads = w.findAll('thead th').map((th) => th.text())
+      expect(heads).toEqual(
+        expect.arrayContaining([
+          '物料编码',
+          '物料名称',
+          '负责人',
+          '单据状态',
+          '部门',
+          '金额',
+          '单据日期',
+          '操作',
+        ]),
+      )
+      w.unmount()
+    },
+  )
 
   it('模块 3:单据状态有默认过滤「未审核」(出现一个 chip);模块 4 没有默认过滤', async () => {
     const m3 = mountApp(3)

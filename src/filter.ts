@@ -15,7 +15,9 @@ const DEFAULT_DATE_VALUE_FORMAT = 'yyyy-MM-dd'
  * 'dd/MM/yyyy' 这类常见自定义格式。解析不出来(用了 yy/M/d 这类短 token,或 host 传了别的
  * 花样格式)就返回 null,调用方照旧退回按原始值的标量比较 —— 不会比不做这个解析更差。
  */
-function buildDateOnlyPattern(format: string): { regex: RegExp; order: Array<'y' | 'm' | 'd'> } | null {
+function buildDateOnlyPattern(
+  format: string,
+): { regex: RegExp; order: Array<'y' | 'm' | 'd'> } | null {
   const order: Array<'y' | 'm' | 'd'> = []
   let pattern = ''
   let i = 0
@@ -145,7 +147,8 @@ function dayRange(
   if (typeof value !== 'string') return null
   const parsed = parseDateOnly(value, dateValueFormat)
   if (!parsed) return null
-  const cellTs = cell instanceof Date ? cell.getTime() : typeof cell === 'string' ? parseTime(cell) : NaN
+  const cellTs =
+    cell instanceof Date ? cell.getTime() : typeof cell === 'string' ? parseTime(cell) : NaN
   if (Number.isNaN(cellTs)) return null
   // 本地时区锚定,不用 UTC:单元格若是不带时区偏移的裸日期时间串(常见于后端直出的
   // datetime 字段),Date.parse 按运行环境本地时区解析 —— 与 formatDate/formatDatetime
@@ -358,7 +361,8 @@ export const defaultFilterSerializer: FilterSerializer = (state) => {
   const filters: SerializedFilter[] = []
   for (const [field, value] of Object.entries(state)) {
     const conditions = activeConditions(value)
-    if (conditions.length) filters.push({ field, logic: value.logic === 'or' ? 'or' : 'and', conditions })
+    if (conditions.length)
+      filters.push({ field, logic: value.logic === 'or' ? 'or' : 'and', conditions })
   }
   return filters.length ? { filters } : {}
 }
@@ -366,7 +370,10 @@ export const defaultFilterSerializer: FilterSerializer = (state) => {
 /** 勾选若干选项 → 过滤值(若干 equal 条件取「或」);空选择返回 null。 */
 export function optionsToFilterValue(values: unknown[]): FilterValue | null {
   if (!values.length) return null
-  return { logic: 'or', conditions: values.map((value) => ({ action: 'equal' as FilterAction, value })) }
+  return {
+    logic: 'or',
+    conditions: values.map((value) => ({ action: 'equal' as FilterAction, value })),
+  }
 }
 
 /**
@@ -376,7 +383,8 @@ export function optionsToFilterValue(values: unknown[]): FilterValue | null {
  */
 export function filterValueToOptions(value: FilterValue | null | undefined): unknown[] {
   const conds = activeConditions(value)
-  if (conds.length === 1 && conds[0].action === 'in' && Array.isArray(conds[0].value)) return [...conds[0].value]
+  if (conds.length === 1 && conds[0].action === 'in' && Array.isArray(conds[0].value))
+    return [...conds[0].value]
   return conds.filter((c) => c.action === 'equal').map((c) => c.value)
 }
 

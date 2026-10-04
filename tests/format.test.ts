@@ -20,7 +20,14 @@ function inTimeZones(zones: string[], fn: (tz: string) => void) {
   }
 }
 
-const ZONES = ['America/New_York', 'America/Los_Angeles', 'Etc/GMT+11', 'UTC', 'Asia/Shanghai', 'Pacific/Kiritimati']
+const ZONES = [
+  'America/New_York',
+  'America/Los_Angeles',
+  'Etc/GMT+11',
+  'UTC',
+  'Asia/Shanghai',
+  'Pacific/Kiritimati',
+]
 
 describe('formatDate / formatDatetime', () => {
   // final review fix(2.1.1 起就有的老缺陷):new Date('2026-09-21') 按 ES 规范是 UTC 零点,

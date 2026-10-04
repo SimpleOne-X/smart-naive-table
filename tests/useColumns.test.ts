@@ -49,7 +49,10 @@ function build(
 
 // 按 key 找生成后的 Naive 列
 function col(api: ReturnType<typeof build>, key: string) {
-  return api.naiveColumns.value.find((c) => (c as { key?: string }).key === key) as Record<string, any>
+  return api.naiveColumns.value.find((c) => (c as { key?: string }).key === key) as Record<
+    string,
+    any
+  >
 }
 
 describe('useColumns 消费全局默认', () => {
@@ -83,7 +86,10 @@ describe('useColumns 消费全局默认', () => {
   })
 
   it('index 列宽/对齐取 defaults', () => {
-    const api = build([{ type: 'index' }, { key: 'name', title: 'N' }], { indexWidth: 80, align: 'left' })
+    const api = build([{ type: 'index' }, { key: 'name', title: 'N' }], {
+      indexWidth: 80,
+      align: 'left',
+    })
     const idx = col(api, '__index')
     expect(idx.width).toBe(80)
     expect(idx.align).toBe('left')
@@ -204,9 +210,18 @@ describe('useColumns 列宽拖拽', () => {
   })
 
   it('可拖拽列补上 minWidth 兜底,避免被拖成 0 宽', () => {
-    const api = build([{ key: 'name', title: 'N' }, { key: 'amt', title: 'A', minWidth: 200 }], { resizeMinWidth: 80 }, {}, undefined, {
-      resizable: () => true,
-    })
+    const api = build(
+      [
+        { key: 'name', title: 'N' },
+        { key: 'amt', title: 'A', minWidth: 200 },
+      ],
+      { resizeMinWidth: 80 },
+      {},
+      undefined,
+      {
+        resizable: () => true,
+      },
+    )
     expect(col(api, 'name').minWidth).toBe(80)
     expect(col(api, 'amt').minWidth).toBe(200) // 列显式值不被覆盖
   })
@@ -577,9 +592,33 @@ describe('列设置至少保留一列(N11)', () => {
   ]
 
   it('canHideColumn:除它以外还有已显示的列才允许隐藏;隐藏中的 / 不存在的键不受限', () => {
-    expect(canHideColumn([{ key: 'a', show: true }, { key: 'b', show: false }], 'a')).toBe(false)
-    expect(canHideColumn([{ key: 'a', show: true }, { key: 'b', show: true }], 'a')).toBe(true)
-    expect(canHideColumn([{ key: 'a', show: true }, { key: 'b', show: false }], 'b')).toBe(true)
+    expect(
+      canHideColumn(
+        [
+          { key: 'a', show: true },
+          { key: 'b', show: false },
+        ],
+        'a',
+      ),
+    ).toBe(false)
+    expect(
+      canHideColumn(
+        [
+          { key: 'a', show: true },
+          { key: 'b', show: true },
+        ],
+        'a',
+      ),
+    ).toBe(true)
+    expect(
+      canHideColumn(
+        [
+          { key: 'a', show: true },
+          { key: 'b', show: false },
+        ],
+        'b',
+      ),
+    ).toBe(true)
     expect(canHideColumn([{ key: 'a', show: true }], 'zzz')).toBe(true)
   })
 

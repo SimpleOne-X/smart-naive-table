@@ -32,7 +32,12 @@ function chipsOf(
       : Array.isArray(c.value)
         ? c.value.map((x) => optionLabelOf(def, x)).join(', ')
         : optionLabelOf(def, c.value)
-    const text = [index > 0 && value?.logic === 'or' ? labels.filterLogicOr : '', title, labels[ACTION_LABEL_KEY[c.action]], valueText]
+    const text = [
+      index > 0 && value?.logic === 'or' ? labels.filterLogicOr : '',
+      title,
+      labels[ACTION_LABEL_KEY[c.action]],
+      valueText,
+    ]
       .filter(Boolean)
       .join(' ')
     return { key, index, text, ...(orphan ? { orphan: true as const } : {}) }
@@ -56,7 +61,8 @@ export function buildChips(
     out.push(...chipsOf(def, def.key, state[def.key], labels, optionLabelOf, false))
   }
   for (const key of Object.keys(state)) {
-    if (!known.has(key)) out.push(...chipsOf(undefined, key, state[key], labels, optionLabelOf, true))
+    if (!known.has(key))
+      out.push(...chipsOf(undefined, key, state[key], labels, optionLabelOf, true))
   }
   return out
 }
@@ -95,7 +101,10 @@ export function hasActiveDefaults(defs: FilterDef[]): boolean {
 function canon(value: FilterValue | null | undefined): string {
   const conds = activeConditions(value)
   if (!conds.length) return ''
-  return JSON.stringify({ logic: conds.length > 1 ? value!.logic : 'and', conditions: conds.map((c) => [c.action, c.value ?? null]) })
+  return JSON.stringify({
+    logic: conds.length > 1 ? value!.logic : 'and',
+    conditions: conds.map((c) => [c.action, c.value ?? null]),
+  })
 }
 
 /**

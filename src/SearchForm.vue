@@ -67,7 +67,9 @@ onMounted(() => {
   }
 })
 onBeforeUnmount(() => resizeObserver?.disconnect())
-const gridCollapsedRows = computed(() => effectiveCollapsedRows(gridTracks.value, props.config.collapsedRows ?? 1))
+const gridCollapsedRows = computed(() =>
+  effectiveCollapsedRows(gridTracks.value, props.config.collapsedRows ?? 1),
+)
 
 function resolveLabel(label: SearchDef['label']): string | undefined {
   if (typeof label === 'function') {
@@ -80,7 +82,12 @@ function resolveLabel(label: SearchDef['label']): string | undefined {
 function toSelectOptions(opts: SmartTableOption[]): SelectMixedOption[] {
   return opts.map((o) =>
     o.children?.length
-      ? { type: 'group' as const, label: optionLabel(o), key: String(o.value), children: toSelectOptions(o.children) }
+      ? {
+          type: 'group' as const,
+          label: optionLabel(o),
+          key: String(o.value),
+          children: toSelectOptions(o.children),
+        }
       : { label: optionLabel(o), value: o.value as string | number, disabled: o.disabled },
   )
 }
@@ -111,7 +118,14 @@ function renderField(f: SearchDef): VNodeChild {
   const bind = { value: props.params[f.key], 'onUpdate:value': setValue }
   switch (f.type) {
     case 'number':
-      return h(NInputNumber, { ...bind, clearable: true, style: 'width:100%', placeholder: f.placeholder, onKeyup: onEnter, ...f.props })
+      return h(NInputNumber, {
+        ...bind,
+        clearable: true,
+        style: 'width:100%',
+        placeholder: f.placeholder,
+        onKeyup: onEnter,
+        ...f.props,
+      })
     case 'select':
       return h(NSelect, {
         ...bind,
@@ -136,7 +150,13 @@ function renderField(f: SearchDef): VNodeChild {
       return h(NSwitch, { ...bind, ...f.props })
     case 'input':
     default:
-      return h(NInput, { ...bind, clearable: true, placeholder: f.placeholder, onKeyup: onEnter, ...f.props })
+      return h(NInput, {
+        ...bind,
+        clearable: true,
+        placeholder: f.placeholder,
+        onKeyup: onEnter,
+        ...f.props,
+      })
   }
 }
 </script>
@@ -160,7 +180,9 @@ function renderField(f: SearchDef): VNodeChild {
         <component :is="() => renderField(f)" />
       </n-form-item>
       <n-space :size="8">
-        <n-button type="primary" :loading="loading" @click="emit('search')">{{ labels.search }}</n-button>
+        <n-button type="primary" :loading="loading" @click="emit('search')">{{
+          labels.search
+        }}</n-button>
         <n-button @click="emit('reset')">{{ labels.reset }}</n-button>
       </n-space>
     </div>
@@ -182,14 +204,28 @@ function renderField(f: SearchDef): VNodeChild {
           :collapsed="collapsible && collapsed"
           :collapsed-rows="gridCollapsedRows"
         >
-          <n-form-item-gi v-for="f in fields" :key="f.key" :span="f.span" :label="resolveLabel(f.label)">
+          <n-form-item-gi
+            v-for="f in fields"
+            :key="f.key"
+            :span="f.span"
+            :label="resolveLabel(f.label)"
+          >
             <component :is="() => renderField(f)" />
           </n-form-item-gi>
           <n-form-item-gi suffix>
             <n-space align="center">
-              <n-button type="primary" :loading="loading" @click="emit('search')">{{ labels.search }}</n-button>
+              <n-button type="primary" :loading="loading" @click="emit('search')">{{
+                labels.search
+              }}</n-button>
               <n-button @click="emit('reset')">{{ labels.reset }}</n-button>
-              <n-button v-if="collapsible" class="smart-table-search-toggle" :style="{ height: themeVars.heightMedium }" text type="primary" @click="collapsed = !collapsed">
+              <n-button
+                v-if="collapsible"
+                class="smart-table-search-toggle"
+                :style="{ height: themeVars.heightMedium }"
+                text
+                type="primary"
+                @click="collapsed = !collapsed"
+              >
                 {{ collapsed ? labels.expand : labels.collapse }}
               </n-button>
             </n-space>

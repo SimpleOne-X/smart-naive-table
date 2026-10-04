@@ -12,13 +12,25 @@ const fields = deriveSearchDefs([
   { key: 'b', title: 'B', search: true },
 ])
 
-function mountForm(gridTemplateColumns: string, config: Record<string, unknown> = { collapsible: true }) {
+function mountForm(
+  gridTemplateColumns: string,
+  config: Record<string, unknown> = { collapsible: true },
+) {
   const real = window.getComputedStyle.bind(window)
   vi.spyOn(window, 'getComputedStyle').mockImplementation((el: Element, pseudo?: string | null) =>
-    el.classList?.contains('n-grid') ? ({ gridTemplateColumns } as CSSStyleDeclaration) : real(el, pseudo),
+    el.classList?.contains('n-grid')
+      ? ({ gridTemplateColumns } as CSSStyleDeclaration)
+      : real(el, pseudo),
   )
   return mount(SearchForm, {
-    props: { fields, params: {}, config, labels: defaultLabels, getOptions: () => [], isLoadingOptions: () => false },
+    props: {
+      fields,
+      params: {},
+      config,
+      labels: defaultLabels,
+      getOptions: () => [],
+      isLoadingOptions: () => false,
+    },
     attachTo: document.body,
   })
 }

@@ -106,13 +106,16 @@ export const zhCNLabels: Required<SmartTableLabels> = {
 }
 
 /** 浅合并助手:跳过值为 undefined 的键,避免 undefined 覆盖下一层的默认值。 */
-function mergeDefined(base: Required<SmartTableLabels>, ...overrides: Array<Partial<SmartTableLabels> | undefined>): Required<SmartTableLabels> {
+function mergeDefined(
+  base: Required<SmartTableLabels>,
+  ...overrides: Array<Partial<SmartTableLabels> | undefined>
+): Required<SmartTableLabels> {
   const result = { ...base }
   for (const override of overrides) {
     if (!override) continue
     for (const [key, v] of Object.entries(override)) {
       if (v !== undefined) {
-        (result as Record<string, unknown>)[key] = v
+        ;(result as Record<string, unknown>)[key] = v
       }
     }
   }

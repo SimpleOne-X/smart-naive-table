@@ -182,7 +182,9 @@ describe('ColumnFilter 自定义过滤面板', () => {
     // v-if 分支每次父组件重渲染都会生成一个新的箭头函数对象当"组件类型",Vue 据此判定成不同组件,
     // 整个卸载重挂——拖拽/连续输入中途的面板就会被打断重建。本次没有外部可观察的因果(面板内容本该
     // 和 active 无关),只有通过 mountCount 才能抓到。
-    await wrapper.setProps({ value: { logic: 'and', conditions: [{ action: 'equal', value: '' }] } })
+    await wrapper.setProps({
+      value: { logic: 'and', conditions: [{ action: 'equal', value: '' }] },
+    })
     expect(mountCount).toBe(1)
     await wrapper.setProps({ value: { logic: 'and', conditions: [{ action: 'equal', value: 2 }] } })
     expect(mountCount).toBe(1)
@@ -201,7 +203,13 @@ describe('fmt', () => {
 describe('ColumnFilter 漏斗触发器(B6 / 键盘可达)', () => {
   function mountFilter(value: FilterValue | null) {
     return mount(ColumnFilter, {
-      props: { def: buildOptionsDef(), value, labels, getOptions: () => [], isLoadingOptions: () => false },
+      props: {
+        def: buildOptionsDef(),
+        value,
+        labels,
+        getOptions: () => [],
+        isLoadingOptions: () => false,
+      },
       attachTo: document.body,
     })
   }
@@ -232,7 +240,9 @@ describe('ColumnFilter 漏斗触发器(B6 / 键盘可达)', () => {
   it('生效 > 1 条:出现条数角标,aria-label 带「已筛选 N 条」', () => {
     const wrapper = mountFilter(optionsToFilterValue([1, 2, 3]))
     expect(wrapper.find('.smart-table-filter-badge').text()).toBe('3')
-    expect(wrapper.find('.smart-table-filter-trigger button').attributes('aria-label')).toBe('过滤(已筛选 3 条)')
+    expect(wrapper.find('.smart-table-filter-trigger button').attributes('aria-label')).toBe(
+      '过滤(已筛选 3 条)',
+    )
     wrapper.unmount()
   })
 })
@@ -243,7 +253,13 @@ describe('ColumnFilter 条数角标的文字色(Q-2)', () => {
     const Host = defineComponent({
       render: () =>
         h(NConfigProvider, { theme }, () =>
-          h(ColumnFilter, { def: buildOptionsDef(), value, labels, getOptions: () => [], isLoadingOptions: () => false }),
+          h(ColumnFilter, {
+            def: buildOptionsDef(),
+            value,
+            labels,
+            getOptions: () => [],
+            isLoadingOptions: () => false,
+          }),
         ),
     })
     return mount(Host, { attachTo: document.body })
@@ -251,7 +267,9 @@ describe('ColumnFilter 条数角标的文字色(Q-2)', () => {
 
   it('文字色取主题的 baseColor:亮色白、暗色黑;源码里没有写死的颜色', () => {
     const light = mountBadge(null)
-    expect(light.find('.smart-table-filter-badge').attributes('style')).toContain('rgb(255, 255, 255)')
+    expect(light.find('.smart-table-filter-badge').attributes('style')).toContain(
+      'rgb(255, 255, 255)',
+    )
     light.unmount()
     const dark = mountBadge(darkTheme)
     expect(dark.find('.smart-table-filter-badge').attributes('style')).toContain('rgb(0, 0, 0)')
@@ -276,7 +294,11 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
     conditions: conds.map(([action, value]) => ({ action: action as never, value })),
   })
 
-  async function openPanel(def: FilterDef, value: FilterValue | null, getOptions = () => [] as never[]) {
+  async function openPanel(
+    def: FilterDef,
+    value: FilterValue | null,
+    getOptions = () => [] as never[],
+  ) {
     const wrapper = mount(ColumnFilter, {
       props: { def, value, labels, getOptions, isLoadingOptions: () => false },
       attachTo: document.body,
@@ -307,7 +329,9 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
     }
     expect(document.body.querySelectorAll('.smart-table-filter-row')).toHaveLength(5)
     expect(document.body.querySelector('.smart-table-filter-logic')).not.toBeNull()
-    expect(document.body.querySelector('.smart-table-filter-add')!.hasAttribute('disabled')).toBe(true)
+    expect(document.body.querySelector('.smart-table-filter-add')!.hasAttribute('disabled')).toBe(
+      true,
+    )
     w.unmount()
   })
 
@@ -390,7 +414,9 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
       const w = await openPanel(def, value, () => opts as never[])
       expect(document.body.querySelector('.smart-table-filter-options')).toBeNull()
       expect(document.body.querySelectorAll('.smart-table-filter-row')).toHaveLength(1)
-      const input = document.body.querySelector('.smart-table-filter-value input') as HTMLInputElement
+      const input = document.body.querySelector(
+        '.smart-table-filter-value input',
+      ) as HTMLInputElement
       expect(input.disabled).toBe(true) // isNull 无需填值
       docClick(confirmBtn())
       expect(lastEmitted(w)).toEqual(value)
@@ -425,7 +451,8 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
 
     it('高级 → 返回列表:草稿不可表达时按钮禁用;改成可表达后才能返回', async () => {
       const w = await openPanel(optionsDef(), v('and', ['notEqual', 1]), () => opts as never[])
-      const close = () => document.body.querySelector('.smart-table-filter-advanced-close') as HTMLElement
+      const close = () =>
+        document.body.querySelector('.smart-table-filter-advanced-close') as HTMLElement
       expect(close().hasAttribute('disabled')).toBe(true)
       w.findComponent(ConditionRow).vm.$emit('update:action', 'equal')
       await nextTick()
@@ -440,7 +467,9 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
   describe('键盘 / 焦点 / ARIA(公开的 NPopover 不管,库自己做;D6)', () => {
     const panelEl = () => document.body.querySelector('.smart-table-filter') as HTMLElement
     const key = (k: string, shiftKey = false) =>
-      panelEl().dispatchEvent(new KeyboardEvent('keydown', { key: k, shiftKey, bubbles: true, cancelable: true }))
+      panelEl().dispatchEvent(
+        new KeyboardEvent('keydown', { key: k, shiftKey, bubbles: true, cancelable: true }),
+      )
     const FOCUSABLE =
       'input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
@@ -528,7 +557,13 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
 
     it('[D6] ARIA:漏斗按钮 aria-haspopup / aria-expanded;面板 role=dialog + aria-label(列标题 + 过滤)', async () => {
       const w = mount(ColumnFilter, {
-        props: { def: conditionDef({ title: '姓名' }), value: null, labels, getOptions: () => [], isLoadingOptions: () => false },
+        props: {
+          def: conditionDef({ title: '姓名' }),
+          value: null,
+          labels,
+          getOptions: () => [],
+          isLoadingOptions: () => false,
+        },
         attachTo: document.body,
       })
       const btn = w.find('.smart-table-filter-trigger button')
@@ -573,7 +608,9 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
     const panelEl = () => document.body.querySelector('.smart-table-filter') as HTMLElement
     // 真实键盘事件的目标是当前焦点元素(不是面板容器):焦点掉到 body 时,面板上的监听根本收不到
     const pressOnFocused = (k: string) =>
-      (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }))
+      (document.activeElement ?? document.body).dispatchEvent(
+        new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }),
+      )
     // 浏览器里点按钮会先把焦点给它,再触发 click
     const focusAndClick = (el: Element | null) => {
       ;(el as HTMLElement).focus()
@@ -585,14 +622,17 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
       expect(panelEl().contains(a)).toBe(true)
       expect(a.disabled ?? false).toBe(false)
     }
-    const expanded = (w: ReturnType<typeof mount>) => w.find('.smart-table-filter-trigger button').attributes('aria-expanded')
+    const expanded = (w: ReturnType<typeof mount>) =>
+      w.find('.smart-table-filter-trigger button').attributes('aria-expanded')
 
     it('删除一行(被点的 × 随行卸载):焦点落到顶替它的那一行;之后 Esc 照常关闭面板', async () => {
       const w = await openPanel(conditionDef(), v('and', ['contains', 'a'], ['contains', 'b']))
       focusAndClick(document.body.querySelector('.smart-table-filter-remove'))
       await flushPromises()
       expectFocusUsableInPanel()
-      expect(document.body.querySelector('.smart-table-filter-row')!.contains(document.activeElement)).toBe(true)
+      expect(
+        document.body.querySelector('.smart-table-filter-row')!.contains(document.activeElement),
+      ).toBe(true)
       pressOnFocused('Escape')
       await flushPromises()
       expect(expanded(w)).toBe('false')
@@ -606,7 +646,9 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
         focusAndClick(document.body.querySelector('.smart-table-filter-add'))
         await flushPromises()
       }
-      expect(document.body.querySelector('.smart-table-filter-add')!.hasAttribute('disabled')).toBe(true)
+      expect(document.body.querySelector('.smart-table-filter-add')!.hasAttribute('disabled')).toBe(
+        true,
+      )
       expectFocusUsableInPanel()
       const rows = document.body.querySelectorAll('.smart-table-filter-row')
       expect(rows[rows.length - 1].contains(document.activeElement)).toBe(true)
@@ -635,11 +677,17 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
       focusAndClick(document.body.querySelector('.smart-table-filter-advanced-open'))
       await flushPromises()
       expectFocusUsableInPanel()
-      expect(document.body.querySelector('.smart-table-filter-row')!.contains(document.activeElement)).toBe(true)
+      expect(
+        document.body.querySelector('.smart-table-filter-row')!.contains(document.activeElement),
+      ).toBe(true)
       focusAndClick(document.body.querySelector('.smart-table-filter-advanced-close'))
       await flushPromises()
       expectFocusUsableInPanel()
-      expect(document.body.querySelector('.smart-table-filter-options')!.contains(document.activeElement)).toBe(true)
+      expect(
+        document.body
+          .querySelector('.smart-table-filter-options')!
+          .contains(document.activeElement),
+      ).toBe(true)
       pressOnFocused('Escape')
       await flushPromises()
       expect(expanded(w)).toBe('false')
@@ -649,7 +697,14 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
 
   it('openRequest 变大 = 请求打开面板(chips 点击用)', async () => {
     const w = mount(ColumnFilter, {
-      props: { def: conditionDef(), value: null, labels, getOptions: () => [], isLoadingOptions: () => false, openRequest: 0 },
+      props: {
+        def: conditionDef(),
+        value: null,
+        labels,
+        getOptions: () => [],
+        isLoadingOptions: () => false,
+        openRequest: 0,
+      },
       attachTo: document.body,
     })
     expect(document.body.querySelector('.smart-table-filter')).toBeNull()
@@ -663,7 +718,13 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
 describe('ColumnFilter 漏斗触发器的外观(L0-3 / L0-4,对齐原型 .th-filter / .hf-n)', () => {
   function mountFilter(value: FilterValue | null) {
     return mount(ColumnFilter, {
-      props: { def: buildOptionsDef(), value, labels, getOptions: () => [], isLoadingOptions: () => false },
+      props: {
+        def: buildOptionsDef(),
+        value,
+        labels,
+        getOptions: () => [],
+        isLoadingOptions: () => false,
+      },
       attachTo: document.body,
     })
   }
@@ -686,7 +747,9 @@ describe('ColumnFilter 漏斗触发器的外观(L0-3 / L0-4,对齐原型 .th-fil
     expect(badge.text()).toBe('3')
     expect(badge.attributes('aria-hidden')).toBe('true')
     // 按钮的无障碍名只有 aria-label,不含角标的文字
-    expect(w.find('.smart-table-filter-trigger button').attributes('aria-label')).toBe('过滤(已筛选 3 条)')
+    expect(w.find('.smart-table-filter-trigger button').attributes('aria-label')).toBe(
+      '过滤(已筛选 3 条)',
+    )
     w.unmount()
   })
 
@@ -778,14 +841,19 @@ describe('ColumnFilter 面板排布(L0-5,对齐原型 .hpop)', () => {
   it('底部「重置 / 确认」在 footer 里,footer 在面板最底部、带分隔线', async () => {
     const w = await openPanel(conditionDef(), null)
     const footer = q('.smart-table-filter-footer')!
-    expect(Array.from(footer.querySelectorAll('button')).map((b) => b.textContent!.trim())).toEqual(['重置', '确定'])
+    expect(Array.from(footer.querySelectorAll('button')).map((b) => b.textContent!.trim())).toEqual(
+      ['重置', '确定'],
+    )
     expect(footer.parentElement!.lastElementChild).toBe(footer)
     expect(footer.getAttribute('style')).toContain('border-top')
     w.unmount()
   })
 
   it('自定义面板(def.render)仍是 8px 内边距的老样式,不套新的条件面板排布', async () => {
-    const w = await openPanel(conditionDef({ render: () => h('div', { class: 'custom' }, 'x') }), null)
+    const w = await openPanel(
+      conditionDef({ render: () => h('div', { class: 'custom' }, 'x') }),
+      null,
+    )
     expect(q('.smart-table-filter')!.classList.contains('smart-table-filter--custom')).toBe(true)
     expect(q('.smart-table-filter-body')).toBeNull()
     w.unmount()
@@ -799,7 +867,13 @@ describe('ColumnFilter 面板排布(L0-5,对齐原型 .hpop)', () => {
     const optionsDef = (): FilterDef => ({ ...buildOptionsDef(), type: 'select' })
     async function open(value: FilterValue | null) {
       const w = mount(ColumnFilter, {
-        props: { def: optionsDef(), value, labels, getOptions: () => opts as never, isLoadingOptions: () => false },
+        props: {
+          def: optionsDef(),
+          value,
+          labels,
+          getOptions: () => opts as never,
+          isLoadingOptions: () => false,
+        },
         attachTo: document.body,
       })
       await w.find('.smart-table-filter-trigger').trigger('click')
@@ -893,7 +967,14 @@ describe('ColumnFilter 面板排布(L0-5,对齐原型 .hpop)', () => {
         expect(inputs[0].getAttribute('name')).toBeTruthy()
         expect(inputs[1].getAttribute('name')).toBe(inputs[0].getAttribute('name'))
         inputs[1].focus()
-        inputs[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }))
+        inputs[1].dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'Tab',
+            shiftKey: true,
+            bubbles: true,
+            cancelable: true,
+          }),
+        )
         expect(document.activeElement).toBe(qa('.smart-table-filter-footer button')[1])
         w.unmount()
       })
@@ -921,7 +1002,9 @@ describe('ColumnFilter 面板不出屏(L0-9)', () => {
   async function openAt(left: number, width: number, viewport: number) {
     Object.defineProperty(window, 'innerWidth', { value: viewport, configurable: true })
     // jsdom 没有布局:给 NPopover 的定位容器(.v-binder-follower-content,真实布局位置、不含面板自己的平移)合成一个 rect
-    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
       if (!this.classList.contains('v-binder-follower-content')) return new DOMRect(0, 0, 0, 0)
       return new DOMRect(left, 100, width, 200)
     })
@@ -973,7 +1056,9 @@ describe('ColumnFilter 面板不出屏(L0-9)', () => {
   it('[Step 5 实测偏离] 滚动时 follower 在 vueuc 自己的 rAF 里(排在我们的 rAF 之后)才挪:挪完要重新夹取,不能落后一拍', async () => {
     let rect = new DOMRect(100, 100, 400, 200)
     Object.defineProperty(window, 'innerWidth', { value: 1440, configurable: true })
-    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
       return this.classList.contains('v-binder-follower-content') ? rect : new DOMRect(0, 0, 0, 0)
     })
     const w = mount(ColumnFilter, {

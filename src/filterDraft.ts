@@ -15,7 +15,10 @@ export function blankDraft(action: FilterAction): FilterDraft {
 }
 
 /** 由已生效的过滤值回填草稿;没有值 → 一行空白。条件不截断(编程式给的超过上限的值也原样保留)。 */
-export function draftFromValue(value: FilterValue | null | undefined, action: FilterAction): FilterDraft {
+export function draftFromValue(
+  value: FilterValue | null | undefined,
+  action: FilterAction,
+): FilterDraft {
   const conditions = (value?.conditions ?? []).filter((c) => c).map((c) => ({ ...c }))
   if (conditions.length === 0) return blankDraft(action)
   return { logic: value?.logic === 'or' ? 'or' : 'and', conditions }
@@ -33,11 +36,17 @@ export function removeCondition(d: FilterDraft, index: number, action: FilterAct
 }
 
 /** 换操作符:旧值的形状(无值 / 数组 / 标量)与新操作符不一致就清空,不做猜测性转换。 */
-export function setConditionAction(d: FilterDraft, index: number, action: FilterAction): FilterDraft {
+export function setConditionAction(
+  d: FilterDraft,
+  index: number,
+  action: FilterAction,
+): FilterDraft {
   return {
     ...d,
     conditions: d.conditions.map((c, i) =>
-      i !== index ? c : { action, value: actionValueKind(c.action) === actionValueKind(action) ? c.value : null },
+      i !== index
+        ? c
+        : { action, value: actionValueKind(c.action) === actionValueKind(action) ? c.value : null },
     ),
   }
 }
@@ -54,5 +63,8 @@ export function setLogic(d: FilterDraft, logic: FilterLogic): FilterDraft {
 export function draftToValue(d: FilterDraft): FilterValue | null {
   const conditions = activeConditions({ logic: d.logic, conditions: d.conditions })
   if (conditions.length === 0) return null
-  return { logic: conditions.length > 1 ? d.logic : 'and', conditions: conditions.map((c) => ({ ...c })) }
+  return {
+    logic: conditions.length > 1 ? d.logic : 'and',
+    conditions: conditions.map((c) => ({ ...c })),
+  }
 }

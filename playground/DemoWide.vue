@@ -19,8 +19,20 @@ const columns: SmartTableColumn<DemoRow>[] = [
     width: 140,
   })),
   { key: 'email', title: 'Email', width: 200 },
-  { key: 'salary', title: tt('薪资', 'Salary'), width: 110, align: 'right' as const, format: 'money' as const },
-  { key: 'createTime', title: tt('创建时间', 'Created'), width: 180, format: 'datetime' as const, fixed: 'right' },
+  {
+    key: 'salary',
+    title: tt('薪资', 'Salary'),
+    width: 110,
+    align: 'right' as const,
+    format: 'money' as const,
+  },
+  {
+    key: 'createTime',
+    title: tt('创建时间', 'Created'),
+    width: 180,
+    format: 'datetime' as const,
+    fixed: 'right',
+  },
 ]
 </script>
 

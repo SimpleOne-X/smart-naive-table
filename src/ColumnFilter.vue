@@ -6,7 +6,13 @@
 // 键盘 / 焦点 / ARIA:公开的 NPopover 不管(焦点不进面板、Esc 不关闭,见设计文档 9.1),这里自己做(D6)。
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch, type PropType } from 'vue'
 import { NButton, NCheckbox, NPopover, NRadio, NRadioGroup, NTooltip, useThemeVars } from 'naive-ui'
-import type { FilterAction, FilterLogic, FilterValue, SmartTableLabels, SmartTableOption } from './types'
+import type {
+  FilterAction,
+  FilterLogic,
+  FilterValue,
+  SmartTableLabels,
+  SmartTableOption,
+} from './types'
 import { filterDefTitle, type FilterDef } from './useColumns'
 import {
   activeConditions,
@@ -57,7 +63,9 @@ const active = computed(() => isFilterActive(props.value))
 const activeCount = computed(() => activeConditions(props.value).length)
 // 漏斗的无障碍名:多于 1 条时带条数(走 labels,渲染期求值)
 const ariaLabel = computed(() =>
-  activeCount.value > 1 ? `${props.labels.filter}(${fmt(props.labels.filterActiveCount, { n: activeCount.value })})` : props.labels.filter,
+  activeCount.value > 1
+    ? `${props.labels.filter}(${fmt(props.labels.filterActiveCount, { n: activeCount.value })})`
+    : props.labels.filter,
 )
 // 面板的无障碍名:「列标题 + 过滤」(渲染期求值,切语言即时生效)
 const panelLabel = computed(() => `${filterDefTitle(props.def)} ${props.labels.filter}`)
@@ -88,7 +96,8 @@ function loadDraft(from: FilterValue | null) {
 /* ---- 键盘 / 焦点(D6) ---- */
 
 /** 面板里可 Tab 到的控件(tabindex=-1 的面板容器自己不算)。 */
-const FOCUSABLE = 'input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+const FOCUSABLE =
+  'input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 function focusFirst() {
   panelRef.value?.querySelector<HTMLElement>(FOCUSABLE)?.focus()
@@ -230,7 +239,11 @@ function close(focusBack: boolean) {
  * 拖拽 / 连续输入时会打断面板里正在交互的控件(如 NSlider 拖拽中途被卸载)。
  */
 function renderCustomPanel() {
-  return props.def.render!({ value: props.value, setValue: (v) => emit('update:value', v), close: () => close(true) })
+  return props.def.render!({
+    value: props.value,
+    setValue: (v) => emit('update:value', v),
+    close: () => close(true),
+  })
 }
 
 /**
@@ -306,7 +319,9 @@ const flatOptions = computed(() => flatten(props.getOptions(props.def.optionsKey
 // 只对用户实际能操作的选项生效,disabled 选项当前是勾是不勾,toggleAll 前后保持不变。
 const selectableOptions = computed(() => flatOptions.value.filter((o) => !o.disabled))
 const allChecked = computed(
-  () => selectableOptions.value.length > 0 && selectableOptions.value.every((o) => checked.value.includes(o.value)),
+  () =>
+    selectableOptions.value.length > 0 &&
+    selectableOptions.value.every((o) => checked.value.includes(o.value)),
 )
 const someChecked = computed(
   () => selectableOptions.value.some((o) => checked.value.includes(o.value)) && !allChecked.value,
@@ -321,8 +336,12 @@ function toggleOption(value: unknown, on: boolean) {
 }
 
 function toggleAll(on: boolean) {
-  const disabledChecked = checked.value.filter((v) => flatOptions.value.find((o) => o.value === v)?.disabled)
-  checked.value = on ? [...disabledChecked, ...selectableOptions.value.map((o) => o.value)] : disabledChecked
+  const disabledChecked = checked.value.filter(
+    (v) => flatOptions.value.find((o) => o.value === v)?.disabled,
+  )
+  checked.value = on
+    ? [...disabledChecked, ...selectableOptions.value.map((o) => o.value)]
+    : disabledChecked
 }
 
 /* ---- 勾选 ↔ 高级条件 ---- */
@@ -351,7 +370,8 @@ function closeAdvanced() {
 /* ---- 条件行编辑 ---- */
 
 const showEditor = computed(() => props.def.mode === 'condition' || advanced.value)
-const onAction = (i: number, a: FilterAction) => (draft.value = setConditionAction(draft.value, i, a))
+const onAction = (i: number, a: FilterAction) =>
+  (draft.value = setConditionAction(draft.value, i, a))
 const onValue = (i: number, v: unknown) => (draft.value = setConditionValue(draft.value, i, v))
 const onRemove = (i: number) => {
   dropdownRows.clear() // 行号会整体前移,旧的展开记录作废;该行上的下拉随行一起卸载
@@ -397,7 +417,10 @@ function reset() {
       <span
         ref="triggerRef"
         class="smart-table-filter-trigger"
-        :class="{ 'smart-table-filter-trigger--active': active, 'smart-table-filter-trigger--open': show }"
+        :class="{
+          'smart-table-filter-trigger--active': active,
+          'smart-table-filter-trigger--open': show,
+        }"
         data-data-table-filter
         @keydown="onTriggerKeydown"
       >
@@ -417,9 +440,13 @@ function reset() {
               <!-- 条数角标:绝对定位在按钮右上角(原型 .hf-n),不占行内宽度,所以多条件时表头既不变宽也不变高(L0-4)。
                    文字色取主题的 baseColor(亮白 / 暗黑),不写死 #fff:暗色下叠在主色上对比度太低(Q-2)。
                    aria-hidden:条数已在按钮的 aria-label 里,不要读两遍 -->
-              <span v-if="activeCount > 1" class="smart-table-filter-badge" aria-hidden="true" :style="{ color: themeVars.baseColor }">{{
-                activeCount
-              }}</span>
+              <span
+                v-if="activeCount > 1"
+                class="smart-table-filter-badge"
+                aria-hidden="true"
+                :style="{ color: themeVars.baseColor }"
+                >{{ activeCount }}</span
+              >
             </button>
           </template>
           {{ labels.filter }}
@@ -431,7 +458,10 @@ function reset() {
     <div
       ref="panelRef"
       class="smart-table-filter"
-      :class="{ 'smart-table-filter--condition': !def.render && showEditor, 'smart-table-filter--custom': !!def.render }"
+      :class="{
+        'smart-table-filter--condition': !def.render && showEditor,
+        'smart-table-filter--custom': !!def.render,
+      }"
       role="dialog"
       tabindex="-1"
       :aria-label="panelLabel"
@@ -459,7 +489,12 @@ function reset() {
             :value="(checked[0] ?? null) as string | number | null"
             @update:value="(v: string | number | null) => (checked = v == null ? [] : [v])"
           >
-            <n-radio v-for="opt in flatOptions" :key="String(opt.value)" :value="opt.value as string | number" :disabled="opt.disabled">
+            <n-radio
+              v-for="opt in flatOptions"
+              :key="String(opt.value)"
+              :value="opt.value as string | number"
+              :disabled="opt.disabled"
+            >
               {{ optionLabel(opt) }}
             </n-radio>
             <span v-if="!flatOptions.length" :style="{ color: themeVars.textColor3 }">

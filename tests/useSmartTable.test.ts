@@ -16,7 +16,10 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
-const page = (ids: number[], total = 100): PageResult<Row> => ({ items: ids.map((id) => ({ id })), total })
+const page = (ids: number[], total = 100): PageResult<Row> => ({
+  items: ids.map((id) => ({ id })),
+  total,
+})
 
 describe('useSmartTable', () => {
   it('race guard: out-of-order stale response is discarded', async () => {
@@ -85,7 +88,11 @@ describe('useSmartTable', () => {
         calls.push(p)
         return page([1], 42)
       },
-      { immediate: false, initParams: { name: '', account: ' tom ' }, extraParams: () => ({ orgId: 7 }) },
+      {
+        immediate: false,
+        initParams: { name: '', account: ' tom ' },
+        extraParams: () => ({ orgId: 7 }),
+      },
     )
 
     await table.load()
@@ -95,7 +102,10 @@ describe('useSmartTable', () => {
 
   it('failure calls onError and ends loading', async () => {
     const onError = vi.fn()
-    const table = useSmartTable<Row>(async () => Promise.reject(new Error('boom')), { immediate: false, onError })
+    const table = useSmartTable<Row>(async () => Promise.reject(new Error('boom')), {
+      immediate: false,
+      onError,
+    })
 
     await table.load()
     expect(onError).toHaveBeenCalledOnce()

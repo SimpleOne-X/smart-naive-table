@@ -27,7 +27,9 @@ describe('2.1.1 特征:内置默认值', () => {
 
 describe('3.0 分页(B1 / B4 已翻转)', () => {
   it('静态模式:默认每页 100、simple、带每页选择器(suffix)', () => {
-    const wrapper = mount(SmartTable, { props: { columns: [{ key: 'name', title: 'Name' }], data: rows, rowKey: 'id' } })
+    const wrapper = mount(SmartTable, {
+      props: { columns: [{ key: 'name', title: 'Name' }], data: rows, rowKey: 'id' },
+    })
     const p = wrapper.findComponent(NDataTable).props('pagination') as Record<string, unknown>
     expect(p.pageSize).toBe(100)
     expect(p.simple).toBe(true)
@@ -37,7 +39,9 @@ describe('3.0 分页(B1 / B4 已翻转)', () => {
 
   it('远程模式:首次请求 pageSize = 100', async () => {
     const fetcher = vi.fn(async () => ({ items: rows, total: 2 }))
-    const wrapper = mount(SmartTable, { props: { columns: [{ key: 'name', title: 'Name' }], fetcher, rowKey: 'id' } })
+    const wrapper = mount(SmartTable, {
+      props: { columns: [{ key: 'name', title: 'Name' }], fetcher, rowKey: 'id' },
+    })
     await flushPromises()
     expect(fetcher).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 100 }))
     wrapper.unmount()
@@ -46,7 +50,9 @@ describe('3.0 分页(B1 / B4 已翻转)', () => {
 
 describe('3.0 密度(B2 已翻转)', () => {
   it('默认紧凑(small)', () => {
-    const plain = mount(SmartTable, { props: { columns: [{ key: 'name', title: 'Name' }], data: rows, rowKey: 'id' } })
+    const plain = mount(SmartTable, {
+      props: { columns: [{ key: 'name', title: 'Name' }], data: rows, rowKey: 'id' },
+    })
     expect(plain.findComponent(NDataTable).props('size')).toBe('small')
     plain.unmount()
   })
@@ -54,7 +60,12 @@ describe('3.0 密度(B2 已翻转)', () => {
   it('存储里存过 comfortable 的用户,没有密度按钮时存储不参与:取默认 compact(small)', () => {
     saveState('baseline-density', 'comfortable', [{ key: 'name', show: true }])
     const stored = mount(SmartTable, {
-      props: { columns: [{ key: 'name', title: 'Name' }], data: rows, rowKey: 'id', storageKey: 'baseline-density' },
+      props: {
+        columns: [{ key: 'name', title: 'Name' }],
+        data: rows,
+        rowKey: 'id',
+        storageKey: 'baseline-density',
+      },
     })
     expect(stored.findComponent(NDataTable).props('size')).toBe('small')
     stored.unmount()
@@ -63,7 +74,9 @@ describe('3.0 密度(B2 已翻转)', () => {
 
 describe('3.0 工具栏(B3 已翻转)', () => {
   it('默认只有「刷新」,没有「密度」', () => {
-    const wrapper = mount(Toolbar, { props: { labels: defaultLabels, config: {}, density: 'compact' } })
+    const wrapper = mount(Toolbar, {
+      props: { labels: defaultLabels, config: {}, density: 'compact' },
+    })
     const html = wrapper.html()
     expect(html).toContain('aria-label="Refresh"')
     expect(html).not.toContain('aria-label="Density"')
@@ -81,17 +94,25 @@ describe('2.1.1 特征:排序', () => {
     const fetcher = vi.fn(async () => ({ items: rows, total: 2 }))
     const wrapper = mount(SmartTable, { props: { columns: sortCols, fetcher, rowKey: 'id' } })
     await flushPromises()
-    const onSorter = wrapper.findComponent(NDataTable).props('onUpdate:sorter') as (s: unknown) => void
+    const onSorter = wrapper.findComponent(NDataTable).props('onUpdate:sorter') as (
+      s: unknown,
+    ) => void
     onSorter({ columnKey: 'a', order: 'ascend', sorter: true })
     await flushPromises()
-    expect(fetcher).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, sortField: 'a', sortOrder: 'asc' }))
+    expect(fetcher).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, sortField: 'a', sortOrder: 'asc' }),
+    )
     wrapper.unmount()
   })
 
   it('[C2 已修] defaultSortOrder 进入首次请求', async () => {
     const fetcher = vi.fn(async () => ({ items: rows, total: 2 }))
     const wrapper = mount(SmartTable, {
-      props: { columns: [{ key: 'a', title: 'A', sorter: true, defaultSortOrder: 'descend' }], fetcher, rowKey: 'id' },
+      props: {
+        columns: [{ key: 'a', title: 'A', sorter: true, defaultSortOrder: 'descend' }],
+        fetcher,
+        rowKey: 'id',
+      },
     })
     await flushPromises()
     const first = (fetcher.mock.calls[0] as unknown[])[0] as Record<string, unknown>
@@ -107,7 +128,9 @@ describe('2.1.1 特征:排序', () => {
     ]
     const wrapper = mount(SmartTable, { props: { columns: multiCols, fetcher, rowKey: 'id' } })
     await flushPromises()
-    const onSorter = wrapper.findComponent(NDataTable).props('onUpdate:sorter') as (s: unknown) => void
+    const onSorter = wrapper.findComponent(NDataTable).props('onUpdate:sorter') as (
+      s: unknown,
+    ) => void
     onSorter([
       { columnKey: 'a', order: 'ascend', sorter: multiCols[0].sorter },
       { columnKey: 'b', order: 'descend', sorter: multiCols[1].sorter },

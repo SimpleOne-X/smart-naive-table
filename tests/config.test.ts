@@ -98,8 +98,21 @@ describe('mergeLabels 三层合并', () => {
 
 describe('15 个操作符都有文案', () => {
   const ALL: FilterAction[] = [
-    'equal', 'notEqual', 'contains', 'notContains', 'gt', 'gte', 'lt', 'lte',
-    'isNull', 'isNotNull', 'like', 'startsWith', 'endsWith', 'in', 'notIn',
+    'equal',
+    'notEqual',
+    'contains',
+    'notContains',
+    'gt',
+    'gte',
+    'lt',
+    'lte',
+    'isNull',
+    'isNotNull',
+    'like',
+    'startsWith',
+    'endsWith',
+    'in',
+    'notIn',
   ]
   it('ACTION_LABEL_KEY 覆盖全部操作符,且每个键在英文默认与中文包里都有非空值', () => {
     expect(Object.keys(ACTION_LABEL_KEY).sort()).toEqual([...ALL].sort())
@@ -160,7 +173,10 @@ describe('defaultPageSize / pageSizesGiven(D4)', () => {
     expect(r.defaultPageSize).toBeUndefined()
   })
   it('注入了 pageSizes → pageSizesGiven 为 true;注入 defaultPageSize 原样透传', () => {
-    expect(resolveDefaults({ pageSizes: [10, 20] })).toMatchObject({ pageSizes: [10, 20], pageSizesGiven: true })
+    expect(resolveDefaults({ pageSizes: [10, 20] })).toMatchObject({
+      pageSizes: [10, 20],
+      pageSizesGiven: true,
+    })
     expect(resolveDefaults({ defaultPageSize: 30 }).defaultPageSize).toBe(30)
     expect(resolveDefaults({ defaultPageSize: 30 }).pageSizesGiven).toBe(false)
   })

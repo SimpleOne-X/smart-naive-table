@@ -5,7 +5,12 @@
 // 库默认就对的地方宿主**不覆盖**:空状态(官方 NEmpty「无数据」)、日期占位(官方 locale 的「选择日期」)、loading(NDataTable 官方样子)。
 import { h, ref } from 'vue'
 import { NButton, NSpace, useMessage } from 'naive-ui'
-import { SmartTable, type SmartTableColumn, type SmartTableInst, type FilterAction } from '../../src/index'
+import {
+  SmartTable,
+  type SmartTableColumn,
+  type SmartTableInst,
+  type FilterAction,
+} from '../../src/index'
 import { addRow, delRow, type Row } from './data'
 import { fetchRows } from './fetcher'
 
@@ -34,7 +39,12 @@ const COLS = [
    单据状态(status)也可排,multiple: 4(原型 H_CFG.sort.sorters.status,字典顺序见 fetcher.ts 的 STATUS_RANK,不是 label 拼音)---- */
 const SORTERS: Record<string, Record<string, any>> = {
   filter: { no: true, amount: true, bizDate: true },
-  sort: { status: { multiple: 4 }, dept: { multiple: 3 }, amount: { multiple: 2 }, bizDate: { multiple: 1 } },
+  sort: {
+    status: { multiple: 4 },
+    dept: { multiple: 3 },
+    amount: { multiple: 2 },
+    bizDate: { multiple: 1 },
+  },
 }
 const sorterOf = (key: string) => (hdr ? SORTERS[props.mod][key] : undefined)
 
@@ -49,7 +59,19 @@ const colW = (c: (typeof COLS)[number]) => (hdr ? Math.max(hdrColW(c), colMin(c)
 
 /* ---- 原型 OPS_BY_TYPE:15 个操作符按字段类型分发;库默认只给 8 个,宿主在列上写 filter.actions 才出现新的 ---- */
 const ACT: Record<'text' | 'number' | 'date' | 'select', FilterAction[]> = {
-  text: ['contains', 'notContains', 'equal', 'notEqual', 'startsWith', 'endsWith', 'like', 'isNull', 'isNotNull', 'in', 'notIn'],
+  text: [
+    'contains',
+    'notContains',
+    'equal',
+    'notEqual',
+    'startsWith',
+    'endsWith',
+    'like',
+    'isNull',
+    'isNotNull',
+    'in',
+    'notIn',
+  ],
   number: ['equal', 'notEqual', 'gt', 'gte', 'lt', 'lte', 'isNull', 'isNotNull', 'in', 'notIn'],
   date: ['equal', 'notEqual', 'gt', 'gte', 'lt', 'lte', 'isNull', 'isNotNull'],
   select: ['equal', 'notEqual', 'in', 'notIn', 'isNull', 'isNotNull'],
@@ -62,7 +84,10 @@ const statusOptions = [
   { label: '已关闭', value: '已关闭', tagType: 'default' as const },
 ]
 const deptOptions = ['采购部', '生产部', '仓储部'].map((v) => ({ label: v, value: v }))
-const STATUS_DEFAULT = { logic: 'and' as const, conditions: [{ action: 'equal' as const, value: '未审核' }] }
+const STATUS_DEFAULT = {
+  logic: 'and' as const,
+  conditions: [{ action: 'equal' as const, value: '未审核' }],
+}
 
 const fieldCol = (c: (typeof COLS)[number] & { flex?: boolean }): SmartTableColumn<Row> => {
   const base: Record<string, any> = { key: c.key, title: c.label }
@@ -79,18 +104,31 @@ const fieldCol = (c: (typeof COLS)[number] & { flex?: boolean }): SmartTableColu
       base.tag = true
       if (props.mod === 'search') base.search = true
       // 原型模块 3:单据状态带 filter.defaultValue = 未审核 —— 初始过滤态 = 默认值,面板「重置」恢复默认,chips 行末偏离默认时出现「恢复默认」
-      if (hdr) base.filter = { actions: ACT.select, ...(props.mod === 'filter' ? { defaultValue: STATUS_DEFAULT } : {}) }
+      if (hdr)
+        base.filter = {
+          actions: ACT.select,
+          ...(props.mod === 'filter' ? { defaultValue: STATUS_DEFAULT } : {}),
+        }
       break
     case 'dept':
       base.options = deptOptions
       if (props.mod === 'search') base.search = true
       // 原型模块 3:部门是单选勾选列(filter.multiple: false,官方用 NRadio)
-      if (hdr) base.filter = { actions: ACT.select, ...(props.mod === 'filter' ? { multiple: false } : {}) }
+      if (hdr)
+        base.filter = {
+          actions: ACT.select,
+          ...(props.mod === 'filter' ? { multiple: false } : {}),
+        }
       break
     case 'amount':
       base.align = 'right' // 原型:金额单元格右对齐,表头仍左对齐(titleAlign 取全局默认 left)
       base.format = (v: unknown) => Number(v).toLocaleString()
-      if (props.mod === 'search') base.search = { type: 'number', placeholder: '请输入数字', props: { clearable: false, showButton: false } }
+      if (props.mod === 'search')
+        base.search = {
+          type: 'number',
+          placeholder: '请输入数字',
+          props: { clearable: false, showButton: false },
+        }
       if (hdr) base.filter = { type: 'number', actions: ACT.number }
       break
     case 'bizDate':
@@ -98,7 +136,8 @@ const fieldCol = (c: (typeof COLS)[number] & { flex?: boolean }): SmartTableColu
       if (hdr) base.filter = { type: 'date', actions: ACT.date }
       break
     default:
-      if (props.mod === 'search') base.search = { placeholder: '请输入', props: { clearable: false } }
+      if (props.mod === 'search')
+        base.search = { placeholder: '请输入', props: { clearable: false } }
       if (hdr) base.filter = { type: 'input', actions: ACT.text }
   }
   return base as SmartTableColumn<Row>
@@ -109,7 +148,14 @@ const columns: SmartTableColumn<Row>[] = [
   ...COLS.map(fieldCol),
   // 备注:只在模块 1 的搜索表单里出现,不进表格(原型 FIELD_DEFS 有 memo、COLS 没有)
   ...(props.mod === 'search'
-    ? [{ key: 'memo', title: '备注', hideInTable: true, search: { placeholder: '请输入', props: { clearable: false } } } as SmartTableColumn<Row>]
+    ? [
+        {
+          key: 'memo',
+          title: '备注',
+          hideInTable: true,
+          search: { placeholder: '请输入', props: { clearable: false } },
+        } as SmartTableColumn<Row>,
+      ]
     : []),
   {
     key: 'actions',
@@ -172,9 +218,23 @@ const searchCfg = props.mod === 'search' ? { collapsible: true, labelWidth: 70 }
     >
       <template #toolbar-right>
         <!-- 原型的「新增」图标是 13px;官方 NButton 的图标盒默认 18px(会让按钮宽 3px),所以宿主这里把 iconSizeMedium 调成 13px -->
-        <n-button :type="mod === 'search' ? 'default' : 'primary'" :theme-overrides="{ iconSizeMedium: '13px' }" @click="onAdd">
+        <n-button
+          :type="mod === 'search' ? 'default' : 'primary'"
+          :theme-overrides="{ iconSizeMedium: '13px' }"
+          @click="onAdd"
+        >
           <template #icon>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3v10M3 8h10" /></svg>
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+            >
+              <path d="M8 3v10M3 8h10" />
+            </svg>
           </template>
           新增
         </n-button>

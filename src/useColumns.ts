@@ -1,4 +1,13 @@
-import { computed, h, ref, watch, type ComputedRef, type Ref, type Slots, type VNodeChild } from 'vue'
+import {
+  computed,
+  h,
+  ref,
+  watch,
+  type ComputedRef,
+  type Ref,
+  type Slots,
+  type VNodeChild,
+} from 'vue'
 import { NTag } from 'naive-ui'
 import type { DataTableBaseColumn, DataTableColumn } from 'naive-ui'
 import type {
@@ -22,7 +31,14 @@ import type {
 import { applyFormat } from './format'
 import { isFilterActive } from './filter'
 import { findOption, optionLabel } from './useOptions'
-import { clearState, loadState, mergeCols, peekStoredDensity, saveState, type DeclaredCol } from './storage'
+import {
+  clearState,
+  loadState,
+  mergeCols,
+  peekStoredDensity,
+  saveState,
+  type DeclaredCol,
+} from './storage'
 import type { ResolvedSmartTableDefaults } from './config'
 
 /**
@@ -38,7 +54,10 @@ export function headerIconFloor(hasFilter: boolean, hasSorter: boolean): number 
  * 列设置「至少保留一列」(N11,原型一致):隐藏 key 这一列之后,设置里还得剩一列是显示的。
  * 只看设置里能管的列(hideInSetting 的列用户碰不到,不算);已经隐藏的 / 不存在的键不受限。
  */
-export function canHideColumn(items: ReadonlyArray<{ key: string; show: boolean }>, key: string): boolean {
+export function canHideColumn(
+  items: ReadonlyArray<{ key: string; show: boolean }>,
+  key: string,
+): boolean {
   const target = items.find((i) => i.key === key)
   if (!target || !target.show) return true
   return items.some((i) => i.key !== key && i.show)
@@ -108,7 +127,9 @@ export function deriveInitParams(defs: SearchDef[]): Record<string, any> {
  * 收集列上的字典源(列 key → OptionsSource)。
  * filter.options 单独覆写时挂在 `__filter:{列 key}` 下,与单元格翻译用的字典互不干扰。
  */
-export function deriveOptionsSources<T>(columns: SmartTableColumn<T>[]): Record<string, OptionsSource> {
+export function deriveOptionsSources<T>(
+  columns: SmartTableColumn<T>[],
+): Record<string, OptionsSource> {
   const out: Record<string, OptionsSource> = {}
   for (const col of columns) {
     if (isSpecialColumn(col)) continue
@@ -286,16 +307,22 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
   const checks = ref<DeclaredCol[]>(stored?.cols ?? [])
   // 用户在密度按钮上选的值:仅当开了密度按钮(respectStoredDensity)时才读存储;其余情况取宿主的值。
   // 存储格式里的 density 字段仍照常写入(不动 VERSION),只是读取时不采用。
-  const userDensity = ref<Density | null>(opts.respectStoredDensity?.() ? (stored?.density ?? null) : null)
+  const userDensity = ref<Density | null>(
+    opts.respectStoredDensity?.() ? (stored?.density ?? null) : null,
+  )
   const density = computed<Density>(() => userDensity.value ?? opts.defaultDensity())
   // 写回存储的 density:只有两个来源 —— 存储里原有的值,或用户在密度按钮上选的值(setDensity)。
   // 保存列设置 / 列宽时绝不把宿主给的 defaultDensity 当成用户的选择写进去;
   // 没有存储记录、用户也没选过 → undefined,saveState 不写这个字段。
-  let storedDensity: Density | undefined = opts.storageKey ? peekStoredDensity(opts.storageKey) : undefined
+  let storedDensity: Density | undefined = opts.storageKey
+    ? peekStoredDensity(opts.storageKey)
+    : undefined
   const widths = ref<Record<string, number>>({ ...stored?.widths })
 
   const dataCols = computed(() =>
-    opts.columns().filter((c): c is SmartTableDataColumn<T> => !isSpecialColumn(c) && !c.hideInTable),
+    opts
+      .columns()
+      .filter((c): c is SmartTableDataColumn<T> => !isSpecialColumn(c) && !c.hideInTable),
   )
   const specialCols = computed(() => opts.columns().filter(isSpecialColumn))
   const managedCols = computed(() => dataCols.value.filter((c) => !c.hideInSetting))
@@ -347,7 +374,8 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
     const leaves = visibleLeaves.value
     if (leaves.length === 0) return null
     for (let i = leaves.length - 1; i >= 0; i--) {
-      if (!leaves[i].fixed && leaves[i].col.resizable !== false) return { key: leaves[i].col.key, elastic: true }
+      if (!leaves[i].fixed && leaves[i].col.resizable !== false)
+        return { key: leaves[i].col.key, elastic: true }
     }
     return { key: leaves[leaves.length - 1].col.key, elastic: false }
   })
@@ -362,7 +390,10 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
    * 叶子数据列的最终宽度(未考虑吸收列)。toNaive 与 scrollX 共用这一套口径 —— 两者一旦对不上,
    * 差额就会被表格摊回各列,拖一列左侧的列跟着动。
    */
-  function rawLeafWidth(col: SmartTableDataColumn<T>, fixed?: 'left' | 'right'): number | undefined {
+  function rawLeafWidth(
+    col: SmartTableDataColumn<T>,
+    fixed?: 'left' | 'right',
+  ): number | undefined {
     const w = widths.value[col.key]
     if (w !== undefined) return w
     if (col.width !== undefined) return Number(col.width)
@@ -384,7 +415,10 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
       for (const l of visibleLeaves.value) {
         if (l.col.key !== col.key) others += rawLeafWidth(l.col, l.fixed) ?? floorWidth(l.col)
       }
-      return Math.max(floorWidth(col), Math.round((opts.hostWidth?.() ?? 0) - others - (opts.dragDelta?.() ?? 0)))
+      return Math.max(
+        floorWidth(col),
+        Math.round((opts.hostWidth?.() ?? 0) - others - (opts.dragDelta?.() ?? 0)),
+      )
     }
     return rawLeafWidth(col, fixed)
   }
@@ -524,7 +558,10 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
 
   /* ---- 数据列 → Naive 列 ---- */
 
-  function toNaive(col: SmartTableDataColumn<T>, override?: { fixed?: 'left' | 'right' }): DataTableColumn<T> {
+  function toNaive(
+    col: SmartTableDataColumn<T>,
+    override?: { fixed?: 'left' | 'right' },
+  ): DataTableColumn<T> {
     const {
       key,
       title,
@@ -576,7 +613,9 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
       const baseTitle = result.title as string | ((c: unknown) => VNodeChild) | undefined
       result.title = (c: unknown) =>
         h('span', { class: 'smart-table-th' }, [
-          h('span', { class: 'smart-table-th-text' }, [typeof baseTitle === 'function' ? baseTitle(c) : baseTitle]),
+          h('span', { class: 'smart-table-th-text' }, [
+            typeof baseTitle === 'function' ? baseTitle(c) : baseTitle,
+          ]),
           opts.renderFilter!(filterDef),
         ])
     }
@@ -615,7 +654,11 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
           if (!hit) return String(value)
           const label = optionLabel(hit)
           return tag
-            ? h(NTag, { type: hit.tagType ?? 'default', size: d.tag.size, bordered: d.tag.bordered }, () => label)
+            ? h(
+                NTag,
+                { type: hit.tagType ?? 'default', size: d.tag.size, bordered: d.tag.bordered },
+                () => label,
+              )
             : label
         }
         // 此处必有 format
@@ -650,13 +693,21 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
     // 自己认 __n_expand__/__n_selection__),但运行时的拖拽回调确实直接读 column.key ——
     // 类型声明与运行时用法在这一点上不一致,只能整体转 unknown 再转回目标类型。
     if (type === 'expand') {
-      return { ...rest, key, type: 'expand', ...pinnedWidth, renderExpand } as unknown as DataTableColumn<T>
+      return {
+        ...rest,
+        key,
+        type: 'expand',
+        ...pinnedWidth,
+        renderExpand,
+      } as unknown as DataTableColumn<T>
     }
     return { ...rest, key, type: 'selection', ...pinnedWidth } as unknown as DataTableColumn<T>
   }
 
   /** 最终列:特殊列(声明序,恒在前)+ 数据列(managed 按设置排序,hideInSetting 保持声明位)。 */
-  const orderedVisibleData = computed<Array<{ col: SmartTableDataColumn<T>; fixed?: 'left' | 'right'; managed: boolean }>>(() => {
+  const orderedVisibleData = computed<
+    Array<{ col: SmartTableDataColumn<T>; fixed?: 'left' | 'right'; managed: boolean }>
+  >(() => {
     const cols = dataCols.value
     const eff = effectiveChecks.value
     const colByKey = new Map(cols.map((c) => [c.key, c]))
@@ -664,11 +715,16 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
     cols.forEach((c, i) => {
       if (!c.hideInSetting) managedSlots.push(i)
     })
-    const result: Array<{ col: SmartTableDataColumn<T>; fixed?: 'left' | 'right'; managed: boolean } | undefined> = new Array(
-      cols.length,
-    )
+    const result: Array<
+      { col: SmartTableDataColumn<T>; fixed?: 'left' | 'right'; managed: boolean } | undefined
+    > = new Array(cols.length)
     cols.forEach((c, i) => {
-      if (c.hideInSetting) result[i] = { col: c, fixed: c.fixed === 'left' || c.fixed === 'right' ? c.fixed : undefined, managed: false }
+      if (c.hideInSetting)
+        result[i] = {
+          col: c,
+          fixed: c.fixed === 'left' || c.fixed === 'right' ? c.fixed : undefined,
+          managed: false,
+        }
     })
     eff.forEach((chk, orderIdx) => {
       const slot = managedSlots[orderIdx]
@@ -681,14 +737,17 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
 
   const naiveColumns = computed<DataTableColumn<T>[]>(() => [
     ...specialCols.value.map(specialToNaive),
-    ...orderedVisibleData.value.map(({ col, fixed, managed }) => toNaive(col, managed ? { fixed } : undefined)),
+    ...orderedVisibleData.value.map(({ col, fixed, managed }) =>
+      toNaive(col, managed ? { fixed } : undefined),
+    ),
   ])
 
   /** auto scrollX = 特殊列宽度 + Σ可见叶子列(最终宽度 ?? 下限);吸收列按它的下限(退路则按显式宽度)计入,保证 scroll-x 始终 ≥ 各列下限之和。 */
   const scrollX = computed(() => {
     let sum = 0
     for (const col of specialCols.value) sum += specialWidth(col)
-    for (const { col, fixed } of visibleLeaves.value) sum += leafWidth(col, fixed) ?? floorWidth(col)
+    for (const { col, fixed } of visibleLeaves.value)
+      sum += leafWidth(col, fixed) ?? floorWidth(col)
     return sum
   })
 

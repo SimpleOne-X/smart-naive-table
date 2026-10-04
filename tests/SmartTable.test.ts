@@ -65,7 +65,9 @@ describe('SmartTable 列宽拖拽事件透传', () => {
     // 真正的回归点:Naive 内部对这个 prop 是当函数直接调用的(见 Header.mjs 的
     // onUnstableColumnResize(widthAfterResize, limitWidth, column, getColumnWidth)),
     // 数组会在这里直接抛 TypeError。
-    expect(() => (merged as (...a: unknown[]) => void)(120, 120, { key: 'name' }, () => undefined)).not.toThrow()
+    expect(() =>
+      (merged as (...a: unknown[]) => void)(120, 120, { key: 'name' }, () => undefined),
+    ).not.toThrow()
 
     // 宿主自己的处理函数依然要被调用到(功能没有被吞掉,只是不能靠 Vue 的数组合并)
     expect(hostCalls).toHaveLength(1)
@@ -138,8 +140,15 @@ describe('SmartTable 列宽钉住后由吸收列吸收余量(B8,取代占位列;
   type Col = { key: string; width?: number; resizable?: boolean }
 
   /** 走一遍真实拖拽:Naive 拖动中持续回调,松手落账,此后列宽进入钉住态。 */
-  function drag(wrapper: ReturnType<typeof mount>, key: string, to: number, actual: Record<string, number>) {
-    const resize = wrapper.findComponent(NDataTable).props('onUnstableColumnResize') as (...a: unknown[]) => void
+  function drag(
+    wrapper: ReturnType<typeof mount>,
+    key: string,
+    to: number,
+    actual: Record<string, number>,
+  ) {
+    const resize = wrapper.findComponent(NDataTable).props('onUnstableColumnResize') as (
+      ...a: unknown[]
+    ) => void
     resize(to, to, { key }, (k: string) => actual[k])
   }
   function release() {
@@ -326,7 +335,10 @@ describe('SmartTable 暴露的 filters / columnWidths 是只读快照', () => {
     }
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    ;(inst.filters as Record<string, unknown>).name = { logic: 'and', conditions: [{ action: 'equal', value: 'x' }] }
+    ;(inst.filters as Record<string, unknown>).name = {
+      logic: 'and',
+      conditions: [{ action: 'equal', value: 'x' }],
+    }
     expect(inst.filters).toEqual({}) // 直接改被 readonly 挡下,内部过滤态没变
 
     inst.setFilter('name', { logic: 'and', conditions: [{ action: 'equal', value: 'alice' }] })
@@ -338,7 +350,11 @@ describe('SmartTable 暴露的 filters / columnWidths 是只读快照', () => {
 
   it('直接改 columnWidths 不会生效 —— 绕开 setWidth 会漏掉 localStorage 持久化', () => {
     const wrapper = mount(SmartTable, {
-      props: { columns: [{ key: 'name', title: 'Name', resizable: true }], data: rows, rowKey: 'id' },
+      props: {
+        columns: [{ key: 'name', title: 'Name', resizable: true }],
+        data: rows,
+        rowKey: 'id',
+      },
     })
     const inst = wrapper.vm as unknown as { columnWidths: Record<string, number> }
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -425,16 +441,25 @@ describe('SmartTable 排序(多列 / 默认排序 / 编程式)', () => {
   const cmp = () => 0
   const multiCols = [
     { key: 'g', title: 'G', sorter: { compare: cmp, multiple: 2 } },
-    { key: 'n', title: 'N', sorter: { compare: cmp, multiple: 1 }, defaultSortOrder: 'ascend' as const },
+    {
+      key: 'n',
+      title: 'N',
+      sorter: { compare: cmp, multiple: 1 },
+      defaultSortOrder: 'ascend' as const,
+    },
   ]
   const mountRemote = (columns: unknown[], attrs: Record<string, unknown> = {}) => {
     const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 2 }))
-    const wrapper = mount(SmartTable, { props: { columns: columns as SmartTableColumn<unknown>[], fetcher, rowKey: 'id' }, attrs })
+    const wrapper = mount(SmartTable, {
+      props: { columns: columns as SmartTableColumn<unknown>[], fetcher, rowKey: 'id' },
+      attrs,
+    })
     return { fetcher, wrapper }
   }
   const sorterHandler = (wrapper: ReturnType<typeof mount>) =>
     wrapper.findComponent(NDataTable).props('onUpdate:sorter') as (s: unknown) => void
-  const lastParams = (fetcher: { mock: { calls: unknown[][] } }) => fetcher.mock.calls.at(-1)![0] as Record<string, unknown>
+  const lastParams = (fetcher: { mock: { calls: unknown[][] } }) =>
+    fetcher.mock.calls.at(-1)![0] as Record<string, unknown>
   type Inst = {
     sort: (k?: string | null, o?: 'ascend' | 'descend' | false) => void
     clearSorter: () => void
@@ -443,8 +468,14 @@ describe('SmartTable 排序(多列 / 默认排序 / 编程式)', () => {
   it('C2:列上的 defaultSortOrder 进入首次请求,箭头回显', async () => {
     const { fetcher, wrapper } = mountRemote(multiCols)
     await flushPromises()
-    expect((fetcher.mock.calls[0][0] as Record<string, unknown>)).toMatchObject({ sortField: 'n', sortOrder: 'asc' })
-    const cols = wrapper.findComponent(NDataTable).props('columns') as Array<{ key: string; sortOrder?: unknown }>
+    expect(fetcher.mock.calls[0][0] as Record<string, unknown>).toMatchObject({
+      sortField: 'n',
+      sortOrder: 'asc',
+    })
+    const cols = wrapper.findComponent(NDataTable).props('columns') as Array<{
+      key: string
+      sortOrder?: unknown
+    }>
     expect(cols.find((c) => c.key === 'n')!.sortOrder).toBe('ascend')
     expect(cols.find((c) => c.key === 'g')!.sortOrder).toBe(false)
     wrapper.unmount()
@@ -459,7 +490,12 @@ describe('SmartTable 排序(多列 / 默认排序 / 编程式)', () => {
     const wrapper = mount(SmartTable, {
       props: {
         columns: [
-          { key: 'n', title: 'N', sorter: (a: { n: number }, b: { n: number }) => a.n - b.n, defaultSortOrder: 'descend' },
+          {
+            key: 'n',
+            title: 'N',
+            sorter: (a: { n: number }, b: { n: number }) => a.n - b.n,
+            defaultSortOrder: 'descend',
+          },
         ] as SmartTableColumn<unknown>[],
         data,
         rowKey: 'id',
@@ -487,7 +523,10 @@ describe('SmartTable 排序(多列 / 默认排序 / 编程式)', () => {
         { field: 'n', order: 'asc' },
       ],
     })
-    const cols = wrapper.findComponent(NDataTable).props('columns') as Array<{ key: string; sortOrder?: unknown }>
+    const cols = wrapper.findComponent(NDataTable).props('columns') as Array<{
+      key: string
+      sortOrder?: unknown
+    }>
     expect(cols.find((c) => c.key === 'g')!.sortOrder).toBe('descend')
     expect(cols.find((c) => c.key === 'n')!.sortOrder).toBe('ascend')
     wrapper.unmount()
@@ -499,7 +538,13 @@ describe('SmartTable 排序(多列 / 默认排序 / 编程式)', () => {
     const inst = wrapper.vm as unknown as Inst
     inst.sort('g', 'descend')
     await flushPromises()
-    expect(lastParams(fetcher)).toMatchObject({ page: 1, sorts: [{ field: 'g', order: 'desc' }, { field: 'n', order: 'asc' }] })
+    expect(lastParams(fetcher)).toMatchObject({
+      page: 1,
+      sorts: [
+        { field: 'g', order: 'desc' },
+        { field: 'n', order: 'asc' },
+      ],
+    })
 
     inst.sort('n', false) // 取消 n,保留 g
     await flushPromises()
@@ -508,7 +553,12 @@ describe('SmartTable 排序(多列 / 默认排序 / 编程式)', () => {
 
     inst.sort('n') // order 缺省 = 'ascend'(对齐官方)
     await flushPromises()
-    expect(lastParams(fetcher)).toMatchObject({ sorts: [{ field: 'g', order: 'desc' }, { field: 'n', order: 'asc' }] })
+    expect(lastParams(fetcher)).toMatchObject({
+      sorts: [
+        { field: 'g', order: 'desc' },
+        { field: 'n', order: 'asc' },
+      ],
+    })
 
     inst.clearSorter()
     await flushPromises()
@@ -533,7 +583,9 @@ describe('SmartTable 排序(多列 / 默认排序 / 编程式)', () => {
 
   it('sort() 对没有 sorter 的列是空操作:不重查,也不通知宿主', async () => {
     const onSorter = vi.fn()
-    const { fetcher, wrapper } = mountRemote([{ key: 'name', title: 'Name' }], { 'onUpdate:sorter': onSorter })
+    const { fetcher, wrapper } = mountRemote([{ key: 'name', title: 'Name' }], {
+      'onUpdate:sorter': onSorter,
+    })
     await flushPromises()
     const before = fetcher.mock.calls.length
     ;(wrapper.vm as unknown as Inst).sort('name', 'ascend')
@@ -572,8 +624,13 @@ describe('SmartTable 排序(多列 / 默认排序 / 编程式)', () => {
     expect(onSorter).toHaveBeenCalledTimes(3)
     expect(last()).toEqual({ columnKey: 's', sorter: true, order: 'ascend' })
     await flushPromises()
-    const cols = wrapper.findComponent(NDataTable).props('columns') as Array<{ key: string; sortOrder?: unknown }>
-    expect(cols.filter((c) => c.sortOrder === 'ascend' || c.sortOrder === 'descend').map((c) => c.key)).toEqual(['s'])
+    const cols = wrapper.findComponent(NDataTable).props('columns') as Array<{
+      key: string
+      sortOrder?: unknown
+    }>
+    expect(
+      cols.filter((c) => c.sortOrder === 'ascend' || c.sortOrder === 'descend').map((c) => c.key),
+    ).toEqual(['s'])
 
     // clearSorter():载荷是 null
     inst.clearSorter()
@@ -589,7 +646,8 @@ describe('SmartTable 排序(多列 / 默认排序 / 编程式)', () => {
     const payload = [{ columnKey: 'g', order: 'descend', sorter: multiCols[0].sorter }]
     // 取 NDataTable 实际收到的监听器(2.1.1 里它是 [宿主, 库] 的数组)并像 Naive 那样逐个调用
     const handler = wrapper.findComponent(NDataTable).props('onUpdate:sorter') as unknown
-    for (const fn of Array.isArray(handler) ? handler : [handler]) (fn as (s: unknown) => void)(payload)
+    for (const fn of Array.isArray(handler) ? handler : [handler])
+      (fn as (s: unknown) => void)(payload)
     expect(onSorter).toHaveBeenCalledTimes(1)
     expect(onSorter).toHaveBeenCalledWith(payload)
     wrapper.unmount()
@@ -598,13 +656,19 @@ describe('SmartTable 排序(多列 / 默认排序 / 编程式)', () => {
 
 describe('SmartTable 密度(B2:宿主的值必须能生效)', () => {
   const tableSize = (w: ReturnType<typeof mount>) => w.findComponent(NDataTable).props('size')
-  const base = { columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[], data: rows, rowKey: 'id' }
+  const base = {
+    columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[],
+    data: rows,
+    rowKey: 'id',
+  }
 
   afterEach(() => localStorage.clear())
 
   it('[Review Focus 1] 存过 comfortable 的老用户 + 宿主给 compact + 没开密度按钮 → 取 compact', () => {
     saveState('dens-a', 'comfortable', [{ key: 'name', show: true }])
-    const wrapper = mount(SmartTable, { props: { ...base, storageKey: 'dens-a', defaultDensity: 'compact' } })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, storageKey: 'dens-a', defaultDensity: 'compact' },
+    })
     expect(tableSize(wrapper)).toBe('small')
     wrapper.unmount()
   })
@@ -612,7 +676,12 @@ describe('SmartTable 密度(B2:宿主的值必须能生效)', () => {
   it('开了 toolbar.density:true 时仍是「存储优先」(旧规则)', () => {
     saveState('dens-b', 'comfortable', [{ key: 'name', show: true }])
     const wrapper = mount(SmartTable, {
-      props: { ...base, storageKey: 'dens-b', defaultDensity: 'compact', toolbar: { density: true } },
+      props: {
+        ...base,
+        storageKey: 'dens-b',
+        defaultDensity: 'compact',
+        toolbar: { density: true },
+      },
     })
     expect(tableSize(wrapper)).toBe('medium')
     wrapper.unmount()
@@ -644,7 +713,8 @@ describe('SmartTable 密度的写入端(Q-1:保存列设置 / 列宽不把宿主
     data: rows,
     rowKey: 'id',
   }
-  const raw = (key: string) => JSON.parse(localStorage.getItem('protable:' + key) ?? 'null') as { density?: string } | null
+  const raw = (key: string) =>
+    JSON.parse(localStorage.getItem('protable:' + key) ?? 'null') as { density?: string } | null
 
   afterEach(() => {
     vi.useRealTimers()
@@ -653,7 +723,9 @@ describe('SmartTable 密度的写入端(Q-1:保存列设置 / 列宽不把宿主
 
   it('存储里原有的 density 原样保留:切列显隐后仍是旧值,不是宿主给的 compact', async () => {
     saveState('dens-w1', 'comfortable', [{ key: 'name', show: true }])
-    const wrapper = mount(SmartTable, { props: { ...base, storageKey: 'dens-w1', defaultDensity: 'compact' } })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, storageKey: 'dens-w1', defaultDensity: 'compact' },
+    })
     wrapper.findComponent(ColumnSettings).vm.$emit('toggle', 'name', false)
     await nextTick()
     expect(raw('dens-w1')!.density).toBe('comfortable')
@@ -664,9 +736,16 @@ describe('SmartTable 密度的写入端(Q-1:保存列设置 / 列宽不把宿主
     vi.useFakeTimers()
     saveState('dens-w2', 'comfortable', [{ key: 'name', show: true }])
     const wrapper = mount(SmartTable, {
-      props: { ...base, columns: [{ key: 'name', title: 'Name', resizable: true }], storageKey: 'dens-w2', defaultDensity: 'compact' },
+      props: {
+        ...base,
+        columns: [{ key: 'name', title: 'Name', resizable: true }],
+        storageKey: 'dens-w2',
+        defaultDensity: 'compact',
+      },
     })
-    const resize = wrapper.findComponent(NDataTable).props('onUnstableColumnResize') as (...a: unknown[]) => void
+    const resize = wrapper.findComponent(NDataTable).props('onUnstableColumnResize') as (
+      ...a: unknown[]
+    ) => void
     resize(120, 120, { key: 'name' }, () => 200)
     window.dispatchEvent(new MouseEvent('mouseup'))
     vi.advanceTimersByTime(400)
@@ -675,7 +754,9 @@ describe('SmartTable 密度的写入端(Q-1:保存列设置 / 列宽不把宿主
   })
 
   it('没有存储记录、用户也没选过密度:保存列设置时不写 density 字段(不替用户做选择)', async () => {
-    const wrapper = mount(SmartTable, { props: { ...base, storageKey: 'dens-w3', defaultDensity: 'compact' } })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, storageKey: 'dens-w3', defaultDensity: 'compact' },
+    })
     wrapper.findComponent(ColumnSettings).vm.$emit('toggle', 'name', false)
     await nextTick()
     expect(raw('dens-w3')).not.toBeNull()
@@ -685,7 +766,12 @@ describe('SmartTable 密度的写入端(Q-1:保存列设置 / 列宽不把宿主
 
   it('只有 setDensity 才写:开了密度按钮、用户选「紧凑」→ 存储里是 compact;之后保存列设置不会把它改回宿主值', async () => {
     const wrapper = mount(SmartTable, {
-      props: { ...base, storageKey: 'dens-w4', defaultDensity: 'comfortable', toolbar: { density: true } },
+      props: {
+        ...base,
+        storageKey: 'dens-w4',
+        defaultDensity: 'comfortable',
+        toolbar: { density: true },
+      },
     })
     wrapper.findComponent(Toolbar).vm.$emit('update:density', 'compact')
     await nextTick()
@@ -699,7 +785,12 @@ describe('SmartTable 密度的写入端(Q-1:保存列设置 / 列宽不把宿主
   it('[E6] 存储里有记录但没有 density 字段:开了密度按钮时取宿主的 defaultDensity(不是写死的回退值)', () => {
     saveState('dens-w5', undefined, [{ key: 'name', show: true }])
     const wrapper = mount(SmartTable, {
-      props: { ...base, storageKey: 'dens-w5', defaultDensity: 'comfortable', toolbar: { density: true } },
+      props: {
+        ...base,
+        storageKey: 'dens-w5',
+        defaultDensity: 'comfortable',
+        toolbar: { density: true },
+      },
     })
     expect(wrapper.findComponent(NDataTable).props('size')).toBe('medium')
     wrapper.unmount()
@@ -707,7 +798,9 @@ describe('SmartTable 密度的写入端(Q-1:保存列设置 / 列宽不把宿主
 
   it('[Q-1] 记录里没有 density 字段(上次没选过):这次保存列设置仍不写这个字段', async () => {
     saveState('dens-w6', undefined, [{ key: 'name', show: true }])
-    const wrapper = mount(SmartTable, { props: { ...base, storageKey: 'dens-w6', defaultDensity: 'compact' } })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, storageKey: 'dens-w6', defaultDensity: 'compact' },
+    })
     wrapper.findComponent(ColumnSettings).vm.$emit('toggle', 'name', false)
     await nextTick()
     expect(raw('dens-w6')).not.toBeNull()
@@ -717,7 +810,9 @@ describe('SmartTable 密度的写入端(Q-1:保存列设置 / 列宽不把宿主
 
   it('[F14] 「恢复默认」清掉存储后,闭包里记着的旧密度也要清:之后保存列设置不会把旧密度写回去', async () => {
     saveState('dens-w7', 'comfortable', [{ key: 'name', show: true }])
-    const wrapper = mount(SmartTable, { props: { ...base, storageKey: 'dens-w7', defaultDensity: 'compact' } })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, storageKey: 'dens-w7', defaultDensity: 'compact' },
+    })
     wrapper.findComponent(ColumnSettings).vm.$emit('reset')
     await nextTick()
     expect(raw('dens-w7')).toBeNull() // 恢复默认 = 清掉整条存储
@@ -730,14 +825,19 @@ describe('SmartTable 密度的写入端(Q-1:保存列设置 / 列宽不把宿主
 })
 
 describe('SmartTable 工具栏接线(B5 / more)', () => {
-  const base = { columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[], rowKey: 'id' }
+  const base = {
+    columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[],
+    rowKey: 'id',
+  }
 
   it('B5:静态数据模式不显示刷新;远程模式显示', async () => {
     const staticWrapper = mount(SmartTable, { props: { ...base, data: rows } })
     expect(staticWrapper.html()).not.toContain('aria-label="Refresh"')
     staticWrapper.unmount()
 
-    const remoteWrapper = mount(SmartTable, { props: { ...base, fetcher: async () => ({ items: rows, total: 2 }) } })
+    const remoteWrapper = mount(SmartTable, {
+      props: { ...base, fetcher: async () => ({ items: rows, total: 2 }) },
+    })
     await flushPromises()
     expect(remoteWrapper.html()).toContain('aria-label="Refresh"')
     remoteWrapper.unmount()
@@ -745,7 +845,9 @@ describe('SmartTable 工具栏接线(B5 / more)', () => {
 
   it('实例方法 refresh() 在静态模式下保持空操作(不抛错)', async () => {
     const wrapper = mount(SmartTable, { props: { ...base, data: rows } })
-    await expect((wrapper.vm as unknown as { refresh: () => Promise<void> }).refresh()).resolves.toBeUndefined()
+    await expect(
+      (wrapper.vm as unknown as { refresh: () => Promise<void> }).refresh(),
+    ).resolves.toBeUndefined()
     wrapper.unmount()
   })
 
@@ -759,7 +861,10 @@ describe('SmartTable 工具栏接线(B5 / more)', () => {
 })
 
 describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
-  const base = { columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[], rowKey: 'id' }
+  const base = {
+    columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[],
+    rowKey: 'id',
+  }
   const many = Array.from({ length: 50 }, (_, i) => ({ id: i + 1, name: `n${i + 1}` }))
   type PagerProps = {
     simple?: boolean
@@ -770,12 +875,22 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
     suffix?: (info: Record<string, number>) => { type: unknown; props: Record<string, any> }
     onUpdatePage?: (p: number) => void
   }
-  const pagerProps = (w: ReturnType<typeof mount>) => w.findComponent(NDataTable).props('pagination') as PagerProps
+  const pagerProps = (w: ReturnType<typeof mount>) =>
+    w.findComponent(NDataTable).props('pagination') as PagerProps
   /** 渲染 suffix,拿到内层官方 NPagination 的 vnode */
   const picker = (w: ReturnType<typeof mount>, pageSize = 100) =>
-    pagerProps(w).suffix!({ page: 1, pageSize, pageCount: 1, itemCount: 2, startIndex: 0, endIndex: 1 })
+    pagerProps(w).suffix!({
+      page: 1,
+      pageSize,
+      pageCount: 1,
+      itemCount: 2,
+      startIndex: 0,
+      endIndex: 1,
+    })
   const sizeValues = (vnode: { props: Record<string, any> }) =>
-    (vnode.props.pageSizes as Array<number | { value: number }>).map((s) => (typeof s === 'number' ? s : s.value))
+    (vnode.props.pageSizes as Array<number | { value: number }>).map((s) =>
+      typeof s === 'number' ? s : s.value,
+    )
 
   it('B1 / B4:静态模式默认每页 100、simple;每页选择器是官方嵌套 NPagination,只渲染 size-picker', () => {
     const wrapper = mount(SmartTable, { props: { ...base, data: rows } })
@@ -785,26 +900,38 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
     expect(p.showSizePicker).toBeUndefined() // 官方 simple 不渲染选择器,所以外层不设
     const v = picker(wrapper)
     expect(v.type).toBe(NPagination)
-    expect(v.props).toMatchObject({ displayOrder: ['size-picker'], showSizePicker: true, pageSize: 100, itemCount: 2, page: 1 })
+    expect(v.props).toMatchObject({
+      displayOrder: ['size-picker'],
+      showSizePicker: true,
+      pageSize: 100,
+      itemCount: 2,
+      page: 1,
+    })
     expect(v.props.pageSizes).toEqual([100, 500, 1000])
     wrapper.unmount()
   })
 
   it('[Review Focus 2] 当前 pageSize 不在 pageSizes 里(宿主传 pageSize: 10)→ 传给内层的 pageSizes 并入当前值', () => {
-    const wrapper = mount(SmartTable, { props: { ...base, data: rows, pagination: { pageSize: 10 } } })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, data: rows, pagination: { pageSize: 10 } },
+    })
     expect(sizeValues(picker(wrapper, 10))).toEqual([10, 100, 500, 1000])
     wrapper.unmount()
   })
 
   it('[D3 #2] 宿主 pagination.pageSizes 里的 { label, value } 对象原样保留,不被当非数字项丢掉', () => {
     const obj = { label: '每页 50 条', value: 50 }
-    const wrapper = mount(SmartTable, { props: { ...base, data: rows, pagination: { pageSizes: [20, obj] } } })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, data: rows, pagination: { pageSizes: [20, obj] } },
+    })
     expect(picker(wrapper, 20).props.pageSizes).toEqual([20, obj])
     wrapper.unmount()
   })
 
   it('[D3 #1] 宿主单表 pagination.showSizePicker: false → simple 下也不画每页选择器', () => {
-    const wrapper = mount(SmartTable, { props: { ...base, data: rows, pagination: { showSizePicker: false } } })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, data: rows, pagination: { showSizePicker: false } },
+    })
     expect(pagerProps(wrapper).suffix).toBeUndefined()
     wrapper.unmount()
   })
@@ -823,7 +950,9 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
   })
 
   it('pagination: { simple: false } → 回到页码序列,走官方 showSizePicker / pageSizes,不画 suffix', () => {
-    const wrapper = mount(SmartTable, { props: { ...base, data: rows, pagination: { simple: false } } })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, data: rows, pagination: { simple: false } },
+    })
     const p = pagerProps(wrapper)
     expect(p.simple).toBe(false)
     expect(p.showSizePicker).toBe(true)
@@ -833,7 +962,9 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
   })
 
   it('[D3 #6] simple: false 回退时当前 pageSize 不在 pageSizes 里 → 官方选择器的选项也并入当前值', () => {
-    const wrapper = mount(SmartTable, { props: { ...base, data: rows, pagination: { simple: false, pageSize: 15 } } })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, data: rows, pagination: { simple: false, pageSize: 15 } },
+    })
     expect(pagerProps(wrapper).pageSizes).toEqual([15, 100, 500, 1000])
     wrapper.unmount()
   })
@@ -860,7 +991,9 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
 
   it('[D3 #3] 本地模式:内层选择器改 500 → 表格 pageSize 变 500,并转发宿主的 onUpdatePageSize', async () => {
     const onSize = vi.fn()
-    const wrapper = mount(SmartTable, { props: { ...base, data: many, pagination: { onUpdatePageSize: onSize } } })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, data: many, pagination: { onUpdatePageSize: onSize } },
+    })
     picker(wrapper).props.onUpdatePageSize(500)
     await nextTick()
     expect(pagerProps(wrapper).pageSize).toBe(500)
@@ -906,7 +1039,10 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
       props: {
         ...base,
         fetcher,
-        pagination: { 'onUpdate:pageSize': paginationUpdatePageSize, onPageSizeChange: paginationOnPageSizeChange },
+        pagination: {
+          'onUpdate:pageSize': paginationUpdatePageSize,
+          onPageSizeChange: paginationOnPageSizeChange,
+        },
       },
       attrs: {
         'onUpdate:pageSize': attrsUpdatePageSize,
@@ -939,7 +1075,9 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
     })
     await nextTick()
     expect(pagerProps(wrapper).suffix).toBeUndefined() // simple:false 下确实没有内层嵌套选择器
-    const nativeHandler = wrapper.findComponent(NPagination).props('onUpdate:pageSize') as (n: number) => void
+    const nativeHandler = wrapper.findComponent(NPagination).props('onUpdate:pageSize') as (
+      n: number,
+    ) => void
     nativeHandler(500)
     await nextTick()
     expect(attrsUpdatePageSize).toHaveBeenCalledTimes(1)
@@ -948,7 +1086,9 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
   })
 
   it('[D3 #4] 本地模式宿主 pagination.defaultPageSize: 20:50 行只显示 20 行(不被受控 pageSize 盖成 100)', async () => {
-    const wrapper = mount(SmartTable, { props: { ...base, data: many, pagination: { defaultPageSize: 20 } } })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, data: many, pagination: { defaultPageSize: 20 } },
+    })
     await nextTick()
     expect(pagerProps(wrapper).pageSize).toBe(20)
     expect(wrapper.findAll('tbody tr')).toHaveLength(20)
@@ -957,14 +1097,19 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
 
   it('[D4] 回退「一行」:宿主只写 pagination.pageSizes [10,20,50](没写 defaultPageSize)→ 首个请求 10', async () => {
     const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 2 }))
-    const wrapper = mount(SmartTable, { props: { ...base, fetcher, pagination: { pageSizes: [10, 20, 50] } } })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, fetcher, pagination: { pageSizes: [10, 20, 50] } },
+    })
     await flushPromises()
     expect(fetcher.mock.calls[0][0]).toMatchObject({ pageSize: 10 })
     wrapper.unmount()
   })
 
   it('[D4] 全局 pageSizes [10,20,50] 同样;全局 defaultPageSize: 30 压过 pageSizes[0];实例 default-page-size 最高', async () => {
-    const first = async (defaults: Record<string, unknown>, props: Record<string, unknown> = {}) => {
+    const first = async (
+      defaults: Record<string, unknown>,
+      props: Record<string, unknown> = {},
+    ) => {
       const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 2 }))
       const w = mount(SmartTable, {
         props: { ...base, fetcher, ...props },
@@ -976,7 +1121,9 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
     }
     expect(await first({ pageSizes: [10, 20, 50] })).toBe(10)
     expect(await first({ pageSizes: [10, 20, 50], defaultPageSize: 30 })).toBe(30)
-    expect(await first({ pageSizes: [10, 20, 50], defaultPageSize: 30 }, { defaultPageSize: 20 })).toBe(20)
+    expect(
+      await first({ pageSizes: [10, 20, 50], defaultPageSize: 30 }, { defaultPageSize: 20 }),
+    ).toBe(20)
   })
 
   describe('窄档(库根节点宽 < 600)不画每页选择器', () => {
@@ -1011,7 +1158,10 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
 
   describe('B9 筛选后分页', () => {
     const filterCols = [{ key: 'name', title: 'Name', filter: true }] as SmartTableColumn<unknown>[]
-    const value = { logic: 'and' as const, conditions: [{ action: 'contains' as const, value: 'a' }] }
+    const value = {
+      logic: 'and' as const,
+      conditions: [{ action: 'contains' as const, value: 'a' }],
+    }
 
     it('默认(宿主没传)保持库现状:远程回第 1 页', async () => {
       const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 500 }))
@@ -1019,7 +1169,10 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
       await flushPromises()
       pagerProps(wrapper).onUpdatePage!(3)
       await flushPromises()
-      ;(wrapper.vm as unknown as { setFilter: (k: string, v: unknown) => void }).setFilter('name', value)
+      ;(wrapper.vm as unknown as { setFilter: (k: string, v: unknown) => void }).setFilter(
+        'name',
+        value,
+      )
       await flushPromises()
       expect(fetcher.mock.calls.at(-1)![0]).toMatchObject({ page: 1 })
       wrapper.unmount()
@@ -1034,7 +1187,10 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
       await flushPromises()
       pagerProps(wrapper).onUpdatePage!(3)
       await flushPromises()
-      ;(wrapper.vm as unknown as { setFilter: (k: string, v: unknown) => void }).setFilter('name', value)
+      ;(wrapper.vm as unknown as { setFilter: (k: string, v: unknown) => void }).setFilter(
+        'name',
+        value,
+      )
       await flushPromises()
       expect(fetcher.mock.calls.at(-1)![0]).toMatchObject({ page: 3 })
       wrapper.unmount()
@@ -1075,7 +1231,10 @@ describe('SmartTable 卡片内边距(B11)与 cardProps(D10)', () => {
   it('cardProps.themeOverrides 逐键合并:宿主只改圆角,库的 paddingSmall 覆盖仍在', () => {
     const wrapper = mountCards({ cardProps: { themeOverrides: { borderRadius: '2px' } } })
     for (const c of cards(wrapper)) {
-      expect(c.props('themeOverrides')).toEqual({ paddingSmall: '16px 16px 16px', borderRadius: '2px' })
+      expect(c.props('themeOverrides')).toEqual({
+        paddingSmall: '16px 16px 16px',
+        borderRadius: '2px',
+      })
     }
     wrapper.unmount()
   })
@@ -1098,7 +1257,9 @@ describe('SmartTable 点漏斗不触发排序(Q-6:官方 data-data-table-filter)
     const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 2 }))
     const wrapper = mount(SmartTable, {
       props: {
-        columns: [{ key: 'name', title: 'Name', sorter: true, filter: true }] as SmartTableColumn<unknown>[],
+        columns: [
+          { key: 'name', title: 'Name', sorter: true, filter: true },
+        ] as SmartTableColumn<unknown>[],
         fetcher,
         rowKey: 'id',
       },
@@ -1137,9 +1298,15 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
     { key: 'name', title: '姓名', filter: true },
     { key: 'dept', title: '部门', filter: true },
   ] as SmartTableColumn<unknown>[]
-  const value = (action: string, v: unknown) => ({ logic: 'and' as const, conditions: [{ action: action as never, value: v }] })
+  const value = (action: string, v: unknown) => ({
+    logic: 'and' as const,
+    conditions: [{ action: action as never, value: v }],
+  })
   const inst = (w: ReturnType<typeof mount>) =>
-    w.vm as unknown as { setFilter: (k: string, v: unknown) => void; filters: Record<string, unknown> }
+    w.vm as unknown as {
+      setFilter: (k: string, v: unknown) => void
+      filters: Record<string, unknown>
+    }
 
   it('默认不显示 chips(P0:需显式 filterChips: true)', async () => {
     const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id' } })
@@ -1150,13 +1317,18 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
   })
 
   it('filterChips: true:有条件才出现;每个条件一个 chip;× 只删这一条', async () => {
-    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true } })
+    const wrapper = mount(SmartTable, {
+      props: { columns: cols, data: rows, rowKey: 'id', filterChips: true },
+    })
     expect(wrapper.findComponent(FilterChips).exists()).toBe(false) // 无条件不占位
     inst(wrapper).setFilter('name', value('contains', 'a'))
     inst(wrapper).setFilter('dept', value('equal', 'x'))
     await nextTick()
     const chips = wrapper.findComponent(FilterChips)
-    expect(chips.findAll('.smart-table-chip').map((c) => c.text())).toEqual(['姓名 Contains a', '部门 Equals x'])
+    expect(chips.findAll('.smart-table-chip').map((c) => c.text())).toEqual([
+      '姓名 Contains a',
+      '部门 Equals x',
+    ])
     chips.findAllComponents(NTag)[0].vm.$emit('close')
     await nextTick()
     expect(Object.keys(inst(wrapper).filters)).toEqual(['dept'])
@@ -1164,7 +1336,9 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
   })
 
   it('行末按钮:没有列声明 defaultValue → 「Clear all」;点击清空全部', async () => {
-    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true } })
+    const wrapper = mount(SmartTable, {
+      props: { columns: cols, data: rows, rowKey: 'id', filterChips: true },
+    })
     inst(wrapper).setFilter('name', value('contains', 'a'))
     inst(wrapper).setFilter('dept', value('equal', 'x')) // 有意改动(L0-6):「清除全部」≥ 2 个 chip 才出现,原来只设 1 个条件
     await nextTick()
@@ -1176,8 +1350,12 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
   })
 
   it('行末按钮:有列声明了 defaultValue → 「Restore defaults」,点击恢复默认而不是清空', async () => {
-    const withDefault = [{ key: 'name', title: '姓名', filter: { defaultValue: value('contains', 'seed') } }] as SmartTableColumn<unknown>[]
-    const wrapper = mount(SmartTable, { props: { columns: withDefault, data: rows, rowKey: 'id', filterChips: true } })
+    const withDefault = [
+      { key: 'name', title: '姓名', filter: { defaultValue: value('contains', 'seed') } },
+    ] as SmartTableColumn<unknown>[]
+    const wrapper = mount(SmartTable, {
+      props: { columns: withDefault, data: rows, rowKey: 'id', filterChips: true },
+    })
     inst(wrapper).setFilter('name', value('contains', 'changed'))
     await nextTick()
     const btn = wrapper.find('.smart-table-chips__clear')
@@ -1188,7 +1366,9 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
   })
 
   it('[Q-7] 列声明里已不存在的过滤键(孤儿):chip 仍显示,标题回退成键;点击不报错;× 能清掉', async () => {
-    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true } })
+    const wrapper = mount(SmartTable, {
+      props: { columns: cols, data: rows, rowKey: 'id', filterChips: true },
+    })
     inst(wrapper).setFilter('ghost', value('equal', 'x'))
     await nextTick()
     const chips = wrapper.findComponent(FilterChips)
@@ -1202,7 +1382,9 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
 
   it('[Q-7] 孤儿键仍会进远程请求参数 —— 所以它必须看得见,「清除全部」也要渲染并能清掉它', async () => {
     const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 2 }))
-    const wrapper = mount(SmartTable, { props: { columns: cols, fetcher, rowKey: 'id', filterChips: true } })
+    const wrapper = mount(SmartTable, {
+      props: { columns: cols, fetcher, rowKey: 'id', filterChips: true },
+    })
     await flushPromises()
     inst(wrapper).setFilter('ghost', value('equal', 'x'))
     inst(wrapper).setFilter('ghost2', value('equal', 'y')) // 有意改动(L0-6):「清除全部」≥ 2 个 chip 才出现,原来只有 1 个孤儿键
@@ -1217,7 +1399,9 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
   })
 
   it('[L0-6] 1 个条件时没有「清除全部」(chip 自己的 × 就够了);≥ 2 个才出现', async () => {
-    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true } })
+    const wrapper = mount(SmartTable, {
+      props: { columns: cols, data: rows, rowKey: 'id', filterChips: true },
+    })
     inst(wrapper).setFilter('name', value('contains', 'a'))
     await nextTick()
     expect(wrapper.find('.smart-table-chips__clear').exists()).toBe(false)
@@ -1228,8 +1412,12 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
   })
 
   it('[L0-6] 有默认值的表:只在偏离默认时出现「Restore defaults」(1 个 chip 也出现);回到默认就消失', async () => {
-    const withDefault = [{ key: 'name', title: '姓名', filter: { defaultValue: value('contains', 'seed') } }] as SmartTableColumn<unknown>[]
-    const wrapper = mount(SmartTable, { props: { columns: withDefault, data: rows, rowKey: 'id', filterChips: true } })
+    const withDefault = [
+      { key: 'name', title: '姓名', filter: { defaultValue: value('contains', 'seed') } },
+    ] as SmartTableColumn<unknown>[]
+    const wrapper = mount(SmartTable, {
+      props: { columns: withDefault, data: rows, rowKey: 'id', filterChips: true },
+    })
     await nextTick()
     expect(wrapper.findAll('.smart-table-chip')).toHaveLength(1) // 初始过滤态 = 默认值,有 1 个 chip
     expect(wrapper.find('.smart-table-chips__clear').exists()).toBe(false) // 没偏离:不出现
@@ -1248,7 +1436,9 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
       { key: 'name', title: '姓名', filter: { defaultValue: value('contains', 'seed') } },
       { key: 'dept', title: '部门', filter: true },
     ] as SmartTableColumn<unknown>[]
-    const wrapper = mount(SmartTable, { props: { columns: mixed, data: rows, rowKey: 'id', filterChips: true } })
+    const wrapper = mount(SmartTable, {
+      props: { columns: mixed, data: rows, rowKey: 'id', filterChips: true },
+    })
     await nextTick()
     inst(wrapper).setFilter('dept', value('equal', 'x'))
     await nextTick()
@@ -1260,7 +1450,9 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
   })
 
   it('[L0-6] chip 是主色(NTag type=primary)、可点;孤儿 chip(没有面板可开)是默认灰;「清除全部」紧跟在 chips 后面', async () => {
-    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true } })
+    const wrapper = mount(SmartTable, {
+      props: { columns: cols, data: rows, rowKey: 'id', filterChips: true },
+    })
     inst(wrapper).setFilter('name', value('contains', 'a'))
     inst(wrapper).setFilter('ghost', value('equal', 'x'))
     await nextTick()
@@ -1291,8 +1483,13 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
   })
 
   it('[Review Focus 5] 指向已隐藏的列:chip 仍显示、点击不报错、× 仍能清掉那个条件', async () => {
-    const hiddenCols = [{ key: 'name', title: '姓名', filter: true, hide: true }, { key: 'dept', title: '部门' }] as SmartTableColumn<unknown>[]
-    const wrapper = mount(SmartTable, { props: { columns: hiddenCols, data: rows, rowKey: 'id', filterChips: true } })
+    const hiddenCols = [
+      { key: 'name', title: '姓名', filter: true, hide: true },
+      { key: 'dept', title: '部门' },
+    ] as SmartTableColumn<unknown>[]
+    const wrapper = mount(SmartTable, {
+      props: { columns: hiddenCols, data: rows, rowKey: 'id', filterChips: true },
+    })
     inst(wrapper).setFilter('name', value('contains', 'a'))
     await nextTick()
     const chips = wrapper.findComponent(FilterChips)
@@ -1305,7 +1502,10 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
   })
 
   it('点击 chip → 对应列的 ColumnFilter 收到 openRequest 递增', async () => {
-    const wrapper = mount(SmartTable, { props: { columns: cols, data: rows, rowKey: 'id', filterChips: true }, attachTo: document.body })
+    const wrapper = mount(SmartTable, {
+      props: { columns: cols, data: rows, rowKey: 'id', filterChips: true },
+      attachTo: document.body,
+    })
     inst(wrapper).setFilter('name', value('contains', 'a'))
     await nextTick()
     wrapper.findComponent(FilterChips).vm.$emit('open', 'name')
@@ -1368,12 +1568,21 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
 })
 
 describe('SmartTable fillHeight(D5)', () => {
-  const base = { columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[], data: rows, rowKey: 'id' }
-  const tableProps = (w: ReturnType<typeof mount>) => w.findComponent(NDataTable).props() as Record<string, any>
+  const base = {
+    columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[],
+    data: rows,
+    rowKey: 'id',
+  }
+  const tableProps = (w: ReturnType<typeof mount>) =>
+    w.findComponent(NDataTable).props() as Record<string, any>
 
   // vueuc 的 VirtualList(官方 virtual-scroll)在 setup 里读 window.matchMedia,jsdom 没有 → 开了 fillHeight 的用例都会抛 TypeError
   beforeEach(() => {
-    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }))
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
   })
   afterEach(() => {
     vi.unstubAllGlobals()
@@ -1389,26 +1598,45 @@ describe('SmartTable fillHeight(D5)', () => {
 
   it('fillHeight:官方 flex-height + virtual-scroll 一起传,min-row-height 随密度(紧凑 40 / 舒适 48),带兜底 min-height,根节点加 --fill', () => {
     const compact = mount(SmartTable, { props: { ...base, fillHeight: true } }) // 默认紧凑
-    expect(tableProps(compact)).toMatchObject({ flexHeight: true, virtualScroll: true, minRowHeight: 40, minHeight: 160 })
+    expect(tableProps(compact)).toMatchObject({
+      flexHeight: true,
+      virtualScroll: true,
+      minRowHeight: 40,
+      minHeight: 160,
+    })
     expect(compact.classes()).toContain('smart-table--fill')
     compact.unmount()
-    const comfortable = mount(SmartTable, { props: { ...base, fillHeight: true, defaultDensity: 'comfortable' } })
+    const comfortable = mount(SmartTable, {
+      props: { ...base, fillHeight: true, defaultDensity: 'comfortable' },
+    })
     expect(tableProps(comfortable).minRowHeight).toBe(48)
     comfortable.unmount()
   })
 
   it('宿主 attrs 的官方 min-row-height / min-height 优先于库的取值', () => {
-    const wrapper = mount(SmartTable, { props: { ...base, fillHeight: true }, attrs: { 'min-row-height': 60, minHeight: 300 } })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, fillHeight: true },
+      attrs: { 'min-row-height': 60, minHeight: 300 },
+    })
     expect(tableProps(wrapper)).toMatchObject({ minRowHeight: 60, minHeight: 300 })
     wrapper.unmount()
   })
 })
 
 describe('SmartTable fillHeight 与 max-height(F8)', () => {
-  const base = { columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[], data: rows, rowKey: 'id' }
-  const tableProps = (w: ReturnType<typeof mount>) => w.findComponent(NDataTable).props() as Record<string, any>
+  const base = {
+    columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[],
+    data: rows,
+    rowKey: 'id',
+  }
+  const tableProps = (w: ReturnType<typeof mount>) =>
+    w.findComponent(NDataTable).props() as Record<string, any>
   beforeEach(() => {
-    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }))
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
   })
   afterEach(() => {
     vi.restoreAllMocks()
@@ -1418,11 +1646,17 @@ describe('SmartTable fillHeight 与 max-height(F8)', () => {
   it('fillHeight 开启时忽略宿主的 max-height / maxHeight 并警告一次;关闭时照常透传', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const mine = () => warn.mock.calls.filter((c) => String(c[0]).includes('max-height'))
-    const on = mount(SmartTable, { props: { ...base, fillHeight: true }, attrs: { maxHeight: 300 } })
+    const on = mount(SmartTable, {
+      props: { ...base, fillHeight: true },
+      attrs: { maxHeight: 300 },
+    })
     expect(tableProps(on).maxHeight).toBeUndefined()
     expect(mine()).toHaveLength(1)
     on.unmount()
-    const kebab = mount(SmartTable, { props: { ...base, fillHeight: true }, attrs: { 'max-height': 300 } })
+    const kebab = mount(SmartTable, {
+      props: { ...base, fillHeight: true },
+      attrs: { 'max-height': 300 },
+    })
     expect(tableProps(kebab).maxHeight).toBeUndefined()
     expect(mine()).toHaveLength(2) // 每个实例警告一次(同一实例里 computed 重复求值不重复警告)
     kebab.unmount()
@@ -1434,16 +1668,29 @@ describe('SmartTable fillHeight 与 max-height(F8)', () => {
 })
 
 describe('SmartTable 翻页后滚回卡片顶部(E4:只在不开 fillHeight 时)', () => {
-  const base = { columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[], data: rows, rowKey: 'id' }
+  const base = {
+    columns: [{ key: 'name', title: 'Name' }] as SmartTableColumn<unknown>[],
+    data: rows,
+    rowKey: 'id',
+  }
   let cardTop = 0
   const pagerProps = (w: ReturnType<typeof mount>) =>
-    w.findComponent(NDataTable).props('pagination') as unknown as { onUpdatePage: (p: number) => void; suffix: (i: Record<string, number>) => { props: Record<string, any> } }
+    w.findComponent(NDataTable).props('pagination') as unknown as {
+      onUpdatePage: (p: number) => void
+      suffix: (i: Record<string, number>) => { props: Record<string, any> }
+    }
 
   beforeEach(() => {
-    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) // 同上:fillHeight 用例要挂 VirtualList
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) // 同上:fillHeight 用例要挂 VirtualList
     cardTop = 0
     Element.prototype.scrollIntoView = vi.fn()
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
       return { top: this.classList.contains('smart-table-card') ? cardTop : 0 } as DOMRect
     })
   })
@@ -1461,25 +1708,41 @@ describe('SmartTable 翻页后滚回卡片顶部(E4:只在不开 fillHeight 时)
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
     cardTop = -200
     pagerProps(wrapper).onUpdatePage(3)
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'instant' })
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({
+      block: 'start',
+      behavior: 'instant',
+    })
     wrapper.unmount()
   })
 
   it('远程模式同样在点击当下滚(不等数据回来);改每页条数也算翻页', async () => {
     const fetcher = vi.fn(async (_p: Record<string, unknown>) => ({ items: rows, total: 500 }))
-    const wrapper = mount(SmartTable, { props: { columns: base.columns, fetcher, rowKey: 'id' }, attachTo: document.body })
+    const wrapper = mount(SmartTable, {
+      props: { columns: base.columns, fetcher, rowKey: 'id' },
+      attachTo: document.body,
+    })
     await flushPromises()
     cardTop = -200
     pagerProps(wrapper).onUpdatePage(2)
     expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1)
-    pagerProps(wrapper).suffix({ page: 1, pageSize: 100, pageCount: 5, itemCount: 500, startIndex: 0, endIndex: 99 }).props.onUpdatePageSize(500)
+    pagerProps(wrapper)
+      .suffix({ page: 1, pageSize: 100, pageCount: 5, itemCount: 500, startIndex: 0, endIndex: 99 })
+      .props.onUpdatePageSize(500)
     expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(2)
     wrapper.unmount()
   })
 
   it('开了 fillHeight:不滚窗口,改为把表体滚回顶部(官方 scrollTo)', () => {
-    const wrapper = mount(SmartTable, { props: { ...base, fillHeight: true }, attachTo: document.body })
-    const scrollTo = vi.spyOn(wrapper.findComponent(NDataTable).vm as unknown as { scrollTo: (o: unknown) => void }, 'scrollTo').mockImplementation(() => {}) // 不放行到真实现:jsdom 的元素没有 scrollTo
+    const wrapper = mount(SmartTable, {
+      props: { ...base, fillHeight: true },
+      attachTo: document.body,
+    })
+    const scrollTo = vi
+      .spyOn(
+        wrapper.findComponent(NDataTable).vm as unknown as { scrollTo: (o: unknown) => void },
+        'scrollTo',
+      )
+      .mockImplementation(() => {}) // 不放行到真实现:jsdom 的元素没有 scrollTo
     cardTop = -200
     pagerProps(wrapper).onUpdatePage(2)
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
@@ -1494,22 +1757,40 @@ describe('SmartTable 翻页后滚回卡片顶部(E4:只在不开 fillHeight 时)
   // 跟 [Fix round 2] 一样,直接取 NDataTable 内部真实绑定给官方 NPagination 的 'onUpdate:pageSize' prop 调用,
   // 而不是在 jsdom 里模拟下拉点击 —— 这样才是在验真实接线,不是在验测试自己搭的双替身。
   it('[Fix round 1 review] 本地 + simple:false:原生选择器改每页条数,滚回卡片顶部恰好触发一次(不是零次)', async () => {
-    const wrapper = mount(SmartTable, { props: { ...base, pagination: { simple: false } }, attachTo: document.body })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, pagination: { simple: false } },
+      attachTo: document.body,
+    })
     await nextTick()
     cardTop = -200
-    const nativeHandler = wrapper.findComponent(NPagination).props('onUpdate:pageSize') as (n: number) => void
+    const nativeHandler = wrapper.findComponent(NPagination).props('onUpdate:pageSize') as (
+      n: number,
+    ) => void
     nativeHandler(500)
     await nextTick()
     expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1)
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'instant' })
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({
+      block: 'start',
+      behavior: 'instant',
+    })
     wrapper.unmount()
   })
 
   it('[Fix round 1 review] 开了 fillHeight + simple:false:原生选择器改每页条数,表体 scrollTo 恰好触发一次(不是零次,也不是两次)', async () => {
-    const wrapper = mount(SmartTable, { props: { ...base, fillHeight: true, pagination: { simple: false } }, attachTo: document.body })
+    const wrapper = mount(SmartTable, {
+      props: { ...base, fillHeight: true, pagination: { simple: false } },
+      attachTo: document.body,
+    })
     await nextTick()
-    const scrollTo = vi.spyOn(wrapper.findComponent(NDataTable).vm as unknown as { scrollTo: (o: unknown) => void }, 'scrollTo').mockImplementation(() => {})
-    const nativeHandler = wrapper.findComponent(NPagination).props('onUpdate:pageSize') as (n: number) => void
+    const scrollTo = vi
+      .spyOn(
+        wrapper.findComponent(NDataTable).vm as unknown as { scrollTo: (o: unknown) => void },
+        'scrollTo',
+      )
+      .mockImplementation(() => {})
+    const nativeHandler = wrapper.findComponent(NPagination).props('onUpdate:pageSize') as (
+      n: number,
+    ) => void
     nativeHandler(500)
     await nextTick()
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()

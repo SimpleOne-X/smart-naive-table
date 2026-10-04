@@ -33,7 +33,11 @@ describe('storage', () => {
   it('upgrades v1 state in place instead of discarding the user column settings', () => {
     localStorage.setItem(
       'protable:v1',
-      JSON.stringify({ v: 1, density: 'compact', cols: [{ key: 'a', show: false, fixed: 'left' }] }),
+      JSON.stringify({
+        v: 1,
+        density: 'compact',
+        cols: [{ key: 'a', show: false, fixed: 'left' }],
+      }),
     )
     expect(loadState('v1')).toEqual({
       v: 2,
@@ -59,7 +63,10 @@ describe('storage', () => {
   })
 
   it('drops a widths field that is not an object', () => {
-    localStorage.setItem('protable:w', JSON.stringify({ v: 2, density: 'compact', cols: [], widths: [1, 2] }))
+    localStorage.setItem(
+      'protable:w',
+      JSON.stringify({ v: 2, density: 'compact', cols: [], widths: [1, 2] }),
+    )
     expect(loadState('w')?.widths).toEqual({})
   })
 
@@ -95,10 +102,13 @@ describe('mergeCols', () => {
   })
 
   it('drops stored columns that no longer exist in the declaration', () => {
-    const merged = mergeCols([{ key: 'a', show: true }], [
-      { key: 'gone', show: true },
-      { key: 'a', show: false },
-    ])
+    const merged = mergeCols(
+      [{ key: 'a', show: true }],
+      [
+        { key: 'gone', show: true },
+        { key: 'a', show: false },
+      ],
+    )
     expect(merged).toEqual([{ key: 'a', show: false }])
   })
 
@@ -153,7 +163,10 @@ describe('loadState / saveState 的密度(B2 / Q-1)', () => {
     expect(peekStoredDensity('p1')).toBeUndefined()
     saveState('p2', 'comfortable', [])
     expect(peekStoredDensity('p2')).toBe('comfortable')
-    localStorage.setItem('protable:p3', JSON.stringify({ v: 2, density: 'huge', cols: [], widths: {} }))
+    localStorage.setItem(
+      'protable:p3',
+      JSON.stringify({ v: 2, density: 'huge', cols: [], widths: {} }),
+    )
     expect(peekStoredDensity('p3')).toBeUndefined()
   })
 })

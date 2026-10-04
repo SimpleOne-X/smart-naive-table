@@ -57,7 +57,8 @@ function gatedLoader() {
       return factory
     },
     /** 等到 load 被调用满 n 次(即第 n 次对齐已走到「等加载」这一步) */
-    calledTimes: (n: number) => (calls >= n ? Promise.resolve() : new Promise<void>((resolve) => waiters.push({ n, resolve }))),
+    calledTimes: (n: number) =>
+      calls >= n ? Promise.resolve() : new Promise<void>((resolve) => waiters.push({ n, resolve })),
     release: () => open(),
   }
 }
@@ -178,7 +179,11 @@ describe('useRowDrag', () => {
 
     created[0].options.onEnd({ oldIndex: 2, newIndex: 0 }) // 把第 3 行拖到首位
     expect(rows.value.map((r) => r.id)).toEqual([3, 1, 2]) // 行数组本身已重排
-    expect(onSort).toHaveBeenCalledWith({ from: 2, to: 0, reordered: [{ id: 3 }, { id: 1 }, { id: 2 }] })
+    expect(onSort).toHaveBeenCalledWith({
+      from: 2,
+      to: 0,
+      reordered: [{ id: 3 }, { id: 1 }, { id: 2 }],
+    })
 
     created[0].options.onEnd({ oldIndex: 1, newIndex: 1 }) // 原地放下 = 不是变更
     expect(onSort).toHaveBeenCalledTimes(1)

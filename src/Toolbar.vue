@@ -24,11 +24,19 @@ const emit = defineEmits<{
 
 const themeVars = useThemeVars()
 
-const cfg = computed<ToolbarConfig>(() => (props.config === false ? { refresh: false, density: false, columnSettings: false } : props.config))
+const cfg = computed<ToolbarConfig>(() =>
+  props.config === false ? { refresh: false, density: false, columnSettings: false } : props.config,
+)
 
 const densityOptions = computed(() => [
-  { label: (props.density === 'comfortable' ? '✓ ' : '') + props.labels.densityComfortable, key: 'comfortable' },
-  { label: (props.density === 'compact' ? '✓ ' : '') + props.labels.densityCompact, key: 'compact' },
+  {
+    label: (props.density === 'comfortable' ? '✓ ' : '') + props.labels.densityComfortable,
+    key: 'comfortable',
+  },
+  {
+    label: (props.density === 'compact' ? '✓ ' : '') + props.labels.densityCompact,
+    key: 'compact',
+  },
 ])
 
 // 只有分隔线 / 自定义渲染项时没有可选的东西,不渲染「更多」按钮
@@ -67,7 +75,13 @@ function onMoreSelect(key: string | number, option: DropdownOption) {
       <!-- 业务组:宿主按钮 + 「更多」,间距 8px(原型 .tb-actions) -->
       <div v-if="$slots.right || moreOptions.length" class="smart-table-toolbar-actions">
         <slot name="right" />
-        <n-dropdown v-if="moreOptions.length" trigger="click" placement="bottom-end" :options="moreOptions" @select="onMoreSelect">
+        <n-dropdown
+          v-if="moreOptions.length"
+          trigger="click"
+          placement="bottom-end"
+          :options="moreOptions"
+          @select="onMoreSelect"
+        >
           <!-- 默认 medium(34px),与宿主的业务按钮同高;chevron 12px、iconColor(原型 --n-text-3),右内边距 12px(chevron 自带的留白算进去) -->
           <n-button
             icon-placement="right"
@@ -77,18 +91,29 @@ function onMoreSelect(key: string | number, option: DropdownOption) {
           >
             {{ labels.more }}
             <template #icon>
-              <span class="smart-table-more-icon" :style="{ color: themeVars.iconColor }"><ChevronDownIcon /></span>
+              <span class="smart-table-more-icon" :style="{ color: themeVars.iconColor }"
+                ><ChevronDownIcon
+              /></span>
             </template>
           </n-button>
         </n-dropdown>
       </div>
       <!-- 内置图标组:刷新 / 密度 / 列设置,间距 4px(原型 .tb-icons);与业务组之间 12px(原型 .tb-right) -->
-      <div v-if="showRefresh || cfg.density === true || $slots.settings" class="smart-table-toolbar-icons">
+      <div
+        v-if="showRefresh || cfg.density === true || $slots.settings"
+        class="smart-table-toolbar-icons"
+      >
         <!-- 图标按钮的图标 16px(原型;官方 small 圆形按钮默认 18px)。abstract = 不多包一层 DOM;包住 #settings 插槽,列设置按钮同样生效 -->
         <n-config-provider abstract :theme-overrides="{ Button: { iconSizeSmall: '16px' } }">
           <n-tooltip v-if="showRefresh" trigger="hover">
             <template #trigger>
-              <n-button quaternary circle size="small" :aria-label="labels.refresh" @click="emit('refresh')">
+              <n-button
+                quaternary
+                circle
+                size="small"
+                :aria-label="labels.refresh"
+                @click="emit('refresh')"
+              >
                 <template #icon><RefreshIcon /></template>
               </n-button>
             </template>

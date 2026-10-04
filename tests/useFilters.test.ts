@@ -11,7 +11,10 @@ interface Row {
   salary: number
 }
 
-const v = (value: unknown): FilterValue => ({ logic: 'and', conditions: [{ action: 'equal', value }] })
+const v = (value: unknown): FilterValue => ({
+  logic: 'and',
+  conditions: [{ action: 'equal', value }],
+})
 
 describe('deriveFilterDefs', () => {
   it('缺省按有无字典推断 mode,按 format 推断 condition 的值控件', () => {
@@ -31,12 +34,10 @@ describe('deriveFilterDefs', () => {
   })
 
   it('默认动作按值类型给,显式 actions 优先', () => {
-    const [text, num] = deriveFilterDefs<Row>(
-      [
-        { key: 'name', filter: true },
-        { key: 'salary', format: 'money', filter: { actions: ['gt'] } },
-      ],
-    )
+    const [text, num] = deriveFilterDefs<Row>([
+      { key: 'name', filter: true },
+      { key: 'salary', format: 'money', filter: { actions: ['gt'] } },
+    ])
     expect(text.actions).toEqual(['contains', 'notContains', 'equal', 'notEqual'])
     expect(num.actions).toEqual(['gt'])
   })
@@ -57,33 +58,33 @@ describe('deriveFilterDefs', () => {
   })
 
   it('跳过特殊列、无 filter 的列,以及只作搜索项的 hideInTable 列', () => {
-    const defs = deriveFilterDefs<Row>(
-      [
-        { type: 'index' },
-        { key: 'name' },
-        { key: 'status', filter: true, hideInTable: true },
-        { key: 'salary', filter: true },
-      ],
-    )
+    const defs = deriveFilterDefs<Row>([
+      { type: 'index' },
+      { key: 'name' },
+      { key: 'status', filter: true, hideInTable: true },
+      { key: 'salary', filter: true },
+    ])
     expect(defs.map((d) => d.key)).toEqual(['salary'])
   })
 
   it('filter.key 覆写过滤键,field 仍是列 key;filter.options 用独立字典键', () => {
-    const [def] = deriveFilterDefs<Row>(
-      [{ key: 'status', options: [{ label: 'A', value: 1 }], filter: { key: 'st', options: [{ label: 'B', value: 2 }] } }],
-    )
+    const [def] = deriveFilterDefs<Row>([
+      {
+        key: 'status',
+        options: [{ label: 'A', value: 1 }],
+        filter: { key: 'st', options: [{ label: 'B', value: 2 }] },
+      },
+    ])
     expect(def.key).toBe('st')
     expect(def.field).toBe('status')
     expect(def.optionsKey).toBe('__filter:status')
   })
 
   it('deriveInitFilters 只播种有 defaultValue 的列', () => {
-    const defs = deriveFilterDefs<Row>(
-      [
-        { key: 'name', filter: true },
-        { key: 'status', filter: { defaultValue: v(1) } },
-      ],
-    )
+    const defs = deriveFilterDefs<Row>([
+      { key: 'name', filter: true },
+      { key: 'status', filter: { defaultValue: v(1) } },
+    ])
     expect(deriveInitFilters(defs)).toEqual({ status: v(1) })
   })
 

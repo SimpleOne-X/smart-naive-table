@@ -1,7 +1,12 @@
 // 宿主的「后端」:对 2000 行内存数据做 搜索 / 列头过滤 / 多列排序 / 分页。
 // 库是远程模式(fetcher)——过滤与排序归后端,这里用库导出的 matchFilterValue 当「后端求值器」。
 // 搜索语义照原型 sfConds():text → 包含(忽略大小写),select / number / date → 等于。
-import { matchFilterValue, type PageResult, type SerializedFilter, type SmartTableParams } from '../../src/index'
+import {
+  matchFilterValue,
+  type PageResult,
+  type SerializedFilter,
+  type SmartTableParams,
+} from '../../src/index'
 import { DATA, FIELD_DEFS, type Row } from './data'
 
 /** 原型 STATUS_RANK(design.html:1781):模块 4「按单据状态排序」是字典顺序,不是 label 的拼音。 */
@@ -10,9 +15,12 @@ const sortVal = (r: Row, field: string): unknown =>
   field === 'status' && r.status in STATUS_RANK ? STATUS_RANK[r.status] : r[field as keyof Row]
 
 function cmp(a: unknown, b: unknown) {
-  const na = Number(a), nb = Number(b)
-  if (!Number.isNaN(na) && !Number.isNaN(nb) && a !== '' && b !== '') return na === nb ? 0 : na > nb ? 1 : -1
-  const sa = String(a), sb = String(b)
+  const na = Number(a),
+    nb = Number(b)
+  if (!Number.isNaN(na) && !Number.isNaN(nb) && a !== '' && b !== '')
+    return na === nb ? 0 : na > nb ? 1 : -1
+  const sa = String(a),
+    sb = String(b)
   return sa === sb ? 0 : sa > sb ? 1 : -1
 }
 
@@ -34,18 +42,23 @@ export async function fetchRows(params: SmartTableParams): Promise<PageResult<Ro
   const filters = params.filters as SerializedFilter[] | undefined
   if (Array.isArray(filters)) {
     for (const f of filters) {
-      rows = rows.filter((r) => matchFilterValue({ logic: f.logic, conditions: f.conditions }, r[f.field as keyof Row]))
+      rows = rows.filter((r) =>
+        matchFilterValue({ logic: f.logic, conditions: f.conditions }, r[f.field as keyof Row]),
+      )
     }
   }
   // 排序:多列用 params.sorts(高优先级在前),单列用 sortField / sortOrder;比较器照原型 sortRows
   // (status 字段按 STATUS_RANK 字典顺序比,其余按数值 / zh 本地化字符串比)
   const sorts: Array<{ field: string; order: 'asc' | 'desc' }> | undefined =
-    params.sorts ?? (params.sortField ? [{ field: params.sortField, order: params.sortOrder }] : undefined)
+    params.sorts ??
+    (params.sortField ? [{ field: params.sortField, order: params.sortOrder }] : undefined)
   if (sorts?.length) {
     rows = rows.slice().sort((a, b) => {
       for (const s of sorts) {
-        const x = sortVal(a, s.field), y = sortVal(b, s.field)
-        const c = typeof x === 'number' ? x - (y as number) : String(x).localeCompare(String(y), 'zh')
+        const x = sortVal(a, s.field),
+          y = sortVal(b, s.field)
+        const c =
+          typeof x === 'number' ? x - (y as number) : String(x).localeCompare(String(y), 'zh')
         if (c) return s.order === 'asc' ? c : -c
       }
       return 0

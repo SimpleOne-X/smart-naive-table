@@ -5,7 +5,13 @@
 import { computed, onBeforeUnmount, reactive, watch, type PropType } from 'vue'
 import { NButton, NDatePicker, NInput, NInputNumber, NSelect, useThemeVars } from 'naive-ui'
 import type { SelectProps } from 'naive-ui'
-import type { FilterAction, FilterCondition, FilterLogic, SmartTableLabels, SmartTableOption } from './types'
+import type {
+  FilterAction,
+  FilterCondition,
+  FilterLogic,
+  SmartTableLabels,
+  SmartTableOption,
+} from './types'
 import type { FilterDef } from './useColumns'
 import { actionValueKind } from './filter'
 import { ACTION_LABEL_KEY } from './labels'
@@ -79,7 +85,9 @@ const selectOptions = computed<SelectOpt[]>(() =>
   })),
 )
 
-const arrayValue = computed(() => (Array.isArray(props.condition.value) ? (props.condition.value as Array<string | number>) : []))
+const arrayValue = computed(() =>
+  Array.isArray(props.condition.value) ? (props.condition.value as Array<string | number>) : [],
+)
 
 function onKeyup(e: KeyboardEvent) {
   if (e.key === 'Enter') emit('enter')
@@ -89,9 +97,12 @@ function onKeyup(e: KeyboardEvent) {
 <template>
   <div class="smart-table-filter-row">
     <!-- 首列:第 1 行「条件」引导标签(12px、textColor3);第 2 行起是且 / 或下拉,选哪个都是改整组的连接方式 -->
-    <span v-if="index === 0" class="smart-table-filter-lead" :style="{ color: themeVars.textColor3 }">{{
-      labels.filterConditionLead
-    }}</span>
+    <span
+      v-if="index === 0"
+      class="smart-table-filter-lead"
+      :style="{ color: themeVars.textColor3 }"
+      >{{ labels.filterConditionLead }}</span
+    >
     <n-select
       v-else
       class="smart-table-filter-logic"

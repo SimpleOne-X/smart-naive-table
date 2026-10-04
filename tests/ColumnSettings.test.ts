@@ -8,15 +8,20 @@ import type { SettingItem } from '../src/useColumns'
 
 // N11:列设置「至少保留一列」。原型:只剩一列可见时,那一列的勾选框禁用(无提示)。
 
-const items = (...shows: boolean[]): SettingItem[] => shows.map((show, i) => ({ key: `c${i}`, title: `列${i}`, show }))
+const items = (...shows: boolean[]): SettingItem[] =>
+  shows.map((show, i) => ({ key: `c${i}`, title: `列${i}`, show }))
 
 async function openPanel(list: SettingItem[]) {
-  const w = mount(ColumnSettings, { props: { items: list, labels: defaultLabels }, attachTo: document.body })
+  const w = mount(ColumnSettings, {
+    props: { items: list, labels: defaultLabels },
+    attachTo: document.body,
+  })
   await w.find('button[aria-label="Columns"]').trigger('click')
   await flushPromises()
   return w
 }
-const disabledFlags = (w: ReturnType<typeof mount>) => w.findAllComponents(NCheckbox).map((c) => c.props('disabled'))
+const disabledFlags = (w: ReturnType<typeof mount>) =>
+  w.findAllComponents(NCheckbox).map((c) => c.props('disabled'))
 
 describe('ColumnSettings 至少保留一列(N11)', () => {
   afterEach(() => {

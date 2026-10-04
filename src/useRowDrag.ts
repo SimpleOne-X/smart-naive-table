@@ -32,7 +32,11 @@ export interface RowDragOptions<T> {
 export interface SortableFactory {
   create(
     el: HTMLElement,
-    options: { animation: number; handle?: string; onEnd: (evt: { oldIndex?: number; newIndex?: number }) => void },
+    options: {
+      animation: number
+      handle?: string
+      onEnd: (evt: { oldIndex?: number; newIndex?: number }) => void
+    },
   ): { destroy(): void }
 }
 

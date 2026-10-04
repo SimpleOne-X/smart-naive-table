@@ -68,7 +68,8 @@ function onMoreKeydown(e: KeyboardEvent) {
 }
 
 watch(moreContentRef, (el) => {
-  if (el && moreOpen.value) void nextTick(() => el.querySelector<HTMLElement>('.smart-table-chip')?.focus())
+  if (el && moreOpen.value)
+    void nextTick(() => el.querySelector<HTMLElement>('.smart-table-chip')?.focus())
 })
 
 async function recompute() {
@@ -84,7 +85,9 @@ async function recompute() {
   while (n > 0 && n < props.items.length) {
     await nextTick()
     const more = listRef.value?.querySelector<HTMLElement>('.smart-table-chip--more')
-    const first = listRef.value?.querySelector<HTMLElement>('.smart-table-chip:not(.smart-table-chip--more)')
+    const first = listRef.value?.querySelector<HTMLElement>(
+      '.smart-table-chip:not(.smart-table-chip--more)',
+    )
     if (!more || !first) break
     const next = shrinkForMore(n, first.offsetTop, more.offsetTop)
     if (next === n) break
@@ -93,7 +96,9 @@ async function recompute() {
   }
 }
 
-watch(() => props.items.map((i) => `${i.key}:${i.index}:${i.text}`).join('|'), recompute, { flush: 'post' })
+watch(() => props.items.map((i) => `${i.key}:${i.index}:${i.text}`).join('|'), recompute, {
+  flush: 'post',
+})
 
 let observer: ResizeObserver | null = null
 let lastWidth = -1
@@ -131,7 +136,12 @@ onBeforeUnmount(() => observer?.disconnect())
       >
         {{ c.text }}
       </n-tag>
-      <n-popover v-if="hidden.length" v-model:show="moreOpen" trigger="click" placement="bottom-start">
+      <n-popover
+        v-if="hidden.length"
+        v-model:show="moreOpen"
+        trigger="click"
+        placement="bottom-start"
+      >
         <template #trigger>
           <n-tag
             class="smart-table-chip smart-table-chip--more"
@@ -165,7 +175,13 @@ onBeforeUnmount(() => observer?.disconnect())
         </div>
       </n-popover>
     </div>
-    <n-button v-if="showAction" class="smart-table-chips__clear" text size="tiny" @click="emit('clear')">
+    <n-button
+      v-if="showAction"
+      class="smart-table-chips__clear"
+      text
+      size="tiny"
+      @click="emit('clear')"
+    >
       {{ hasDefaults ? labels.filterRestoreDefault : labels.filterClearAll }}
     </n-button>
   </div>

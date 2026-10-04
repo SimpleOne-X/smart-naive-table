@@ -78,7 +78,10 @@ export function useOptions(sources: MaybeRefOrGetter<Record<string, OptionsSourc
 }
 
 /** 按 value 在选项树中查找(单元格翻译用,扁平化递归)。 */
-export function findOption(options: SmartTableOption[], value: unknown): SmartTableOption | undefined {
+export function findOption(
+  options: SmartTableOption[],
+  value: unknown,
+): SmartTableOption | undefined {
   for (const opt of options) {
     if (opt.value === value) return opt
     if (opt.children) {

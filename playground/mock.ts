@@ -1,5 +1,10 @@
 import { reactive } from 'vue'
-import { matchFilterValue, type PageResult, type SerializedFilter, type SmartTableParams } from '../src/index'
+import {
+  matchFilterValue,
+  type PageResult,
+  type SerializedFilter,
+  type SmartTableParams,
+} from '../src/index'
 import { tt } from './locale'
 
 export interface DemoRow {
@@ -34,7 +39,9 @@ const rows: DemoRow[] = Array.from({ length: 1000 }, (_, i) => {
     status: (i % 3) + 1,
     enabled: i % 5 !== 0,
     salary: 6000 + ((i * 137) % 30000),
-    createTime: new Date(Date.UTC(2024, i % 24, (i % 27) + 1, i % 24, (i * 13) % 60, 0)).toISOString(),
+    createTime: new Date(
+      Date.UTC(2024, i % 24, (i % 27) + 1, i % 24, (i * 13) % 60, 0),
+    ).toISOString(),
   }
   for (let c = 1; c <= 12; c++) row[`c${c}`] = `${id}-${c}`
   return row
@@ -73,7 +80,9 @@ export async function mockPage(params: SmartTableParams): Promise<PageResult<Dem
   const filters = params.filters as SerializedFilter[] | undefined
   if (Array.isArray(filters)) {
     for (const f of filters) {
-      list = list.filter((r) => matchFilterValue({ logic: f.logic, conditions: f.conditions }, r[f.field]))
+      list = list.filter((r) =>
+        matchFilterValue({ logic: f.logic, conditions: f.conditions }, r[f.field]),
+      )
     }
   }
   // 排序:{ sortField, sortOrder: 'asc' | 'desc' };多列时另带 sorts,demo 只取主排序

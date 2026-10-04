@@ -3,7 +3,12 @@
 // 并把 @filter-change、@column-resize 的实时结果打在上方。
 import { computed, h, ref } from 'vue'
 import { NButton, NSlider, NSpace, NTag } from 'naive-ui'
-import { SmartTable, type FilterState, type SmartTableColumn, type SmartTableInst } from '../src/index'
+import {
+  SmartTable,
+  type FilterState,
+  type SmartTableColumn,
+  type SmartTableInst,
+} from '../src/index'
 import { allRows, type DemoRow } from './mock'
 import { labels, tt } from './locale'
 
@@ -57,7 +62,14 @@ const columns: SmartTableColumn<DemoRow>[] = [
   { key: 'account', title: tt('账号', 'Account'), width: 150, filter: true },
   { key: 'name', title: tt('姓名', 'Name'), width: 120, filter: true },
   // options 模式:有字典就是勾选列表,默认多选
-  { key: 'status', title: tt('状态', 'Status'), width: 120, options: statusOptions, tag: true, filter: true },
+  {
+    key: 'status',
+    title: tt('状态', 'Status'),
+    width: 120,
+    options: statusOptions,
+    tag: true,
+    filter: true,
+  },
   // condition 模式:money 列默认给 等于 / 大于 / 小于… 这组动作,并带一个初始过滤值
   {
     key: 'salary',
@@ -68,7 +80,13 @@ const columns: SmartTableColumn<DemoRow>[] = [
     filter: { defaultValue: { logic: 'and', conditions: [{ action: 'gte', value: 10000 }] } },
   },
   // 日期列:纯日期值按「整天」比较,「等于 2024-03-05」能命中当天任意时刻
-  { key: 'createTime', title: tt('创建时间', 'Created'), width: 190, format: 'datetime', filter: true },
+  {
+    key: 'createTime',
+    title: tt('创建时间', 'Created'),
+    width: 190,
+    format: 'datetime',
+    filter: true,
+  },
   // 自定义面板:接管整个弹层,只复用提交通道
   {
     key: 'deptId',
@@ -102,16 +120,28 @@ const columns: SmartTableColumn<DemoRow>[] = [
 <template>
   <div ref="hostRef">
     <n-space align="center" :size="12" style="margin-bottom: 12px">
-      <n-button size="small" @click="tableRef?.clearFilters()">{{ tt('清空全部过滤', 'Clear all filters')() }}</n-button>
+      <n-button size="small" @click="tableRef?.clearFilters()">{{
+        tt('清空全部过滤', 'Clear all filters')()
+      }}</n-button>
       <n-button
         size="small"
-        @click="tableRef?.setFilter('status', { logic: 'or', conditions: [{ action: 'equal', value: 3 }] })"
+        @click="
+          tableRef?.setFilter('status', {
+            logic: 'or',
+            conditions: [{ action: 'equal', value: 3 }],
+          })
+        "
       >
         {{ tt('编程式:只看离职', 'Set filter: resigned')() }}
       </n-button>
       <n-button
         size="small"
-        @click="tableRef?.setFilter('status', { logic: 'and', conditions: [{ action: 'notEqual', value: 1 }] })"
+        @click="
+          tableRef?.setFilter('status', {
+            logic: 'and',
+            conditions: [{ action: 'notEqual', value: 1 }],
+          })
+        "
       >
         {{ tt('编程式:状态 ≠ 在职', 'Set filter: status ≠ Active')() }}
       </n-button>

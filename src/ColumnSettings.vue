@@ -73,8 +73,14 @@ function toggleFixed(item: SettingItem, side: 'left' | 'right') {
         @drop.prevent="onDrop(idx)"
         @dragend="((dragFrom = null), (dragOver = null))"
       >
-        <span class="smart-table-colset-drag" :style="{ color: themeVars.textColor3 }"><DragIcon /></span>
-        <n-checkbox :checked="item.show" :disabled="isLastShown(item)" @update:checked="(v: boolean) => emit('toggle', item.key, v)">
+        <span class="smart-table-colset-drag" :style="{ color: themeVars.textColor3 }"
+          ><DragIcon
+        /></span>
+        <n-checkbox
+          :checked="item.show"
+          :disabled="isLastShown(item)"
+          @update:checked="(v: boolean) => emit('toggle', item.key, v)"
+        >
           <component :is="() => renderTitle(item.title)" />
         </n-checkbox>
         <span class="smart-table-colset-pins">
@@ -87,7 +93,8 @@ function toggleFixed(item: SettingItem, side: 'left' | 'right') {
                 :type="item.fixed === 'left' ? 'primary' : 'default'"
                 :aria-label="item.fixed === 'left' ? labels.fixedNone : labels.fixedLeft"
                 @click="toggleFixed(item, 'left')"
-              >⇤</n-button>
+                >⇤</n-button
+              >
             </template>
             {{ item.fixed === 'left' ? labels.fixedNone : labels.fixedLeft }}
           </n-tooltip>
@@ -100,14 +107,20 @@ function toggleFixed(item: SettingItem, side: 'left' | 'right') {
                 :type="item.fixed === 'right' ? 'primary' : 'default'"
                 :aria-label="item.fixed === 'right' ? labels.fixedNone : labels.fixedRight"
                 @click="toggleFixed(item, 'right')"
-              >⇥</n-button>
+                >⇥</n-button
+              >
             </template>
             {{ item.fixed === 'right' ? labels.fixedNone : labels.fixedRight }}
           </n-tooltip>
         </span>
       </div>
-      <div class="smart-table-colset-footer" :style="{ borderTop: `1px solid ${themeVars.dividerColor}` }">
-        <n-button quaternary size="tiny" @click="emit('reset')">{{ labels.columnSettingsReset }}</n-button>
+      <div
+        class="smart-table-colset-footer"
+        :style="{ borderTop: `1px solid ${themeVars.dividerColor}` }"
+      >
+        <n-button quaternary size="tiny" @click="emit('reset')">{{
+          labels.columnSettingsReset
+        }}</n-button>
       </div>
     </div>
   </n-popover>

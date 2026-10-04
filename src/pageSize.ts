@@ -29,7 +29,8 @@ export interface DefaultPageSizeInput {
   globalPageSizes?: readonly number[]
 }
 
-const first = (list?: readonly PageSizeOption[]) => (list && list.length ? pageSizeValue(list[0]) : undefined)
+const first = (list?: readonly PageSizeOption[]) =>
+  list && list.length ? pageSizeValue(list[0]) : undefined
 
 /**
  * 初始每页条数的解析优先级(D4):实例 prop > 实例 pagination.pageSize > 实例 pagination.defaultPageSize

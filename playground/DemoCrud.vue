@@ -1,7 +1,17 @@
 <script setup lang="ts">
 // CRUD demo:useTableCrud 弹窗状态机 + #toolbar 新增按钮 + 行内编辑/删除。
 import { h, ref } from 'vue'
-import { NButton, NForm, NFormItem, NInput, NModal, NPopconfirm, NSpace, NSwitch, useMessage } from 'naive-ui'
+import {
+  NButton,
+  NForm,
+  NFormItem,
+  NInput,
+  NModal,
+  NPopconfirm,
+  NSpace,
+  NSwitch,
+  useMessage,
+} from 'naive-ui'
 import { SmartTable, useTableCrud, type SmartTableColumn, type SmartTableInst } from '../src/index'
 import { mockCreate, mockPage, mockRemove, mockUpdate, type DemoForm, type DemoRow } from './mock'
 import { labels, tt } from './locale'
@@ -35,14 +45,19 @@ const columns: SmartTableColumn<DemoRow>[] = [
     hideInSetting: true,
     render: (row) =>
       h(NSpace, { size: 4 }, () => [
-        h(NButton, { size: 'small', quaternary: true, type: 'primary', onClick: () => crud.openEdit(row) }, () =>
-          tt('编辑', 'Edit')(),
+        h(
+          NButton,
+          { size: 'small', quaternary: true, type: 'primary', onClick: () => crud.openEdit(row) },
+          () => tt('编辑', 'Edit')(),
         ),
         h(
           NPopconfirm,
           { onPositiveClick: () => void crud.removeRow(row) },
           {
-            trigger: () => h(NButton, { size: 'small', quaternary: true, type: 'error' }, () => tt('删除', 'Delete')()),
+            trigger: () =>
+              h(NButton, { size: 'small', quaternary: true, type: 'error' }, () =>
+                tt('删除', 'Delete')(),
+              ),
             default: () => tt('确认删除该行?', 'Delete this row?')(),
           },
         ),
@@ -61,7 +76,9 @@ const columns: SmartTableColumn<DemoRow>[] = [
     @error="(e) => message.error(String(e))"
   >
     <template #toolbar>
-      <n-button type="primary" size="small" @click="crud.openCreate()">{{ tt('新增', 'Create')() }}</n-button>
+      <n-button type="primary" size="small" @click="crud.openCreate()">{{
+        tt('新增', 'Create')()
+      }}</n-button>
     </template>
     <template #cell-email="{ row }">
       <a :href="`mailto:${row.email}`">{{ row.email }}</a>
@@ -72,7 +89,11 @@ const columns: SmartTableColumn<DemoRow>[] = [
     v-model:show="crud.visible.value"
     preset="card"
     style="width: 480px"
-    :title="crud.mode.value === 'create' ? tt('新增人员', 'Create staff')() : tt('编辑人员', 'Edit staff')()"
+    :title="
+      crud.mode.value === 'create'
+        ? tt('新增人员', 'Create staff')()
+        : tt('编辑人员', 'Edit staff')()
+    "
   >
     <n-form :model="crud.model.value" label-placement="left" label-width="80">
       <n-form-item :label="tt('账号', 'Account')()">

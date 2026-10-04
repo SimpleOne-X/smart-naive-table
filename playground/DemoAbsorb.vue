@@ -47,7 +47,11 @@ const columns = computed<SmartTableColumn<DemoRow>[]>(() => {
       ]
   }
   // 「隐藏最后一列」= hideInTable:吸收列的身份随之变化(与列设置里取消勾选走同一条路)
-  if (hideLast.value) cols[cols.length - 1] = { ...cols[cols.length - 1], hideInTable: true } as SmartTableColumn<DemoRow>
+  if (hideLast.value)
+    cols[cols.length - 1] = {
+      ...cols[cols.length - 1],
+      hideInTable: true,
+    } as SmartTableColumn<DemoRow>
   return cols
 })
 </script>
@@ -65,7 +69,9 @@ const columns = computed<SmartTableColumn<DemoRow>[]>(() => {
         <n-radio-button :value="700">700</n-radio-button>
         <n-radio-button :value="1000">1000</n-radio-button>
       </n-radio-group>
-      <n-button size="small" data-testid="hide-last" @click="hideLast = !hideLast">隐藏 / 显示最后一列</n-button>
+      <n-button size="small" data-testid="hide-last" @click="hideLast = !hideLast"
+        >隐藏 / 显示最后一列</n-button
+      >
     </n-space>
     <div :style="{ width: hostWidth + 'px' }" data-testid="host">
       <SmartTable

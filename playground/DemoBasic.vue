@@ -32,11 +32,42 @@ const columns: SmartTableColumn<DemoRow>[] = [
   // filter: true —— 有 options 的列自动出勾选列表,没有的出「动作 + 值」条件行
   { key: 'account', title: tt('账号', 'Account'), width: 130, search: true, filter: true },
   { key: 'name', title: tt('姓名', 'Name'), width: 120, search: true, filter: true },
-  { key: 'deptId', title: tt('部门', 'Department'), width: 120, options: fetchDeptOptions, search: true, filter: true },
-  { key: 'status', title: tt('状态', 'Status'), width: 110, options: statusOptions, tag: true, search: true, filter: true },
+  {
+    key: 'deptId',
+    title: tt('部门', 'Department'),
+    width: 120,
+    options: fetchDeptOptions,
+    search: true,
+    filter: true,
+  },
+  {
+    key: 'status',
+    title: tt('状态', 'Status'),
+    width: 110,
+    options: statusOptions,
+    tag: true,
+    search: true,
+    filter: true,
+  },
   // 单选式勾选(Arco 的 multiple: false)
-  { key: 'enabled', title: tt('启用', 'Enabled'), width: 110, options: enabledOptions, tag: true, search: true, filter: { multiple: false } },
-  { key: 'salary', title: tt('薪资', 'Salary'), width: 120, align: 'right', format: 'money', sorter: true, filter: true },
+  {
+    key: 'enabled',
+    title: tt('启用', 'Enabled'),
+    width: 110,
+    options: enabledOptions,
+    tag: true,
+    search: true,
+    filter: { multiple: false },
+  },
+  {
+    key: 'salary',
+    title: tt('薪资', 'Salary'),
+    width: 120,
+    align: 'right',
+    format: 'money',
+    sorter: true,
+    filter: true,
+  },
   {
     key: 'createTime',
     title: tt('创建时间', 'Created'),
@@ -56,8 +87,13 @@ const columns: SmartTableColumn<DemoRow>[] = [
     render: (row) =>
       h(
         NButton,
-        { size: 'small', quaternary: true, type: 'primary', onClick: () => message.info(`row #${row.id}`) },
-        () => (tt('详情', 'View')())
+        {
+          size: 'small',
+          quaternary: true,
+          type: 'primary',
+          onClick: () => message.info(`row #${row.id}`),
+        },
+        () => tt('详情', 'View')(),
       ),
   },
 ]
@@ -74,7 +110,10 @@ const columns: SmartTableColumn<DemoRow>[] = [
     storage-key="demo-basic"
     resizable
     :single-line="false"
-    @filter-change="(key, _v, state) => message.info(`filter: ${key || '(clear)'} → ${Object.keys(state).length} active`)"
+    @filter-change="
+      (key, _v, state) =>
+        message.info(`filter: ${key || '(clear)'} → ${Object.keys(state).length} active`)
+    "
     @error="(e) => message.error(String(e))"
   />
 </template>

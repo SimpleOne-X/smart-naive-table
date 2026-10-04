@@ -3,9 +3,7 @@ import { cleanParams } from '../src/useSmartTable'
 
 describe('cleanParams', () => {
   it('drops undefined / null / empty string / empty array', () => {
-    expect(
-      cleanParams({ a: undefined, b: null, c: '', d: '   ', e: [] }),
-    ).toEqual({})
+    expect(cleanParams({ a: undefined, b: null, c: '', d: '   ', e: [] })).toEqual({})
   })
 
   it('keeps false and 0', () => {

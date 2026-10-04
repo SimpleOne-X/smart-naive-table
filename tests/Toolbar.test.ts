@@ -6,8 +6,18 @@ import { NConfigProvider, NDropdown, darkTheme } from 'naive-ui'
 import Toolbar from '../src/Toolbar.vue'
 import { defaultLabels } from '../src/labels'
 
-const mountToolbar = (config: Record<string, unknown> | false = {}, extra: Record<string, unknown> = {}) =>
-  mount(Toolbar, { props: { labels: defaultLabels, config: config as never, density: 'compact' as const, ...extra } })
+const mountToolbar = (
+  config: Record<string, unknown> | false = {},
+  extra: Record<string, unknown> = {},
+) =>
+  mount(Toolbar, {
+    props: {
+      labels: defaultLabels,
+      config: config as never,
+      density: 'compact' as const,
+      ...extra,
+    },
+  })
 
 describe('Toolbar 内置图标(B3)', () => {
   it('默认没有「密度」按钮,有「刷新」', () => {
@@ -30,7 +40,9 @@ describe('Toolbar 内置图标(B3)', () => {
 describe('Toolbar 刷新按钮(B5)', () => {
   it('静态模式(remote=false)不显示刷新,即使显式 toolbar.refresh: true', () => {
     expect(mountToolbar({}, { remote: false }).html()).not.toContain('aria-label="Refresh"')
-    expect(mountToolbar({ refresh: true }, { remote: false }).html()).not.toContain('aria-label="Refresh"')
+    expect(mountToolbar({ refresh: true }, { remote: false }).html()).not.toContain(
+      'aria-label="Refresh"',
+    )
   })
   it('远程模式(默认)显示刷新;refresh: false 关掉', () => {
     expect(mountToolbar({}).html()).toContain('aria-label="Refresh"')
@@ -54,20 +66,29 @@ describe('Toolbar「更多」菜单(toolbar.more)', () => {
   it('[Review Focus 5] 没传 / 空数组 / 只有分隔线 / toolbar:false → 不渲染按钮', () => {
     expect(mountToolbar({}).html()).not.toContain('aria-label="More"')
     expect(mountToolbar({ more: [] }).html()).not.toContain('aria-label="More"')
-    expect(mountToolbar({ more: [{ type: 'divider', key: 'd' }] }).html()).not.toContain('aria-label="More"')
+    expect(mountToolbar({ more: [{ type: 'divider', key: 'd' }] }).html()).not.toContain(
+      'aria-label="More"',
+    )
     expect(mountToolbar(false).html()).not.toContain('aria-label="More"')
   })
 
   it('选中菜单项 → 发出 moreSelect(key, option)', () => {
     const wrapper = mountToolbar({ more: opts })
-    const onSelect = wrapper.findComponent(NDropdown).props('onSelect') as (k: string, o: unknown) => void
+    const onSelect = wrapper.findComponent(NDropdown).props('onSelect') as (
+      k: string,
+      o: unknown,
+    ) => void
     onSelect('export', opts[0])
     expect(wrapper.emitted('moreSelect')).toEqual([['export', opts[0]]])
   })
 
   it('「更多」排在宿主 #right 插槽内容之后、刷新按钮之前', () => {
     const wrapper = mount(Toolbar, {
-      props: { labels: defaultLabels, config: { more: opts } as never, density: 'compact' as const },
+      props: {
+        labels: defaultLabels,
+        config: { more: opts } as never,
+        density: 'compact' as const,
+      },
       slots: { right: '<i class="host-btn">新增</i>' },
     })
     const html = wrapper.html()
@@ -84,7 +105,8 @@ describe('Toolbar 外观对齐原型(L0-1 / L0-2)', () => {
   const opts = [{ label: '导出', key: 'export' }]
 
   it('[L0-1] 标题:字重 500(fontWeightStrong)、颜色 textColor1;不是 2.1.1 的 600 / textColor2', () => {
-    const style = mountToolbar({}, { title: '物料单据' }).find('.smart-table-title').attributes('style') ?? ''
+    const style =
+      mountToolbar({}, { title: '物料单据' }).find('.smart-table-title').attributes('style') ?? ''
     expect(style).toContain('font-weight: 500')
     expect(style).toContain('color: rgb(31, 34, 37)') // 默认亮色主题的 textColor1
   })
@@ -104,13 +126,22 @@ describe('Toolbar 外观对齐原型(L0-1 / L0-2)', () => {
     const wrapper = mountToolbar({ more: opts })
     const btn = wrapper.find('button[aria-label="More"]')
     expect(btn.attributes('style')).toContain('--n-height: 34px')
-    expect(wrapper.find('.smart-table-more-icon').attributes('style')).toContain('color: rgb(194, 194, 194)')
+    expect(wrapper.find('.smart-table-more-icon').attributes('style')).toContain(
+      'color: rgb(194, 194, 194)',
+    )
   })
 
   it('[L0-2] 分组:宿主按钮 + 「更多」在 actions 组(间距 8),内置图标在 icons 组(间距 4),两组并排(间距 12)', () => {
     const wrapper = mount(Toolbar, {
-      props: { labels: defaultLabels, config: { more: opts } as never, density: 'compact' as const },
-      slots: { right: '<i class="host-btn">新增</i>', settings: '<i class="settings-btn">设置</i>' },
+      props: {
+        labels: defaultLabels,
+        config: { more: opts } as never,
+        density: 'compact' as const,
+      },
+      slots: {
+        right: '<i class="host-btn">新增</i>',
+        settings: '<i class="settings-btn">设置</i>',
+      },
     })
     const right = wrapper.find('.smart-table-toolbar-right')
     expect(right.exists()).toBe(true)
@@ -126,13 +157,21 @@ describe('Toolbar 外观对齐原型(L0-1 / L0-2)', () => {
 
   it('[L0-2] 内置图标按钮(刷新 / 密度 / 列设置 #settings 里的按钮)图标 16px,不是官方 small 的 18px;「更多」不受影响', () => {
     const wrapper = mount(Toolbar, {
-      props: { labels: defaultLabels, config: { more: opts, density: true } as never, density: 'compact' as const },
+      props: {
+        labels: defaultLabels,
+        config: { more: opts, density: true } as never,
+        density: 'compact' as const,
+      },
       slots: { settings: '<button class="settings-btn" aria-label="Columns">列</button>' },
     })
     for (const label of ['Refresh', 'Density']) {
-      expect(wrapper.find(`button[aria-label="${label}"]`).attributes('style')).toContain('--n-icon-size: 16px')
+      expect(wrapper.find(`button[aria-label="${label}"]`).attributes('style')).toContain(
+        '--n-icon-size: 16px',
+      )
     }
-    expect(wrapper.find('button[aria-label="More"]').attributes('style')).toContain('--n-icon-size: 12px')
+    expect(wrapper.find('button[aria-label="More"]').attributes('style')).toContain(
+      '--n-icon-size: 12px',
+    )
   })
 
   it('[L0-2] 没有宿主按钮也没有「更多」时不画 actions 组(否则空容器会多出一个 12px 的间距)', () => {

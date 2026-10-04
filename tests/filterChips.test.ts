@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { buildChips, countFitting, filtersAtDefaults, hasActiveDefaults, removeChipCondition, shrinkForMore } from '../src/filterChips'
+import {
+  buildChips,
+  countFitting,
+  filtersAtDefaults,
+  hasActiveDefaults,
+  removeChipCondition,
+  shrinkForMore,
+} from '../src/filterChips'
 import { defaultLabels } from '../src/labels'
 import type { FilterDef } from '../src/useColumns'
 import type { FilterState, FilterValue } from '../src/types'
@@ -20,10 +27,16 @@ const v = (logic: 'and' | 'or', ...c: Array<[string, unknown]>): FilterValue => 
 const plain = (_d: FilterDef | undefined, value: unknown) => String(value)
 
 describe('buildChips', () => {
-  const defs = [def({ key: 'name', title: '姓名' }), def({ key: 'status', title: () => '状态', type: 'select' })]
+  const defs = [
+    def({ key: 'name', title: '姓名' }),
+    def({ key: 'status', title: () => '状态', type: 'select' }),
+  ]
 
   it('每个生效条件一个 chip:「列标题 操作符 值」;按列声明顺序', () => {
-    const state: FilterState = { status: v('and', ['equal', 1]), name: v('and', ['contains', 'ali']) }
+    const state: FilterState = {
+      status: v('and', ['equal', 1]),
+      name: v('and', ['contains', 'ali']),
+    }
     expect(buildChips(defs, state, defaultLabels, plain)).toEqual([
       { key: 'name', index: 0, text: '姓名 Contains ali' },
       { key: 'status', index: 0, text: '状态 Equals 1' },
@@ -31,7 +44,12 @@ describe('buildChips', () => {
   })
 
   it('同列 logic 为 or 时,第 2 条起加「OR」前缀', () => {
-    const chips = buildChips(defs, { name: v('or', ['contains', 'a'], ['contains', 'b']) }, defaultLabels, plain)
+    const chips = buildChips(
+      defs,
+      { name: v('or', ['contains', 'a'], ['contains', 'b']) },
+      defaultLabels,
+      plain,
+    )
     expect(chips.map((c) => c.text)).toEqual(['姓名 Contains a', 'OR 姓名 Contains b'])
   })
 
@@ -57,13 +75,20 @@ describe('buildChips', () => {
     ])
     // optionLabelOf 对孤儿收到的 def 是 undefined(没有字典可查)
     const seen: unknown[] = []
-    buildChips(defs, { ghost: v('and', ['equal', 1]) }, defaultLabels, (d, val) => (seen.push(d), String(val)))
+    buildChips(
+      defs,
+      { ghost: v('and', ['equal', 1]) },
+      defaultLabels,
+      (d, val) => (seen.push(d), String(val)),
+    )
     expect(seen).toEqual([undefined])
   })
 
   it('标题是返回非字符串(VNode)的函数时回退成列 key', () => {
     const d = def({ key: 'k', title: (() => ({})) as never })
-    expect(buildChips([d], { k: v('and', ['contains', 'x']) }, defaultLabels, plain)[0].text).toBe('k Contains x')
+    expect(buildChips([d], { k: v('and', ['contains', 'x']) }, defaultLabels, plain)[0].text).toBe(
+      'k Contains x',
+    )
   })
 })
 
@@ -101,8 +126,15 @@ describe('shrinkForMore(「+N」自己也占位)', () => {
 
 describe('hasActiveDefaults', () => {
   it('任一列声明了生效的 defaultValue → true;空条件的 defaultValue 不算', () => {
-    expect(hasActiveDefaults([def({ key: 'a' }), def({ key: 'b', defaultValue: v('and', ['equal', 1]) })])).toBe(true)
-    expect(hasActiveDefaults([def({ key: 'a', defaultValue: v('and', ['equal', '']) })])).toBe(false)
+    expect(
+      hasActiveDefaults([
+        def({ key: 'a' }),
+        def({ key: 'b', defaultValue: v('and', ['equal', 1]) }),
+      ]),
+    ).toBe(true)
+    expect(hasActiveDefaults([def({ key: 'a', defaultValue: v('and', ['equal', '']) })])).toBe(
+      false,
+    )
     expect(hasActiveDefaults([])).toBe(false)
   })
 })
@@ -122,12 +154,31 @@ describe('filtersAtDefaults(过滤态是否就是默认值)', () => {
     expect(filtersAtDefaults(withDefault, { a: v('and', ['equal', 'x']) })).toBe(true)
     expect(filtersAtDefaults(withDefault, {})).toBe(false)
     expect(filtersAtDefaults(withDefault, { a: v('and', ['equal', 'y']) })).toBe(false)
-    expect(filtersAtDefaults(withDefault, { a: v('and', ['equal', 'x']), b: v('and', ['contains', '1']) })).toBe(false)
-    expect(filtersAtDefaults(withDefault, { a: v('and', ['equal', 'x']), ghost: v('and', ['equal', '1']) })).toBe(false)
+    expect(
+      filtersAtDefaults(withDefault, {
+        a: v('and', ['equal', 'x']),
+        b: v('and', ['contains', '1']),
+      }),
+    ).toBe(false)
+    expect(
+      filtersAtDefaults(withDefault, {
+        a: v('and', ['equal', 'x']),
+        ghost: v('and', ['equal', '1']),
+      }),
+    ).toBe(false)
   })
 
   it('空条件(无生效)不算条件;单条时 logic 不同也算相同', () => {
-    expect(filtersAtDefaults(withDefault, { a: v('and', ['equal', 'x']), b: v('and', ['contains', '']) })).toBe(true)
-    expect(filtersAtDefaults(withDefault, { a: { logic: 'or', conditions: [{ action: 'equal', value: 'x' }] } })).toBe(true)
+    expect(
+      filtersAtDefaults(withDefault, {
+        a: v('and', ['equal', 'x']),
+        b: v('and', ['contains', '']),
+      }),
+    ).toBe(true)
+    expect(
+      filtersAtDefaults(withDefault, {
+        a: { logic: 'or', conditions: [{ action: 'equal', value: 'x' }] },
+      }),
+    ).toBe(true)
   })
 })

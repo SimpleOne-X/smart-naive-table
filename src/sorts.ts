@@ -23,7 +23,10 @@ type Sorterish = { sorter?: unknown; defaultSortOrder?: unknown }
 
 function sorterInfoOf(sorter: unknown): SorterInfo | null {
   if (sorter === undefined || sorter === null || sorter === false) return null
-  if (typeof sorter === 'object' && typeof (sorter as { multiple?: unknown }).multiple === 'number') {
+  if (
+    typeof sorter === 'object' &&
+    typeof (sorter as { multiple?: unknown }).multiple === 'number'
+  ) {
     return { priority: (sorter as { multiple: number }).multiple, multiple: true, sorter }
   }
   return { priority: 0, multiple: false, sorter }
@@ -87,7 +90,8 @@ export function sortTransition(
   const active = new Map(current.map((i) => [i.field, i.order] as const))
   const event: SorterEvent[] = []
   for (const [key, inf] of info) {
-    if (inf.multiple && active.has(key)) event.push({ columnKey: key, sorter: inf.sorter, order: active.get(key)! })
+    if (inf.multiple && active.has(key))
+      event.push({ columnKey: key, sorter: inf.sorter, order: active.get(key)! })
   }
   const at = event.findIndex((e) => e.columnKey === columnKey)
   if (at >= 0) event[at] = state
@@ -114,7 +118,11 @@ export function deriveInitSorts<T>(columns: SmartTableColumn<T>[]): SortItem[] {
       const order = (c as Sorterish).defaultSortOrder
       const i = info.get(c.key)
       if (!i || (order !== 'ascend' && order !== 'descend')) continue
-      if (i.multiple) state = [...state.filter((s) => s.multiple && s.field !== c.key), { field: c.key, order, multiple: true }]
+      if (i.multiple)
+        state = [
+          ...state.filter((s) => s.multiple && s.field !== c.key),
+          { field: c.key, order, multiple: true },
+        ]
       else state = [{ field: c.key, order, multiple: false }]
     }
   }

@@ -28,13 +28,19 @@ describe('collectSorters', () => {
   })
 
   it('hideInTable 的列(只作搜索项,没有表头)不收', () => {
-    const info = collectSorters([{ key: 'q', title: 'q', sorter: true, hideInTable: true }] as SmartTableColumn<any>[])
+    const info = collectSorters([
+      { key: 'q', title: 'q', sorter: true, hideInTable: true },
+    ] as SmartTableColumn<any>[])
     expect(info.size).toBe(0)
   })
 
   it('多级表头:递归到叶子', () => {
     const info = collectSorters([
-      { key: 'grp', title: 'grp', children: [{ key: 'x', title: 'x', sorter: { compare: cmp, multiple: 3 } }] },
+      {
+        key: 'grp',
+        title: 'grp',
+        children: [{ key: 'x', title: 'x', sorter: { compare: cmp, multiple: 3 } }],
+      },
     ] as SmartTableColumn<any>[])
     expect(info.get('x')).toMatchObject({ priority: 3, multiple: true })
   })
@@ -101,10 +107,16 @@ describe('deriveInitSorts(C2:由列上的 defaultSortOrder 推导初始排序态
     expect(out).toEqual([{ field: 'b', order: 'descend' }])
   })
   it('没有 sorter 的列写了 defaultSortOrder 也不生效', () => {
-    expect(deriveInitSorts([{ key: 'a', title: 'a', defaultSortOrder: 'ascend' }] as SmartTableColumn<any>[])).toEqual([])
+    expect(
+      deriveInitSorts([
+        { key: 'a', title: 'a', defaultSortOrder: 'ascend' },
+      ] as SmartTableColumn<any>[]),
+    ).toEqual([])
   })
   it('hideInTable 的列(只作搜索项)写了 defaultSortOrder 也不生效', () => {
-    const hidden = [{ key: 'a', title: 'a', sorter: true, defaultSortOrder: 'ascend', hideInTable: true }] as SmartTableColumn<any>[]
+    const hidden = [
+      { key: 'a', title: 'a', sorter: true, defaultSortOrder: 'ascend', hideInTable: true },
+    ] as SmartTableColumn<any>[]
     expect(deriveInitSorts(hidden)).toEqual([])
   })
 })
@@ -162,7 +174,10 @@ describe('sortTransition(D7:编程式 sort() 的下一个排序态 + 官方 onUp
 describe('sortToParams(C1:远程参数)', () => {
   it('空 → {};单列 → { sortField, sortOrder };多列 → 仍带最高优先级列,另加 sorts', () => {
     expect(sortToParams([])).toEqual({})
-    expect(sortToParams([{ field: 'a', order: 'ascend' }])).toEqual({ sortField: 'a', sortOrder: 'asc' })
+    expect(sortToParams([{ field: 'a', order: 'ascend' }])).toEqual({
+      sortField: 'a',
+      sortOrder: 'asc',
+    })
     expect(
       sortToParams([
         { field: 'g', order: 'descend' },

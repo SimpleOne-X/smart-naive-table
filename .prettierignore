@@ -1,0 +1,12 @@
+dist/
+node_modules/
+package-lock.json
+tools/parity/out/
+docs/baseline/
+docs/*.html
+docs/smart-naive-table-design.md
+docs/smart-naive-table-spec.md
+CHANGELOG.md
+MIGRATION.md
+README.md
+README.en.md

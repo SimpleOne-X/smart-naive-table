@@ -13,5 +13,9 @@ export const CARD_THEME_OVERRIDES: NonNullable<CardProps['themeOverrides']> = {
 
 /** 库默认(size small + 16px 覆盖)之上合并宿主的 cardProps;themeOverrides 逐键合并,不整个替换。 */
 export function mergeCardProps(user?: Partial<CardProps>): Partial<CardProps> {
-  return { size: 'small', ...user, themeOverrides: { ...CARD_THEME_OVERRIDES, ...user?.themeOverrides } }
+  return {
+    size: 'small',
+    ...user,
+    themeOverrides: { ...CARD_THEME_OVERRIDES, ...user?.themeOverrides },
+  }
 }

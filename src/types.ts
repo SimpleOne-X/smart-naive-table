@@ -1,5 +1,11 @@
 import type { Ref, VNodeChild, MaybeRefOrGetter } from 'vue'
-import type { CardProps, DataTableBaseColumn, DataTableInst, DropdownProps, PaginationProps } from 'naive-ui'
+import type {
+  CardProps,
+  DataTableBaseColumn,
+  DataTableInst,
+  DropdownProps,
+  PaginationProps,
+} from 'naive-ui'
 // naive-ui 只出现在类型位置;运行时 hooks(useSmartTable/useTableCrud/useOptions)不 import 它。
 
 /* ======================== 数据契约 ======================== */
@@ -38,9 +44,7 @@ export interface SmartTableOption {
 
 /** 选项来源:静态数组 / 响应式 ref / 异步函数(内置 loading 与在途去重)。 */
 export type OptionsSource =
-  | SmartTableOption[]
-  | Ref<SmartTableOption[]>
-  | (() => Promise<SmartTableOption[]>)
+  SmartTableOption[] | Ref<SmartTableOption[]> | (() => Promise<SmartTableOption[]>)
 
 /* ======================== 声明式格式化 ======================== */
 
@@ -48,7 +52,8 @@ export type OptionsSource =
  * date → 'YYYY-MM-DD';datetime → 'YYYY-MM-DD HH:mm:ss'(接受 ISO 串/时间戳/Date);
  * money → 千分位保留两位;函数形式完全自定义。render 优先于 format。
  */
-export type CellFormat<T = any> = 'date' | 'datetime' | 'money' | ((value: unknown, row: T) => string)
+export type CellFormat<T = any> =
+  'date' | 'datetime' | 'money' | ((value: unknown, row: T) => string)
 
 /* ======================== 搜索 ======================== */
 
@@ -178,7 +183,9 @@ export interface FilterConfig<T = any> {
 export interface SmartTableDataColumn<T = any>
   // 'filter' 被本包接管(FilterConfig,比 Naive 原生列过滤多条件行与远程联动),
   // 因此不从 Naive 列继承同名属性。
-  extends Partial<Omit<DataTableBaseColumn<T>, 'key' | 'title' | 'render' | 'children' | 'filter'>> {
+  extends Partial<
+    Omit<DataTableBaseColumn<T>, 'key' | 'title' | 'render' | 'children' | 'filter'>
+  > {
   /** 数据字段名;同时是搜索参数默认键、列设置持久化 id、动态插槽名。 */
   key: string
   /** 函数形式在表格渲染期求值 —— 切换语言自动生效。 */

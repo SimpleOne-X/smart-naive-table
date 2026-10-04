@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { darkTheme, dateZhCN, NConfigProvider, NMessageProvider, NSpace, NSwitch, NTabPane, NTabs, zhCN } from 'naive-ui'
+import {
+  darkTheme,
+  dateZhCN,
+  NConfigProvider,
+  NMessageProvider,
+  NSpace,
+  NSwitch,
+  NTabPane,
+  NTabs,
+  zhCN,
+} from 'naive-ui'
 import DemoBasic from './DemoBasic.vue'
 import DemoWide from './DemoWide.vue'
 import DemoFilter from './DemoFilter.vue'
@@ -30,14 +40,19 @@ const naiveDateLocale = computed(() => (isZh.value ? dateZhCN : null))
           <n-space align="center" :size="16">
             <label><n-switch v-model:value="dark" size="small" /> {{ tt('暗色', 'Dark')() }}</label>
             <label><n-switch v-model:value="isZh" size="small" /> {{ isZh ? '中文' : 'EN' }}</label>
-            <label><n-switch v-model:value="mockState.fail" size="small" /> {{ tt('请求失败模拟', 'Fail requests')() }}</label>
+            <label
+              ><n-switch v-model:value="mockState.fail" size="small" />
+              {{ tt('请求失败模拟', 'Fail requests')() }}</label
+            >
           </n-space>
         </n-space>
 
         <n-tabs type="line" default-value="basic">
           <n-tab-pane name="basic" :tab="tt('基础', 'Basic')()"><DemoBasic /></n-tab-pane>
           <n-tab-pane name="wide" :tab="tt('宽表', 'Wide')()"><DemoWide /></n-tab-pane>
-          <n-tab-pane name="filter" :tab="tt('过滤 / 列宽', 'Filter / Resize')()"><DemoFilter /></n-tab-pane>
+          <n-tab-pane name="filter" :tab="tt('过滤 / 列宽', 'Filter / Resize')()"
+            ><DemoFilter
+          /></n-tab-pane>
           <n-tab-pane name="crud" :tab="'CRUD'"><DemoCrud /></n-tab-pane>
           <n-tab-pane name="absorb" tab="列宽余量"><DemoAbsorb /></n-tab-pane>
           <n-tab-pane name="fill" tab="铺满"><DemoFill /></n-tab-pane>

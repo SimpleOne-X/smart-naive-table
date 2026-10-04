@@ -33,7 +33,10 @@ class ResizeObserverStub {
 function resize(el: Element, width: number) {
   for (const o of ResizeObserverStub.instances) {
     if (o.targets.includes(el)) {
-      o.cb([{ target: el, contentRect: { width } as DOMRectReadOnly } as ResizeObserverEntry], o as unknown as ResizeObserver)
+      o.cb(
+        [{ target: el, contentRect: { width } as DOMRectReadOnly } as ResizeObserverEntry],
+        o as unknown as ResizeObserver,
+      )
     }
   }
 }
@@ -61,7 +64,9 @@ describe('FilterChips:容器变宽后折叠的 chip 重新展开(final review fi
       configurable: true,
       get(this: HTMLElement) {
         if (!this.classList.contains('smart-table-chip') || !this.parentElement) return 0
-        const tags = Array.from(this.parentElement.children).filter((el) => el.classList.contains('smart-table-chip'))
+        const tags = Array.from(this.parentElement.children).filter((el) =>
+          el.classList.contains('smart-table-chip'),
+        )
         return tags.indexOf(this) < perRow ? 0 : 30
       },
     })
@@ -76,7 +81,10 @@ describe('FilterChips:容器变宽后折叠的 chip 重新展开(final review fi
     w.findAll('.smart-table-chips__list > .smart-table-chip').map((c) => c.text())
 
   it('ResizeObserver 盯的是 chips 行容器(.smart-table-chips),不是按内容收缩的列表', async () => {
-    const wrapper = mount(FilterChips, { props: { items, labels: defaultLabels }, attachTo: document.body })
+    const wrapper = mount(FilterChips, {
+      props: { items, labels: defaultLabels },
+      attachTo: document.body,
+    })
     await settle()
     const targets = ResizeObserverStub.instances.flatMap((o) => o.targets)
     expect(targets).toContain(wrapper.find('.smart-table-chips').element)
@@ -86,7 +94,10 @@ describe('FilterChips:容器变宽后折叠的 chip 重新展开(final review fi
 
   it('窄 → 折成「+N」;行容器变宽 → 全部展开;宽度没变不重量;再变窄 → 重新折叠', async () => {
     perRow = 2 // 窄:一行只放得下 2 个 tag
-    const wrapper = mount(FilterChips, { props: { items, labels: defaultLabels }, attachTo: document.body })
+    const wrapper = mount(FilterChips, {
+      props: { items, labels: defaultLabels },
+      attachTo: document.body,
+    })
     await settle()
     const row = wrapper.find('.smart-table-chips').element
     resize(row, 1000)
@@ -96,7 +107,12 @@ describe('FilterChips:容器变宽后折叠的 chip 重新展开(final review fi
     perRow = Number.POSITIVE_INFINITY // 视口变宽:行容器宽了,一行放得下全部
     resize(row, 1440)
     await settle()
-    expect(shownTexts(wrapper)).toEqual(['A contains 1', 'B contains 2', 'C contains 3', 'D contains 4'])
+    expect(shownTexts(wrapper)).toEqual([
+      'A contains 1',
+      'B contains 2',
+      'C contains 3',
+      'D contains 4',
+    ])
     expect(wrapper.find('.smart-table-chip--more').exists()).toBe(false)
 
     // 同一宽度再通知一次(如测量时行高变化触发的回调):不重量,显示不变

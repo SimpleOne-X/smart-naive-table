@@ -18,7 +18,13 @@ import {
   type Slots,
 } from 'vue'
 import { NCard, NDataTable, NPagination } from 'naive-ui'
-import type { CardProps, DataTableInst, DropdownOption, PaginationInfo, PaginationProps } from 'naive-ui'
+import type {
+  CardProps,
+  DataTableInst,
+  DropdownOption,
+  PaginationInfo,
+  PaginationProps,
+} from 'naive-ui'
 import type {
   Density,
   FilterState,
@@ -43,10 +49,21 @@ import {
   type FilterDef,
 } from './useColumns'
 import { applyFilters } from './filter'
-import { buildChips, filtersAtDefaults, hasActiveDefaults, removeChipCondition } from './filterChips'
+import {
+  buildChips,
+  filtersAtDefaults,
+  hasActiveDefaults,
+  removeChipCondition,
+} from './filterChips'
 import { mergeCardProps } from './cardStyle'
 import { mergePageSizes, resolveDefaultPageSize } from './pageSize'
-import { collectSorters, deriveInitSorts, normalizeSorterEvent, sortToParams, sortTransition } from './sorts'
+import {
+  collectSorters,
+  deriveInitSorts,
+  normalizeSorterEvent,
+  sortToParams,
+  sortTransition,
+} from './sorts'
 import { useFilters } from './useFilters'
 import { mergeLabels } from './labels'
 import { useSmartTableDefaults } from './config'
@@ -65,11 +82,17 @@ const props = defineProps({
   columns: { type: Array as PropType<SmartTableColumn<T>[]>, required: true },
   fetcher: { type: Function as PropType<SmartTableFetcher<T>>, default: undefined },
   data: { type: Array as PropType<T[]>, default: undefined },
-  rowKey: { type: [String, Function] as PropType<string | ((row: T) => string | number)>, default: 'id' },
+  rowKey: {
+    type: [String, Function] as PropType<string | ((row: T) => string | number)>,
+    default: 'id',
+  },
   params: { type: Object as PropType<Record<string, any>>, default: undefined },
   immediate: { type: Boolean, default: true },
   defaultPageSize: { type: Number, default: undefined },
-  pagination: { type: [Boolean, Object] as PropType<false | Partial<PaginationProps>>, default: undefined },
+  pagination: {
+    type: [Boolean, Object] as PropType<false | Partial<PaginationProps>>,
+    default: undefined,
+  },
   search: { type: [Boolean, Object] as PropType<false | SearchFormConfig>, default: undefined },
   filter: { type: Boolean, default: undefined },
   filterChips: { type: Boolean, default: undefined },
@@ -174,10 +197,8 @@ const filters = useFilters<T>({
   onChange: (key, value, state) => {
     // 筛选后的分页行为:宿主显式传了官方 paginationBehaviorOnFilter 就照官方;没传保持库现状
     // (远程回第 1 页;本地不动,页码由 Naive 夹回合法范围)。这是对官方默认值 'current' 的有意偏离,只发生在 remote。
-    const behavior = (attrs.paginationBehaviorOnFilter ?? attrs['pagination-behavior-on-filter']) as
-      | 'first'
-      | 'current'
-      | undefined
+    const behavior = (attrs.paginationBehaviorOnFilter ??
+      attrs['pagination-behavior-on-filter']) as 'first' | 'current' | undefined
     if (isRemote.value) void (behavior === 'current' ? table.load() : table.search())
     else if (behavior === 'first') {
       localPage.value = 1
@@ -197,7 +218,11 @@ const table = useSmartTable<T>(
   (p) => props.fetcher!(p),
   {
     initParams: deriveInitParams(searchDefs.value),
-    extraParams: () => ({ ...(props.params ?? {}), ...sortToParams(sortState.value), ...filterToParams() }),
+    extraParams: () => ({
+      ...(props.params ?? {}),
+      ...sortToParams(sortState.value),
+      ...filterToParams(),
+    }),
     immediate: isRemote.value && props.immediate,
     defaultPageSize: initialPageSize,
     onError: (e) => emit('error', e),
@@ -304,10 +329,19 @@ function optionLabelOf(def: FilterDef | undefined, value: unknown): string {
 }
 
 const chipItems = computed(() =>
-  chipsEnabled.value ? buildChips(filterDefs.value as FilterDef[], filters.state.value, mergedLabels.value, optionLabelOf) : [],
+  chipsEnabled.value
+    ? buildChips(
+        filterDefs.value as FilterDef[],
+        filters.state.value,
+        mergedLabels.value,
+        optionLabelOf,
+      )
+    : [],
 )
 const chipsHaveDefaults = computed(() => hasActiveDefaults(filterDefs.value as FilterDef[]))
-const chipsAtDefaults = computed(() => filtersAtDefaults(filterDefs.value as FilterDef[], filters.state.value))
+const chipsAtDefaults = computed(() =>
+  filtersAtDefaults(filterDefs.value as FilterDef[], filters.state.value),
+)
 
 /** 点 chip = 请求重开该列面板:给对应 ColumnFilter 递增 openRequest。被隐藏的列没有漏斗,递增了也是空操作。 */
 const openTick = reactive<Record<string, number>>({})
@@ -361,7 +395,12 @@ function endResize() {
   }
 }
 
-function onColumnResize(resizedWidth: number, limitedWidth: number, column: unknown, getColumnWidth: unknown) {
+function onColumnResize(
+  resizedWidth: number,
+  limitedWidth: number,
+  column: unknown,
+  getColumnWidth: unknown,
+) {
   const key = (column as { key?: string | number })?.key
   if (key !== undefined) {
     const colKey = String(key)
@@ -485,7 +524,9 @@ const tableAttrs = computed(() => {
       delete host[k]
       if (!warnedMaxHeight) {
         warnedMaxHeight = true
-        console.warn('[smart-naive-table] fillHeight 开启时表体高度由父容器决定,已忽略 max-height;请给父容器设定高。')
+        console.warn(
+          '[smart-naive-table] fillHeight 开启时表体高度由父容器决定,已忽略 max-height;请给父容器设定高。',
+        )
       }
     }
   }
@@ -510,7 +551,12 @@ function onPageChanged() {
 const tableData = computed(() => {
   if (isRemote.value) return rows.value as Record<string, any>[]
   const local = props.data ?? []
-  return applyFilters(local, filterDefs.value, filters.state.value, defaults.dateValueFormat) as Record<string, any>[]
+  return applyFilters(
+    local,
+    filterDefs.value,
+    filters.state.value,
+    defaults.dateValueFormat,
+  ) as Record<string, any>[]
 })
 
 const searchConfig = computed<SearchFormConfig>(() => {
@@ -522,7 +568,9 @@ const showToolbar = computed(
   () => props.toolbar !== false || !!props.title || !!slots.title || !!slots.toolbar,
 )
 const settingsEnabled = computed(
-  () => props.toolbar !== false && (typeof props.toolbar === 'object' ? props.toolbar.columnSettings !== false : true),
+  () =>
+    props.toolbar !== false &&
+    (typeof props.toolbar === 'object' ? props.toolbar.columnSettings !== false : true),
 )
 
 const paginationPrefix = computed(() =>
@@ -531,7 +579,8 @@ const paginationPrefix = computed(() =>
 
 /** 官方回调可能是函数也可能是数组(Naive 允许 MaybeArray),逐个调用。 */
 function callAll(handler: unknown, ...args: unknown[]) {
-  for (const fn of Array.isArray(handler) ? handler : [handler]) if (typeof fn === 'function') fn(...args)
+  for (const fn of Array.isArray(handler) ? handler : [handler])
+    if (typeof fn === 'function') fn(...args)
 }
 
 /**
@@ -757,7 +806,8 @@ function measureHost() {
 
 onMounted(() => {
   // SSR / 测试环境可能没有 ResizeObserver:量一次就走(之后容器变宽变窄,退路吸收列的显式宽度不再跟着更新)
-  if (typeof ResizeObserver !== 'undefined') resizeObserver = new ResizeObserver(() => measureHost())
+  if (typeof ResizeObserver !== 'undefined')
+    resizeObserver = new ResizeObserver(() => measureHost())
   if (resizeObserver && rootRef.value) resizeObserver.observe(rootRef.value)
   measureHost()
 })

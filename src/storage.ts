@@ -13,7 +13,10 @@ const PREFIX = 'protable:'
 /** 当前结构版本。v1(只有 density+cols)读到时就地升级,不丢用户已存的列设置。 */
 const VERSION = 2
 
-export function loadState(storageKey: string, fallbackDensity: Density = 'compact'): StoredTableState | null {
+export function loadState(
+  storageKey: string,
+  fallbackDensity: Density = 'compact',
+): StoredTableState | null {
   try {
     const raw = localStorage.getItem(PREFIX + storageKey)
     if (!raw) return null
@@ -82,7 +85,10 @@ export function clearState(storageKey: string): void {
  * 新增列(声明有、存储无)按声明下标插入,show 取声明值;
  * 其余列顺序/显隐/固定以存储为准。
  */
-export function mergeCols(declared: DeclaredCol[], stored: StoredTableState['cols']): DeclaredCol[] {
+export function mergeCols(
+  declared: DeclaredCol[],
+  stored: StoredTableState['cols'],
+): DeclaredCol[] {
   const declaredByKey = new Map(declared.map((c) => [c.key, c]))
   const merged: DeclaredCol[] = stored
     .filter((s) => declaredByKey.has(s.key))

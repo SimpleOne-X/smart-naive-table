@@ -26,15 +26,28 @@ describe('resolveDefaultPageSize(D4 的解析优先级)', () => {
   })
   it('实例 prop 最高', () => {
     expect(
-      resolveDefaultPageSize({ prop: 20, pageSize: 30, defaultPageSize: 40, globalDefaultPageSize: 50, pageSizes: [60], globalPageSizes: [70] }),
+      resolveDefaultPageSize({
+        prop: 20,
+        pageSize: 30,
+        defaultPageSize: 40,
+        globalDefaultPageSize: 50,
+        pageSizes: [60],
+        globalPageSizes: [70],
+      }),
     ).toBe(20)
   })
   it('其次实例 pagination.pageSize,再其次 pagination.defaultPageSize', () => {
-    expect(resolveDefaultPageSize({ pageSize: 30, defaultPageSize: 40, globalDefaultPageSize: 50 })).toBe(30)
-    expect(resolveDefaultPageSize({ defaultPageSize: 40, globalDefaultPageSize: 50, pageSizes: [60] })).toBe(40)
+    expect(
+      resolveDefaultPageSize({ pageSize: 30, defaultPageSize: 40, globalDefaultPageSize: 50 }),
+    ).toBe(30)
+    expect(
+      resolveDefaultPageSize({ defaultPageSize: 40, globalDefaultPageSize: 50, pageSizes: [60] }),
+    ).toBe(40)
   })
   it('再其次全局 defaultPageSize,它高于任何 pageSizes[0]', () => {
-    expect(resolveDefaultPageSize({ globalDefaultPageSize: 50, pageSizes: [60], globalPageSizes: [70] })).toBe(50)
+    expect(
+      resolveDefaultPageSize({ globalDefaultPageSize: 50, pageSizes: [60], globalPageSizes: [70] }),
+    ).toBe(50)
   })
   it('宿主显式给了 pageSizes → 取 [0](实例的先于全局的;对象取 value);回退「一行」:只写 pageSizes 也能让首个请求变小', () => {
     expect(resolveDefaultPageSize({ pageSizes: [10, 20, 50] })).toBe(10)

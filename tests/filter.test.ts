@@ -38,7 +38,10 @@ function inTimeZones(zones: string[], fn: (tz: string) => void) {
     process.env.TZ = original ?? systemZone
   }
 }
-function val(logic: 'and' | 'or', ...conds: Array<{ action: FilterAction; value: unknown }>): FilterValue {
+function val(
+  logic: 'and' | 'or',
+  ...conds: Array<{ action: FilterAction; value: unknown }>
+): FilterValue {
   return { logic, conditions: conds }
 }
 
@@ -143,23 +146,33 @@ describe('matchCondition', () => {
   // 还是本地的前一天;而过滤值的整天边界按本地零点切,于是「等于 2026-09-21」选不中 '2026-09-21' 这一行。
   // 必须在 UTC 以西的时区里跑才有意义(本机 UTC+8 下这个缺陷不显形),所以这里逐个切时区。
   it('单元格是纯日期串(yyyy-MM-dd)时按本地零点解析:UTC 以西的时区里日期条件也选中原日历日(final review fix)', () => {
-    inTimeZones(['America/New_York', 'America/Los_Angeles', 'Etc/GMT+11', 'UTC', 'Asia/Shanghai', 'Pacific/Kiritimati'], (tz) => {
-      const cell = '2026-09-21'
-      expect(matchCondition(cond('equal', '2026-09-21'), cell), tz).toBe(true)
-      expect(matchCondition(cond('equal', '2026-09-20'), cell), tz).toBe(false)
-      expect(matchCondition(cond('notEqual', '2026-09-21'), cell), tz).toBe(false)
-      expect(matchCondition(cond('in', ['2026-09-21', '2026-09-25']), cell), tz).toBe(true)
-      expect(matchCondition(cond('notIn', ['2026-09-21']), cell), tz).toBe(false)
-      expect(matchCondition(cond('gte', '2026-09-21'), cell), tz).toBe(true)
-      expect(matchCondition(cond('gt', '2026-09-20'), cell), tz).toBe(true)
-      expect(matchCondition(cond('gt', '2026-09-21'), cell), tz).toBe(false)
-      expect(matchCondition(cond('lt', '2026-09-21'), cell), tz).toBe(false)
-      expect(matchCondition(cond('lte', '2026-09-20'), cell), tz).toBe(false)
-      expect(matchCondition(cond('lte', '2026-09-21'), cell), tz).toBe(true)
-      // 与展示同一基准:formatDate 显示的就是原日历日,按它筛选也选得中
-      expect(formatDate(cell), tz).toBe('2026-09-21')
-      expect(matchCondition(cond('equal', formatDate(cell)), cell), tz).toBe(true)
-    })
+    inTimeZones(
+      [
+        'America/New_York',
+        'America/Los_Angeles',
+        'Etc/GMT+11',
+        'UTC',
+        'Asia/Shanghai',
+        'Pacific/Kiritimati',
+      ],
+      (tz) => {
+        const cell = '2026-09-21'
+        expect(matchCondition(cond('equal', '2026-09-21'), cell), tz).toBe(true)
+        expect(matchCondition(cond('equal', '2026-09-20'), cell), tz).toBe(false)
+        expect(matchCondition(cond('notEqual', '2026-09-21'), cell), tz).toBe(false)
+        expect(matchCondition(cond('in', ['2026-09-21', '2026-09-25']), cell), tz).toBe(true)
+        expect(matchCondition(cond('notIn', ['2026-09-21']), cell), tz).toBe(false)
+        expect(matchCondition(cond('gte', '2026-09-21'), cell), tz).toBe(true)
+        expect(matchCondition(cond('gt', '2026-09-20'), cell), tz).toBe(true)
+        expect(matchCondition(cond('gt', '2026-09-21'), cell), tz).toBe(false)
+        expect(matchCondition(cond('lt', '2026-09-21'), cell), tz).toBe(false)
+        expect(matchCondition(cond('lte', '2026-09-20'), cell), tz).toBe(false)
+        expect(matchCondition(cond('lte', '2026-09-21'), cell), tz).toBe(true)
+        // 与展示同一基准:formatDate 显示的就是原日历日,按它筛选也选得中
+        expect(formatDate(cell), tz).toBe('2026-09-21')
+        expect(matchCondition(cond('equal', formatDate(cell)), cell), tz).toBe(true)
+      },
+    )
   })
 
   it('纯日期串单元格在走普通标量比较时(过滤值是 Date / 带时间的串)也按本地零点,不按 UTC 零点(final review fix)', () => {
@@ -184,7 +197,9 @@ describe('matchCondition', () => {
   })
 
   it('无法按 dateValueFormat 解析出 yyyy/MM/dd 三个 token 时,dayRange 放弃,退回标量比较', () => {
-    expect(matchCondition(cond('equal', '2024-03-05'), '2024-03-05T08:30:00.000Z', 'yy-MM-dd')).toBe(false)
+    expect(
+      matchCondition(cond('equal', '2024-03-05'), '2024-03-05T08:30:00.000Z', 'yy-MM-dd'),
+    ).toBe(false)
   })
 
   it('未识别的 action 视为不匹配,而不是放行全部行', () => {
@@ -260,14 +275,20 @@ describe('applyFilters', () => {
   })
 
   it('过滤键与数据字段可以不同(filter.key 覆写时)', () => {
-    const out = applyFilters(rows, [{ key: 'q', field: 'name' }], { q: val('and', cond('contains', 'car')) })
+    const out = applyFilters(rows, [{ key: 'q', field: 'name' }], {
+      q: val('and', cond('contains', 'car')),
+    })
     expect(out.map((r) => r.name)).toEqual(['carol'])
   })
 
   it('自定义 filter 接管匹配', () => {
-    const out = applyFilters(rows, [{ key: 'name', field: 'name', filter: (_v, row) => row.salary < 6000 }], {
-      name: val('and', cond('contains', 'zzz')),
-    })
+    const out = applyFilters(
+      rows,
+      [{ key: 'name', field: 'name', filter: (_v, row) => row.salary < 6000 }],
+      {
+        name: val('and', cond('contains', 'zzz')),
+      },
+    )
     expect(out.map((r) => r.name)).toEqual(['bob'])
   })
 })

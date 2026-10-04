@@ -25,10 +25,19 @@ const columns: SmartTableColumn<DemoRow>[] = [
     <n-space align="center" :size="16" style="margin-bottom: 12px">
       <label><n-switch v-model:value="fill" size="small" data-testid="fill" /> fillHeight</label>
       <label><n-switch v-model:value="dense" size="small" data-testid="dense" /> 紧凑</label>
-      <label><n-switch v-model:value="fixedParent" size="small" data-testid="fixed-parent" /> 父容器定高</label>
-      <label><n-switch v-model:value="pager" size="small" data-testid="pager" /> 页码序列(非 simple)</label>
+      <label
+        ><n-switch v-model:value="fixedParent" size="small" data-testid="fixed-parent" />
+        父容器定高</label
+      >
+      <label
+        ><n-switch v-model:value="pager" size="small" data-testid="pager" /> 页码序列(非
+        simple)</label
+      >
     </n-space>
-    <div :style="fill && fixedParent ? { height: 'calc(100vh - 220px)' } : {}" data-testid="fill-host">
+    <div
+      :style="fill && fixedParent ? { height: 'calc(100vh - 220px)' } : {}"
+      data-testid="fill-host"
+    >
       <SmartTable
         :columns="columns"
         :data="allRows"
