@@ -739,10 +739,11 @@ const moreThemeOverrides = computed(() => ({
   display: flex;
   flex-wrap: wrap;
 }
-/* 展开行里的按钮(「新增」等 + 「更多」)等分整行;padding 会计入 flex 基准,不清零就不等宽 */
+/* 展开行里的按钮(「新增」等 + 「更多」)等分整行;padding 会计入 flex 基准,不清零就不等宽。
+   最小宽取内容宽:英文文案长、带图标的几个按钮一行放不下时换到下一行,而不是被挤扁或超出视口 */
 .smart-table-toolbar--fold .smart-table-toolbar-actions > :deep(*) {
   flex: 1 1 0;
-  min-width: 0;
+  min-width: max-content;
 }
 .smart-table-toolbar--fold .smart-table-toolbar-actions > :deep(.n-button) {
   padding-right: 0;

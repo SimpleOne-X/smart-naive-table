@@ -266,6 +266,20 @@ const ACTION_OPTIONS = { Button: { size: 'large' as const } }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 值是 NTag(字典标签)时标签让位:英文标签长(「Document Status」约 100px),dt 是 flex: none,每对只有约 137px,
+   值只剩 29px,dd 的 overflow 把 70px 的 Approved 标签裁成「App」。标签(NTag)是整块、没法像文字那样省略,
+   所以这一对里改成 dt 收缩 + 省略、dd 不收缩(只用 max-width 封顶,不撑破卡片)。文字值不受影响:dt 仍 flex: none、值单行省略 */
+.smart-table-card-desc > div:has(dd .n-tag) dt {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.smart-table-card-desc > div:has(dd .n-tag) dd {
+  flex-shrink: 0;
+  max-width: 100%;
+}
 .smart-table-card-more {
   margin-top: 8px;
   padding-top: 8px;
