@@ -71,19 +71,19 @@ node tools/parity/parity-all.mjs [--w 1440] [--theme light|dark] [--mods 1,2,3,4
 | 8 states | 就绪 = 出现 `.n-empty`(`immediate:false`,首屏没有行);`els` 加空状态 |
 | 10 drag | `els` 加 `#stage`;自然高度页 |
 | 11 ms | `els` 加 `.md / .md-side / .n-tree / .md-main`,`lists` 比树节点。对照页侧栏请沿用原型类名 `md`、`md-side`、`md-main` |
-| 12 embed | 见下「`data-parity` 约定」 |
+| 12 embed(上下布局) | 见下「`data-parity` 约定」 |
 | 14 excel | `els` 比可编辑格 / 只读格 / 复选框格的几何;交互态(下拉 / 日期 / 日期时间 / 多行浮层 / 校验气泡)见 `scenes/m14.mjs`(`node tools/parity/interact.mjs --only m14`) |
 
 `readHints`(每侧一份,字段全可省):`scope`(给 th / 行 / 分页 / chips 选择器加祖先前缀)、`rowSel`、`thSel`、`actsCol`(操作列单元格下标,缺省 -1);用于 `cell0` / `acts` / `rows` 取错单元格的模块。
 
 ### `data-parity` 约定(多表页面)
 
-对照页同一页面里有多张表时(m12:入库明细子表 + 物料单据主表,原型是一个 `.smart-table` 里两张卡,对照页是两个 `SmartTable` 根),**模块 agent 给每张表的外层包一层元素并打标记**:
+对照页同一页面里有多张表时(m12「上下布局」:上方物料单据主表 + 下方入库明细子表,原型是一个 `.smart-table` 里两张卡,对照页是两个 `SmartTable` 根),**模块 agent 给每张表的外层包一层元素并打标记**:
 
 - `data-parity="main"`:主表(物料单据)——`th` / 行 / 分页 / chips 读数、`table card / toolbar / data table / thead / pagination / bottom row` 都限定在它里面。
 - `data-parity="sub"`:子表(入库明细)——读 `sub card / sub table / sub thead / sub row0 / sub sum row`(对照页选择器见 `modules.mjs` 的 12 项:`[data-parity="sub"] .smart-table-card`、`… .n-data-table`、`… .n-data-table-tr--summary`)。
 
-原型侧没有这个属性,靠类名(`.sub-card` 等)定位,不用改原型。对照页没打标记之前,m12 的 main / sub 读数全是 `-`,并会触发就绪超时警告。其他模块只有一张表时不需要标记。
+原型侧没有这个属性,靠类名(`.sub-card` 等)定位,不用改原型。m12 的 `root` 读原型 `.smart-table` / 对照页 `.m12`;设了 scope 的模块里 `btns` 只读主表,子表按钮看 `list:sub btns`。对照页没打标记之前,m12 的 main / sub 读数全是 `-`,并会触发就绪超时警告。其他模块只有一张表时不需要标记。
 
 ## interact.mjs — 交互态弹层读数
 
