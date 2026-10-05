@@ -80,7 +80,7 @@ The table follows the 14 modules of the component preview (sidebar groups Query 
 | Group | Feature | How to turn it on | Preview |
 |---|---|---|---|
 | **Table basics** | Remote `fetcher` / static `data`: race-guarded requests, empty params stripped, page restored on failure, `@error`, empty state, `immediate: false` for no first request | `fetcher` / `data` | m8 |
-| | Pagination: official `simple` pager, 100 per page by default, page-size options vary with `fill-height`; without `fill-height`, paging scrolls back to the card top | default | m2–m14 (scroll-back: m12) |
+| | Pagination: official `simple` pager, 100 per page by default, page-size options vary with `fill-height`; without `fill-height`, paging scrolls back to the card top | default | m2–m14 |
 | | Selection, expandable rows, index column, summary row (`summary`), grouped headers, pinned columns | `type: 'selection' / 'expand' / 'index'`, `children`, `fixed` | m5 |
 | **Query & filter** | Search form: `search` on a column, control auto-picked (input / number / select / date / date range / switch / custom), collapsible / inline | `search: true` | m1 |
 | | ★ Query builder: "field + operator + value" builder merged into the table card; "More conditions" opens a multi-condition panel | `:search="{ container: 'table' }"` | m2 |
@@ -95,7 +95,7 @@ The table follows the 14 modules of the component preview (sidebar groups Query 
 | | ★ Editable grid: Excel-style cell editing, editors inferred from the data type, Excel paste, undo, row-level read-only, async validation, batch save + dirty marks + discard, optional per-cell save; on the narrow tier a card tap opens a bottom drawer | `editable` + `@save` | m14 |
 | | Table picker: the standalone `SmartSelectTable`, also the engine behind the grid's `select-table` editor (picking one row fills other columns too) | `SmartSelectTable` / `editorProps` | m14 (as the editor); standalone usage in `/playground.html` |
 | **Layout & big data** | Fill the parent + virtual scroll, in-page maximize, batch bar, "More" menu, toolbar icons | `fill-height`, `toolbar.maximize`, `#batch`, `toolbar.more` | m2–m9 |
-| | Embedded tables: slim sub-table (no search / toolbar / pager, `striped`, summary row), a picker table inside a dialog, scroll-back on paging for the main table | `search: false`, `toolbar: false`, `pagination: false` | m12 |
+| | Stacked layout: a main table on top that fills the remaining height (virtual scrolling), a slim sub-table below (no search / toolbar / pager, `striped`, summary row), plus a picker table inside a dialog | `fill-height`, `search: false`, `toolbar: false`, `pagination: false` | m12 |
 | **Theme & i18n** | Light / dark themes, `labels` evaluated at render time, `zhCNLabels`, function-style column titles / option labels, density (compact / comfortable), page background | `<n-config-provider>`, `labels`, `default-density` | m13 |
 
 Also: full TypeScript types; `useSmartTable` (the UI-agnostic data core) and the filter-core helpers can be used on their own (see [Other exports](#other-exports)).

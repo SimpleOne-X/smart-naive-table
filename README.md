@@ -80,7 +80,7 @@
 | 分组 | 功能 | 怎么开 | 预览 |
 |---|---|---|---|
 | **表格基础** | 远程 `fetcher` / 静态 `data` 两种数据源：请求防竞态、空参数剔除、失败时页码还原、`@error`、空状态、`immediate: false` 首屏不请求 | `fetcher` / `data` | m8 |
-| | 分页：官方 `simple` 分页，默认每页 100，可选项随 `fill-height` 区分；不开 `fill-height` 时翻页自动回卡片顶部 | 默认 | m2–m14（翻页回顶看 m12） |
+| | 分页：官方 `simple` 分页，默认每页 100，可选项随 `fill-height` 区分；不开 `fill-height` 时翻页自动回卡片顶部 | 默认 | m2–m14 |
 | | 勾选、展开行、序号列、合计行（`summary`）、多级表头、固定列 | `type: 'selection' / 'expand' / 'index'`、`children`、`fixed` | m5 |
 | **查询与过滤** | 搜索表单：列上 `search`，自动选控件（输入 / 数字 / 下拉 / 日期 / 日期范围 / 开关 / 自定义），可折叠 / 单行 | `search: true` | m1 |
 | | ★ 条件搜索：「字段 + 比较符 + 值」条件构造器，并入表格卡片，点「更多条件」展开多条件面板 | `:search="{ container: 'table' }"` | m2 |
@@ -95,7 +95,7 @@
 | | ★ 可编辑表格：Excel 式单元格编辑，按数据类型推断控件，Excel 粘贴、撤销、行级只读、异步校验、批量保存 + 脏标记 + 放弃，可选即时保存；窄档点卡片开底部抽屉 | `editable` + `@save` | m14 |
 | | 下拉表格选择：独立组件 `SmartSelectTable`，也是可编辑表格 `select-table` 编辑器的内核（选一行同时填其它列） | `SmartSelectTable` / `editorProps` | m14（编辑器）；独立用法见 `/playground.html` |
 | **布局与大数据** | 铺满父容器 + 虚拟滚动、页面内放大、批量栏、「更多」菜单、工具栏图标 | `fill-height`、`toolbar.maximize`、`#batch`、`toolbar.more` | m2–m9 |
-| | 嵌入式表格：精简子表（无搜索 / 工具栏 / 分页、`striped`、合计行）、弹窗里的选择表、主表翻页回顶 | `search: false`、`toolbar: false`、`pagination: false` | m12 |
+| | 上下布局：上方主表铺满剩余高度（虚拟滚动），下方精简子表（无搜索 / 工具栏 / 分页、`striped`、合计行），再加弹窗里的选择表 | `fill-height`、`search: false`、`toolbar: false`、`pagination: false` | m12 |
 | **主题与 i18n** | 明暗主题、`labels` 渲染期求值、`zhCNLabels`、函数式列标题 / 选项、密度（紧凑 / 舒适）、页面底色 | `<n-config-provider>`、`labels`、`default-density` | m13 |
 
 另外：完整 TypeScript 类型；`useSmartTable`（脱离 UI 的数据核心）、过滤内核函数等工具可单独使用（见 [其它导出](#其它导出)）。
