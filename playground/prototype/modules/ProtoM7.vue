@@ -6,7 +6,8 @@ import { ref } from 'vue'
 import { useMaterialPage } from '../data/m7-materialPage'
 import { fetchRows } from '../fetcher'
 import { SmartTable } from '../../../src/index'
-import { NButton, useThemeVars } from 'naive-ui'
+import { NButton } from 'naive-ui'
+import { CheckIcon, TrashIcon } from './shared/btn'
 import CrudModal from './shared/CrudModal.vue'
 import { ProtoAddButton, protoToolbar } from './shared/toolbar'
 import { useTier } from './shared/useTier'
@@ -16,7 +17,6 @@ const STORAGE_KEY = 'smart-naive-table-proto:persist'
 
 const crudRef = ref<InstanceType<typeof CrudModal> | null>(null)
 const { el, tier } = useTier()
-const themeVars = useThemeVars()
 const {
   t,
   tableProps,
@@ -48,7 +48,6 @@ function onSaved(p: { mode: 'create' | 'edit'; orig: string | null; no: string }
       :columns="columns"
       :fetcher="fetcher"
       row-key="no"
-      :title="t('物料单据')"
       :search="{ container: 'table' }"
       :toolbar="protoToolbar({ more })"
       :storage-key="STORAGE_KEY"
@@ -60,13 +59,19 @@ function onSaved(p: { mode: 'create' | 'edit'; orig: string | null; no: string }
         ><ProtoAddButton :label="t('新增')" @click="crudRef?.openCreate()"
       /></template>
       <template #batch="{ checkedRowKeys, clear }">
-        <n-button @click="onBatchApprove(checkedRowKeys, clear)">{{ t('批量审核') }}</n-button>
+        <n-button secondary type="primary" @click="onBatchApprove(checkedRowKeys, clear)">
+          <template #icon><CheckIcon /></template>
+          {{ t('批量审核') }}
+        </n-button>
         <n-button
-          :text-color="themeVars.errorColor"
+          secondary
+          type="error"
           aria-haspopup="dialog"
           @click="onBatchDelete(checkedRowKeys, clear)"
-          >{{ t('批量删除') }}</n-button
         >
+          <template #icon><TrashIcon /></template>
+          {{ t('批量删除') }}
+        </n-button>
       </template>
       <template #pagination-prefix="info">{{ t(`共 ${info.itemCount} 条`) }}</template>
     </SmartTable>

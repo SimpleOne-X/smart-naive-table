@@ -270,7 +270,7 @@ describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', ()
         '布局',
       ])
       expect(w.findAll('#modList .mod')).toHaveLength(13)
-      expect(w.find('.smart-table-title').text()).toBe('物料单据')
+      expect(w.find('.smart-table-title').exists()).toBe(false) // 单表模块工具栏不再画表名(设计 §2.14:页顶已有页面标题)
       const heads = w.findAll('thead th').map((th) => th.text())
       expect(heads).toEqual(
         expect.arrayContaining([
@@ -306,7 +306,7 @@ describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', ()
       '加载与错误处理',
       '增删改弹窗',
       '可编辑表格',
-      '嵌入式表格',
+      '上下布局',
     ])
     expect(mods.map((b) => b.find('.no').exists())).toEqual(Array(13).fill(false))
     expect(mods.map((b) => b.find('.hl').exists())).toEqual([
@@ -324,8 +324,8 @@ describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', ()
       false,
       false,
     ]) // 原型 ★:条件搜索 / 表头过滤 / 字典 / 列设置
-    // 状态:只有「可编辑表格」是「提议」(带徽标),其余「已定」不显示
-    expect(mods.map((b) => b.find('.st').exists())).toEqual([...Array(11).fill(false), true, false])
+    // 状态:全部「已定」,侧栏没有状态徽标(可编辑表格 2026-10-05 起不再是提议)
+    expect(mods.map((b) => b.find('.st').exists())).toEqual(Array(13).fill(false))
     expect(mods.map((b) => b.classes('on'))).toEqual([false, false, true, ...Array(10).fill(false)])
     expect(w.find('.stage-head h2').text()).toBe('表头过滤')
     expect(w.find('.crumb').text().replace(/\s+/g, ' ')).toBe(
@@ -384,7 +384,7 @@ describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', ()
       // 列标题是函数(随外壳语言渲染期求值),断言取函数求值结果
       expect(cols[1]).toMatchObject({ type: 'index', width: 64, fixed: 'left' })
       expect(cols[1].title()).toBe('序号')
-      expect(cols.at(-1)).toMatchObject({ key: 'actions', fixed: 'right', width: 120 })
+      expect(cols.at(-1)).toMatchObject({ key: 'actions', fixed: 'right', width: 140 })
       const status = cols.find((c) => c.key === 'status')
       expect(status.tag).toBe(true)
       expect(status.options.map((o: any) => [o.value, o.tagType])).toEqual([
@@ -439,7 +439,7 @@ describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', ()
     }
   })
 
-  it('行内「删除」先弹 NPopconfirm「确认删除该行?」,点确认才删', async () => {
+  it('行内「删除」先弹 NPopconfirm「确认删除该行?」,点气泡里的「删除」(实心红)才删;「取消」是淡灰', async () => {
     const w = mountApp(2)
     await flushPromises()
     const actions = columnsOf(w).at(-1)
@@ -453,9 +453,13 @@ describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', ()
     await flushPromises()
     expect(document.body.textContent).toContain('确认删除该行?')
     expect(DATA.some((r) => r.no === row.no)).toBe(true) // 还没删
-    const ok = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
-      (b) => b.textContent?.trim() === '确认',
-    )!
+    // 设计 §2.15 B6:气泡里最终确认的按钮是实心红「删除」,「取消」是淡灰(触发它的行内「删除」是无底红字,不在气泡里)
+    const pop = [...document.body.querySelectorAll<HTMLButtonElement>('.n-popconfirm button')]
+    const cancel = pop.find((b) => b.textContent?.trim() === '取消')!
+    expect(cancel.classList.contains('n-button--secondary')).toBe(true)
+    const ok = pop.find((b) => b.textContent?.trim() === '删除')!
+    expect(ok.classList.contains('n-button--error-type')).toBe(true)
+    expect(ok.classList.contains('n-button--secondary')).toBe(false)
     ok.click()
     await flushPromises()
     expect(DATA.some((r) => r.no === row.no)).toBe(false)

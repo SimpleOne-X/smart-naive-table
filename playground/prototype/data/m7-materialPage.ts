@@ -2,7 +2,7 @@
 // 三个模块的区别只有:后端(fetcher)、storageKey、immediate、新增 / 编辑怎么处理,其余与原型模块 2 同一张表。
 // 必须在 setup 里调用(用到 useDialog / useProtoTable)。
 import { computed, h, ref } from 'vue'
-import { NButton, NPopconfirm, NSpace, useDialog } from 'naive-ui'
+import { NPopconfirm, NSpace, useDialog } from 'naive-ui'
 import type {
   SmartTableColumn,
   SmartTableInst,
@@ -12,7 +12,13 @@ import type {
 import { CSV_HEAD, approveRows, delRow, delRows, rowsToCsv, type Row } from '../data'
 import { queryRows } from '../fetcher'
 import { materialCols } from '../modules/shared/materialCols'
-import { ACT_BTN, downloadCsv, moreOptions } from '../modules/shared/toolbar'
+import { downloadCsv, moreOptions } from '../modules/shared/toolbar'
+import {
+  DELETE_DIALOG_BTNS,
+  DELETE_POPCONFIRM_BTNS,
+  deleteTrigger,
+  editAction,
+} from '../modules/shared/btn'
 import { useProtoTable } from '../modules/shared/useProtoTable'
 
 export interface MaterialPageOpts {
@@ -40,18 +46,17 @@ export function useMaterialPage(opts: MaterialPageOpts) {
   /* 删除:行内「删除」先弹 NPopconfirm(文案「确认删除该行?」),点「确认」才真删 */
   const rowActions = (row: Row) =>
     h(NSpace, { size: 12, wrapItem: false }, () => [
-      h(NButton, { text: true, style: ACT_BTN, onClick: () => opts.onEdit?.(row) }, () =>
-        t('编辑'),
-      ),
+      editAction(t('编辑'), () => opts.onEdit?.(row)),
       h(
         NPopconfirm,
         {
           onPositiveClick: () => void onDel(row.no),
-          positiveText: t('确认'),
+          positiveText: t('删除'),
           negativeText: t('取消'),
+          ...DELETE_POPCONFIRM_BTNS,
         },
         {
-          trigger: () => h(NButton, { text: true, type: 'error', style: ACT_BTN }, () => t('删除')),
+          trigger: () => deleteTrigger(t('删除')),
           default: () => t('确认删除该行?'),
         },
       ),
@@ -108,8 +113,9 @@ export function useMaterialPage(opts: MaterialPageOpts) {
     dialog.warning({
       title: t('确认删除'),
       content: t(`确定删除所选 ${keys.length} 项吗?`),
-      positiveText: t('确认'),
+      positiveText: t('删除'),
       negativeText: t('取消'),
+      ...DELETE_DIALOG_BTNS,
       onPositiveClick: async () => {
         const n = delRows(keys.map(String))
         clear()

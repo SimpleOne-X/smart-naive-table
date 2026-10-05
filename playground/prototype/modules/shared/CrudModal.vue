@@ -125,6 +125,7 @@ defineExpose({ openCreate: crud.openCreate, openEdit: crud.openEdit, crud })
         closable
         :native-scrollbar="true"
         body-content-style="padding: 16px 24px 8px"
+        footer-style="border-top: none"
       >
         <n-form
           ref="formRef"
@@ -183,10 +184,14 @@ defineExpose({ openCreate: crud.openCreate, openEdit: crud.openEdit, crud })
           /></n-form-item>
         </n-form>
         <template #footer>
-          <n-space justify="end" style="flex: 1 1 auto">
-            <n-button size="large" :disabled="crud.submitting.value" @click="crud.close()">{{
-              t('取消')
-            }}</n-button>
+          <div class="proto-sheet-foot">
+            <n-button
+              secondary
+              size="large"
+              :disabled="crud.submitting.value"
+              @click="crud.close()"
+              >{{ t('取消') }}</n-button
+            >
             <n-button
               size="large"
               type="primary"
@@ -194,7 +199,7 @@ defineExpose({ openCreate: crud.openCreate, openEdit: crud.openEdit, crud })
               @click="onSave"
               >{{ t('保存') }}</n-button
             >
-          </n-space>
+          </div>
         </template>
       </n-drawer-content>
     </n-drawer>
@@ -265,10 +270,20 @@ defineExpose({ openCreate: crud.openCreate, openEdit: crud.openEdit, crud })
     </n-form>
     <template #footer>
       <n-space justify="end" size="small">
-        <n-button :disabled="crud.submitting.value" @click="crud.close()">{{ t('取消') }}</n-button>
-        <n-button type="primary" :loading="crud.submitting.value" @click="onSave">{{
-          t('保存')
-        }}</n-button>
+        <n-button
+          secondary
+          style="min-width: 80px"
+          :disabled="crud.submitting.value"
+          @click="crud.close()"
+          >{{ t('取消') }}</n-button
+        >
+        <n-button
+          type="primary"
+          style="min-width: 80px"
+          :loading="crud.submitting.value"
+          @click="onSave"
+          >{{ t('保存') }}</n-button
+        >
       </n-space>
     </template>
   </n-modal>
@@ -296,5 +311,16 @@ defineExpose({ openCreate: crud.openCreate, openEdit: crud.openEdit, crud })
 /* 窄档 label 区 72px 放不下「物料编码 + 星号」:不换行(原型 .fm-lab white-space: nowrap) */
 .proto-crud-drawer .n-form-item-label {
   white-space: nowrap;
+}
+
+/* 窄档底部抽屉的页脚:两个按钮各占一半,不画分隔线(设计 §2.15 B3) */
+.proto-sheet-foot {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 8px;
+}
+.proto-sheet-foot > .n-button {
+  flex: 1 1 0;
+  min-width: 0;
 }
 </style>

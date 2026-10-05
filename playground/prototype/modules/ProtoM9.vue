@@ -4,17 +4,17 @@
 // 表单:必填(编码 / 名称 / 日期)校验;提交带 loading(700ms 后端);编码唯一是后端业务规则 → 失败 message.error 且窗口保持;
 // 成功「操作成功」:新增 → search() 回第 1 页,编辑 → refresh() 停在当前页。
 import { ref } from 'vue'
-import { NButton, useThemeVars } from 'naive-ui'
+import { NButton } from 'naive-ui'
 import { SmartTable } from '../../../src/index'
 import { useMaterialPage } from '../data/m7-materialPage'
 import { fetchRows } from '../fetcher'
+import { CheckIcon, TrashIcon } from './shared/btn'
 import CrudModal from './shared/CrudModal.vue'
 import { ProtoAddButton, protoToolbar } from './shared/toolbar'
 import { useTier } from './shared/useTier'
 
 const crudRef = ref<InstanceType<typeof CrudModal> | null>(null)
 const { el, tier } = useTier()
-const themeVars = useThemeVars()
 const {
   t,
   tableProps,
@@ -48,7 +48,6 @@ function onSaved(p: { mode: 'create' | 'edit'; orig: string | null; no: string }
       :columns="columns"
       :fetcher="fetcher"
       row-key="no"
-      :title="t('物料单据')"
       :search="{ container: 'table' }"
       :toolbar="protoToolbar({ more })"
       fill-height
@@ -59,13 +58,19 @@ function onSaved(p: { mode: 'create' | 'edit'; orig: string | null; no: string }
         ><ProtoAddButton :label="t('新增')" @click="crudRef?.openCreate()"
       /></template>
       <template #batch="{ checkedRowKeys, clear }">
-        <n-button @click="onBatchApprove(checkedRowKeys, clear)">{{ t('批量审核') }}</n-button>
+        <n-button secondary type="primary" @click="onBatchApprove(checkedRowKeys, clear)">
+          <template #icon><CheckIcon /></template>
+          {{ t('批量审核') }}
+        </n-button>
         <n-button
-          :text-color="themeVars.errorColor"
+          secondary
+          type="error"
           aria-haspopup="dialog"
           @click="onBatchDelete(checkedRowKeys, clear)"
-          >{{ t('批量删除') }}</n-button
         >
+          <template #icon><TrashIcon /></template>
+          {{ t('批量删除') }}
+        </n-button>
       </template>
       <template #pagination-prefix="info">{{ t(`共 ${info.itemCount} 条`) }}</template>
     </SmartTable>

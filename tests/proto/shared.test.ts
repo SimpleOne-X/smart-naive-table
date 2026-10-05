@@ -122,7 +122,7 @@ describe('materialCols.ts', () => {
     expect(cols[1]).toMatchObject({ type: 'index', width: 64, fixed: 'left' })
     expect(cols.at(-1)).toMatchObject({
       key: 'actions',
-      width: 120,
+      width: 140,
       fixed: 'right',
       resizable: false,
       hideInSetting: true,

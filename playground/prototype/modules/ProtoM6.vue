@@ -21,7 +21,6 @@ const columns = computed(() => dictColumns(t))
       :columns="columns"
       :fetcher="fetchDict"
       row-key="no"
-      title="物料字典"
       :search="{ container: 'table' }"
       :toolbar="protoToolbar()"
       fill-height

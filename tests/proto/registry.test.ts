@@ -81,7 +81,7 @@ describe('模块注册表', () => {
     expect(new Set(GROUPS.flatMap((g) => g.keys)).size).toBe(13)
   })
 
-  it('natural / rowClick 与原型 MC 一致(原型 MC 里 natural: 模块 10、12;rowClick: 模块 11)', () => {
+  it('natural / rowClick 与原型 MC 一致(原型 MC 里 natural: 仅模块 10;rowClick: 模块 11;模块 12 已改成恒为一屏)', () => {
     const mc = html.slice(html.indexOf('const MC = {'), html.indexOf('const MCx'))
     for (const [key] of protoMods) {
       const m = new RegExp(`^  ${key}:\\s*\\{[\\s\\S]*?(?=^  \\w+:\\s*\\{|^\\};)`, 'm').exec(mc)
@@ -89,7 +89,7 @@ describe('模块注册表', () => {
       expect(!!byKey(key as any).natural, `${key}.natural`).toBe(/natural:\s*true/.test(m![0]))
       expect(!!byKey(key as any).rowClick, `${key}.rowClick`).toBe(/rowClick:\s*true/.test(m![0]))
     }
-    expect(MODULES.filter((m) => m.natural).map((m) => m.no)).toEqual([10, 12])
+    expect(MODULES.filter((m) => m.natural).map((m) => m.no)).toEqual([10])
     expect(MODULES.filter((m) => m.rowClick).map((m) => m.no)).toEqual([11])
   })
 

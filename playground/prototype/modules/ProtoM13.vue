@@ -42,14 +42,17 @@ import {
 } from '../data'
 import { MOCK_DELAY, fetchRows, queryRows } from '../fetcher'
 import { textW } from '../i18n'
+import {
+  CheckIcon,
+  DELETE_DIALOG_BTNS,
+  DELETE_POPCONFIRM_BTNS,
+  TrashIcon,
+  deleteTrigger,
+  editAction,
+} from './shared/btn'
 import { materialCols } from './shared/materialCols'
 import { STATUS_VALUES } from './shared/options'
-import {
-  ACT_BTN,
-  downloadCsv,
-  moreOptions as makeMoreOptions,
-  protoToolbar,
-} from './shared/toolbar'
+import { downloadCsv, moreOptions as makeMoreOptions, protoToolbar } from './shared/toolbar'
 import { useProtoTable } from './shared/useProtoTable'
 
 const { shell, t, tableProps, toast, message } = useProtoTable()
@@ -102,12 +105,17 @@ function onMore(key: string | number) {
 
 const rowActions = (row: Row) =>
   h(NSpace, { size: 12, wrapItem: false }, () => [
-    h(NButton, { text: true, style: ACT_BTN, onClick: () => crud.openEdit(row) }, () => t('编辑')),
+    editAction(t('编辑'), () => crud.openEdit(row)),
     h(
       NPopconfirm,
-      { onPositiveClick: () => void onDel(row.no) },
       {
-        trigger: () => h(NButton, { text: true, type: 'error', style: ACT_BTN }, () => t('删除')),
+        onPositiveClick: () => void onDel(row.no),
+        positiveText: t('删除'),
+        negativeText: t('取消'),
+        ...DELETE_POPCONFIRM_BTNS,
+      },
+      {
+        trigger: () => deleteTrigger(t('删除')),
         default: () => t('确认删除该行?'),
       },
     ),
@@ -163,8 +171,9 @@ function onBatchDelete(keys: Array<string | number>, clear: () => void) {
   dialog.warning({
     title: t('确认删除'),
     content: t(`确定删除所选 ${keys.length} 项吗?`),
-    positiveText: t('确认'),
+    positiveText: t('删除'),
     negativeText: t('取消'),
+    ...DELETE_DIALOG_BTNS,
     onPositiveClick: async () => {
       const n = delRows(keys.map(String))
       clear()
@@ -245,7 +254,6 @@ async function onSave() {
       :columns="columns"
       :fetcher="fetcher"
       row-key="no"
-      :title="t('物料单据')"
       :search="{ container: 'table' }"
       :toolbar="toolbar"
       fill-height
@@ -274,13 +282,19 @@ async function onSave() {
         </n-button>
       </template>
       <template #batch="{ checkedRowKeys, clear }">
-        <n-button @click="onBatchApprove(checkedRowKeys, clear)">{{ t('批量审核') }}</n-button>
+        <n-button secondary type="primary" @click="onBatchApprove(checkedRowKeys, clear)">
+          <template #icon><CheckIcon /></template>
+          {{ t('批量审核') }}
+        </n-button>
         <n-button
-          :text-color="themeVars.errorColor"
+          secondary
+          type="error"
           aria-haspopup="dialog"
           @click="onBatchDelete(checkedRowKeys, clear)"
-          >{{ t('批量删除') }}</n-button
         >
+          <template #icon><TrashIcon /></template>
+          {{ t('批量删除') }}
+        </n-button>
       </template>
       <template #pagination-prefix="info">{{ t(`共 ${info.itemCount} 条`) }}</template>
     </SmartTable>
@@ -350,12 +364,20 @@ async function onSave() {
       </n-form>
       <template #footer>
         <n-space justify="end">
-          <n-button :disabled="crud.submitting.value" @click="crud.close()">{{
-            t('取消')
-          }}</n-button>
-          <n-button type="primary" :loading="crud.submitting.value" @click="onSave">{{
-            t('保存')
-          }}</n-button>
+          <n-button
+            secondary
+            style="min-width: 80px"
+            :disabled="crud.submitting.value"
+            @click="crud.close()"
+            >{{ t('取消') }}</n-button
+          >
+          <n-button
+            type="primary"
+            style="min-width: 80px"
+            :loading="crud.submitting.value"
+            @click="onSave"
+            >{{ t('保存') }}</n-button
+          >
         </n-space>
       </template>
     </n-modal>

@@ -10,6 +10,7 @@ import { WIDE_DATA, receiptsOf, wideRowsToCsv, type WideRow } from '../data/m5-w
 import { fetchWide } from '../backends/m5-wide'
 import { OPS_BY_TYPE as ACT } from './shared/ops'
 import { ACT_BTN, protoToolbar, downloadCsv } from './shared/toolbar'
+import { DownloadIcon } from './shared/btn'
 import { useProtoTable } from './shared/useProtoTable'
 
 const { t, tableProps, toast } = useProtoTable()
@@ -266,7 +267,6 @@ function onExportSel(keys: Array<string | number>) {
       :columns="columns"
       :fetcher="fetchWide"
       row-key="no"
-      title="物料清单"
       :search="{ container: 'table' }"
       :toolbar="protoToolbar()"
       :default-page-size="20"
@@ -279,7 +279,10 @@ function onExportSel(keys: Array<string | number>) {
       v-model:expanded-row-keys="expanded"
     >
       <template #batch="{ checkedRowKeys }">
-        <n-button @click="onExportSel(checkedRowKeys)">{{ t('导出所选') }}</n-button>
+        <n-button secondary @click="onExportSel(checkedRowKeys)">
+          <template #icon><DownloadIcon /></template>
+          {{ t('导出所选') }}
+        </n-button>
       </template>
       <template #pagination-prefix="info">{{ t(`共 ${info.itemCount} 条`) }}</template>
     </SmartTable>

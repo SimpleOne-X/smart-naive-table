@@ -106,7 +106,12 @@ const columns: SmartTableColumn<DemoRow>[] = [
           }),
           h(
             NButton,
-            { size: 'tiny', style: 'margin-top:8px', onClick: () => (setValue(null), close()) },
+            {
+              size: 'tiny',
+              secondary: true,
+              style: 'margin-top:8px',
+              onClick: () => (setValue(null), close()),
+            },
             () => tt('清除', 'Clear')(),
           ),
         ])
@@ -120,11 +125,12 @@ const columns: SmartTableColumn<DemoRow>[] = [
 <template>
   <div ref="hostRef">
     <n-space align="center" :size="12" style="margin-bottom: 12px">
-      <n-button size="small" @click="tableRef?.clearFilters()">{{
+      <n-button size="small" secondary @click="tableRef?.clearFilters()">{{
         tt('清空全部过滤', 'Clear all filters')()
       }}</n-button>
       <n-button
         size="small"
+        secondary
         @click="
           tableRef?.setFilter('status', {
             logic: 'or',
@@ -136,6 +142,7 @@ const columns: SmartTableColumn<DemoRow>[] = [
       </n-button>
       <n-button
         size="small"
+        secondary
         @click="
           tableRef?.setFilter('status', {
             logic: 'and',

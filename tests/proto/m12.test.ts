@@ -14,7 +14,7 @@ import {
 import { DATA } from '../../playground/prototype/data'
 import { mountApp, useAppStubs } from './_mount'
 
-// 模块 12「嵌入式表格」:入库明细子表(静态 data、无搜索 / 工具栏 / 分页、striped、合计行)+ 选择物料弹窗 + 物料单据主表(不开 fillHeight)。
+// 模块 12「上下布局」(设计 §12.3):上方物料单据主表(fillHeight + 虚拟滚动,每页 100 行)+ 下方入库明细子表(静态 data、无搜索 / 工具栏 / 分页、striped、合计行、封顶高度)+ 选择物料弹窗。
 useAppStubs()
 // SmartTable 是泛型组件,findComponent 的重载推不出 props:收窄成 DefineComponent 只为取 props / vm
 const SmartTableComp = SmartTable as unknown as DefineComponent<{
@@ -79,6 +79,8 @@ describe('模块 12 页面', { timeout: 20000 }, () => {
     const sub = document.querySelector('[data-parity="sub"]')!
     const main = document.querySelector('[data-parity="main"]')!
     expect(sub && main).toBeTruthy()
+    // 上下对调:物料单据在上、入库明细在下(设计 §12.3)
+    expect(main.compareDocumentPosition(sub) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(sub.querySelector('.smart-table-title')?.textContent).toBe('入库明细')
     expect(main.querySelector('.smart-table-title')?.textContent).toBe('物料单据')
     expect(sub.querySelector('.n-pagination')).toBeNull()
@@ -86,8 +88,9 @@ describe('模块 12 页面', { timeout: 20000 }, () => {
     expect(sub.querySelector('button[aria-label]')).toBeNull()
     const tables = w.findAllComponents(SmartTableComp)
     expect(tables).toHaveLength(2)
-    expect(tables[0].props('data')).toHaveLength(6)
-    expect(tables[1].props('fillHeight')).toBeFalsy() // 主表整页滚动,不开 fillHeight
+    expect(tables[0].props('fillHeight')).toBe(true) // 主表在上、铺满剩余高度 + 虚拟滚动,整页恒为一屏
+    expect(tables[1].props('data')).toHaveLength(6) // 子表在下
+    expect(tables[1].props('fillHeight')).toBeFalsy()
     w.unmount()
   })
 
@@ -120,16 +123,14 @@ describe('模块 12 页面', { timeout: 20000 }, () => {
     w.unmount()
   })
 
-  it('主表:每页 20 行,带工具栏条件搜索与完整列', async () => {
+  it('主表:每页 100 行(虚拟滚动看多出的行),带工具栏条件搜索与完整列', async () => {
     const w = await mountApp(12)
     await settle()
-    const main = w.findAllComponents(SmartTableComp)[1]
+    const main = w.findAllComponents(SmartTableComp)[0]
     const vm = main.vm as unknown as { rows: unknown[]; pagination: { pageSize: number } }
-    expect(vm.rows).toHaveLength(20)
-    expect(vm.pagination.pageSize).toBe(20)
-    expect(
-      document.querySelectorAll('[data-parity="main"] .n-data-table-tbody .n-data-table-tr').length,
-    ).toBe(20)
+    expect(vm.rows).toHaveLength(100)
+    expect(vm.pagination.pageSize).toBe(100)
+    // 虚拟滚动:DOM 里只渲染视口内的行(jsdom 没有布局,不断言行数),数据层有整页 100 行
     expect(document.querySelector('[data-parity="main"] .smart-table-cond')).toBeTruthy()
     expect(
       [...document.querySelectorAll('[data-parity="main"] thead th')].map((th) =>
@@ -191,7 +192,7 @@ describe('模块 12 页面', { timeout: 20000 }, () => {
     input.value = 'M1099'
     input.dispatchEvent(new Event('input'))
     await settle()
-    ;[...modal.querySelectorAll('button')].find((b) => b.textContent === '搜索')!.click()
+    ;[...modal.querySelectorAll('button')].find((b) => b.textContent?.trim() === '搜索')!.click()
     await settle()
     const rows = [...modal.querySelectorAll('.n-data-table-tbody .n-data-table-tr')]
     expect(rows).toHaveLength(1)

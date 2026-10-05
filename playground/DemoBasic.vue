@@ -1,12 +1,23 @@
 <script setup lang="ts">
 // 主 demo:列驱动搜索表单、远程分页、字典/tag/格式化渲染、工具栏、列设置持久化。
-import { h } from 'vue'
-import { NButton, useMessage } from 'naive-ui'
+import { ref } from 'vue'
+import {
+  NButton,
+  NDescriptions,
+  NDescriptionsItem,
+  NDrawer,
+  NDrawerContent,
+  useMessage,
+} from 'naive-ui'
 import { SmartTable, type SmartTableColumn } from '../src/index'
 import { fetchDeptOptions, mockPage, type DemoRow } from './mock'
 import { labels, tt } from './locale'
+import { detailAction } from './prototype/modules/shared/btn'
 
 const message = useMessage()
+// 行内「详情」:从右边弹出详情抽屉(与对照页模块 11 的详情抽屉同一做法:右侧 400px、页脚不画分隔线)
+const detail = ref<DemoRow | null>(null)
+const showDetail = ref(false)
 
 const statusOptions = [
   { label: tt('在职', 'Active'), value: 1, tagType: 'success' as const },
@@ -85,16 +96,10 @@ const columns: SmartTableColumn<DemoRow>[] = [
     fixed: 'right',
     hideInSetting: true,
     render: (row) =>
-      h(
-        NButton,
-        {
-          size: 'small',
-          quaternary: true,
-          type: 'primary',
-          onClick: () => message.info(`row #${row.id}`),
-        },
-        () => tt('详情', 'View')(),
-      ),
+      detailAction(tt('详情', 'View')(), () => {
+        detail.value = row
+        showDetail.value = true
+      }),
   },
 ]
 </script>
@@ -116,4 +121,41 @@ const columns: SmartTableColumn<DemoRow>[] = [
     "
     @error="(e) => message.error(String(e))"
   />
+  <n-drawer v-model:show="showDetail" :width="400" placement="right">
+    <n-drawer-content
+      :title="tt('详情', 'Details')()"
+      closable
+      :native-scrollbar="false"
+      footer-style="border-top: none"
+    >
+      <n-descriptions
+        v-if="detail"
+        bordered
+        size="small"
+        :column="1"
+        label-placement="left"
+        :label-style="{ width: '108px' }"
+      >
+        <n-descriptions-item :label="tt('账号', 'Account')()">{{
+          detail.account
+        }}</n-descriptions-item>
+        <n-descriptions-item :label="tt('姓名', 'Name')()">{{ detail.name }}</n-descriptions-item>
+        <n-descriptions-item label="Email">{{ detail.email }}</n-descriptions-item>
+        <n-descriptions-item :label="tt('状态', 'Status')()">{{
+          statusOptions.find((o) => o.value === detail?.status)?.label() ?? detail.status
+        }}</n-descriptions-item>
+        <n-descriptions-item :label="tt('薪资', 'Salary')()">{{
+          detail.salary
+        }}</n-descriptions-item>
+        <n-descriptions-item :label="tt('创建时间', 'Created')()">{{
+          detail.createTime
+        }}</n-descriptions-item>
+      </n-descriptions>
+      <template #footer>
+        <n-button secondary style="min-width: 80px" @click="showDetail = false">{{
+          tt('关闭', 'Close')()
+        }}</n-button>
+      </template>
+    </n-drawer-content>
+  </n-drawer>
 </template>

@@ -125,7 +125,7 @@ describe('模块 5 对照页(ProtoApp ?m=5:真实库渲染)', () => {
     for (let i = 0; i < 10; i++) {
       await flushPromises()
       if (
-        w.find('.smart-table-title').exists() &&
+        w.find('.n-data-table').exists() &&
         w.findAll('.n-data-table-tbody .n-data-table-tr').length > 3
       )
         break
@@ -136,9 +136,9 @@ describe('模块 5 对照页(ProtoApp ?m=5:真实库渲染)', () => {
   const columnsOf = (w: ReturnType<typeof mount>): any[] =>
     (w.findComponent(SmartTable as any) as any).props('columns')
 
-  it('标题「物料清单」;两级表头:「库存」组头跨 3 列,下面是 可用 / 在途 / 锁定', async () => {
+  it('没有工具栏标题(设计 §2.14);两级表头:「库存」组头跨 3 列,下面是 可用 / 在途 / 锁定', async () => {
     const w = await mountM5()
-    expect(w.find('.smart-table-title').text()).toBe('物料清单')
+    expect(w.find('.smart-table-title').exists()).toBe(false) // 单表模块工具栏不再画表名(设计 §2.14:页顶已有页面标题)
     const group = w.findAll('thead th').find((th) => th.text() === '库存')!
     expect(group).toBeTruthy()
     expect(group.attributes('colspan')).toBe('3')

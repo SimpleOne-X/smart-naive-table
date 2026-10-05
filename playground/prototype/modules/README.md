@@ -17,7 +17,7 @@ playground/prototype/
     registry.ts           注册表(自动发现 ProtoM{N}.vue;不要改)
     ProtoPlaceholder.vue  没有 ProtoM{N}.vue 时的占位
     ProtoM5.vue … ProtoM13.vue        ← 各模块 agent 新建(文件名固定:ProtoM + 编号 + .vue)
-    shared/               共享件(见 §3);CrudModal.vue 是 B 组的
+    shared/               共享件(见 §3);CrudModal.vue 是 B 组的;btn.ts 是宿主按钮的统一写法(设计 §2.15)
   data/                   rand.ts(共享);其余 data/m{N}-<名>.ts  ← 各模块自己的数据
   backends/               memory.ts(共享);其余 backends/m{N}-<名>.ts ← 各模块自己的后端
 tests/proto/
@@ -43,9 +43,9 @@ tests/proto/
 外壳(`ProtoApp.vue`)提供:`NConfigProvider`(locale / dateLocale 随语言、官方 `component-options` 配了空状态托盘图标)、`NMessageProvider`、`NDialogProvider`(`useMessage()` / `useDialog()` 直接用,模块不要自己加 Provider)、`NLayout`(灰 / 白底)、`SMART_TABLE_DEFAULTS`(`align/titleAlign: left`、`tag: small bordered`、`labels` 随语言)。
 **不用 KeepAlive**:切模块 = 重新挂载(勾选清空、挂载即请求、`storageKey` 重读),与原型 `enterModule` 一致。
 
-`#stage[data-nat]`(模块 10 / 12,`natural`)与 `#stage[data-rowclick]`(模块 11 行 `cursor:pointer`)的样式外壳已写。
+`#stage[data-nat]`(只剩模块 10,`natural`)与 `#stage[data-rowclick]`(模块 11 行 `cursor:pointer`)的样式外壳已写。
 
-URL:`?m=1..13 &theme=light|dark &lang=zh|en &bg=gray|white &density=compact|comfortable`(缺省 `zh / gray / compact`,`theme` 跟随系统)。
+URL:`?m=1..14 &theme=light|dark &lang=zh|en &bg=gray|white &density=compact|comfortable`(缺省 `zh / gray / compact`,`theme` 跟随系统)。
 
 ### 模块骨架
 
@@ -76,7 +76,7 @@ const columns = computed(() => materialCols({ t, selection: true, index: true, m
 .proto-host > :deep(.smart-table) { flex: 1 1 0; }
 </style>
 ```
-natural 模块(10 / 12)不开 `fill-height`(整页在主区里滚动)。
+natural 模块(现在只剩 10)不开 `fill-height`(整页在主区里滚动);模块 12「上下布局」已不是 natural,恒为一屏(上方主表 `fill-height`,下方子表自然高度、封顶)。
 
 ### 必配项(除模块 1 外所有模块)
 
@@ -122,7 +122,7 @@ materialCols(o: { t; keys?: MaterialKey[]; selection?: boolean; index?: boolean
   actions?: (row, index) => VNodeChild; search?: boolean /*默认 true*/; memo?: boolean; patch?: Partial<Record<MaterialKey|'memo'|'actions', object>> }): SmartTableColumn<Row>[]
 MATERIAL_COLS   // 原型 COLS:no 112 / name 176(弹性 minWidth)/ owner 88 / status 96 / dept 88 / amount 104 / bizDate 112
 ```
-`selection` → 勾选(40,固定左);`index` → 序号(64,固定左);`actions` → 操作列(120,固定右、不可拖、不进列设置);`memo` → hideInTable 的「备注」构造器专用字段(原型 FIELD_DEFS 第 8 个)。
+`selection` → 勾选(40,固定左);`index` → 序号(64,固定左);`actions` → 操作列(140,固定右、不可拖、不进列设置;原型 ACTS_W,设计 §2.15 D 由 120 放宽,放得下「编辑 / 删除」两个带图标的文字按钮);`memo` → hideInTable 的「备注」构造器专用字段(原型 FIELD_DEFS 第 8 个)。
 标题 / options label 是函数;`placeholder` 是静态串 → 在 `computed` 里调用。`patch.amount = { width: 200 }` 是浅合并。
 
 ### `modules/shared/options.ts`
@@ -144,8 +144,22 @@ opsOf(type): FilterAction[]
 protoToolbar(opts?: { more?: ToolbarMoreOption[] } & Partial<ToolbarConfig>): ToolbarConfig   // 一律带 maximize: true
 moreOptions(t): ToolbarMoreOption[]      // 导出 / 导入 / 分隔线 / 下载导入模板(label 是函数)
 downloadCsv(name: string, text: string)  // UTF-8 BOM
-ProtoAddButton                            // <proto-add-button :label="t('新增')" type="primary" @click="…" />,放 #toolbar-right
+ProtoAddButton                            // <proto-add-button :label="t('新增')" @click="…" />,放 #toolbar-right
 ```
+`ProtoAddButton` **没有 `type` 属性**:所有模块(含模块 1)的「新增」都是淡绿底 + 加号(官方 `secondary` + `type="primary"`,设计 §2.15),图标盒调成 13px;只有 `label` 一个 prop、一个 `click` 事件。
+
+### `modules/shared/btn.ts`
+宿主按钮的统一写法(设计 §2.15):页面上的按钮 = 淡色底 + 左图标;表格行内的「编辑 / 删除」是无底文字按钮,只加颜色和小图标;确认弹窗 / 确认气泡的按钮按 macOS 两档。
+```ts
+editAction(label, onClick)            // 行内「编辑」:text + primary + 铅笔图标,按钮高 ACT_BTN(22px),图标 14px
+deleteTrigger(label)                  // 行内「删除」(放 NPopconfirm 的 trigger 里):text + error + 垃圾桶,不带点击回调
+removeAction(label, onClick)          // 子表行内「移除」:同「删除」写法,直接带点击回调
+DELETE_DIALOG_BTNS                    // NDialog 的 positiveButtonProps / negativeButtonProps:「删除」= 实心红、「取消」= 淡灰(secondary、关掉官方的 ghost、size medium),最小宽 80px
+DELETE_POPCONFIRM_BTNS                // NPopconfirm 的同名两个 props:取消 = 淡灰、删除 = 实心红(官方默认 small,不设最小宽)
+EditIcon  DownloadIcon  UserIcon      // 宿主图标(铅笔 / 下载 / 用户):只有宿主按钮才用,**不进库**(库零图标库依赖)
+// 另外把 src/icons.ts 里的按钮图标原样再导出,方便模块里写宿主按钮:CheckIcon ClearIcon FunnelIcon MagnifierIcon PlusIcon ResetIcon SortIcon TrashIcon(库内部用,不是从包入口导出的)
+```
+删除确认的用法:把它们展开进 `dialog.warning({ …, ...DELETE_DIALOG_BTNS })`,或 NPopconfirm 的 props(`{ ...DELETE_POPCONFIRM_BTNS, onPositiveClick }`,见 `ProtoM12.vue`)。
 
 ### `modules/shared/useTier.ts`
 ```ts

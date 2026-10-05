@@ -558,7 +558,7 @@ body {
   overflow: hidden;
 }
 
-/* natural 模块(原型 MC.<key>.natural:模块 10 / 12):整页在主区里滚动、不铺满视口(原型 #stage[data-nat] …) */
+/* natural 模块(原型 MC.<key>.natural:只有模块 10;模块 12 是上下布局,恒为一屏):整页在主区里滚动、不铺满视口(原型 #stage[data-nat] …) */
 #stage[data-nat] {
   flex: none;
 }
