@@ -579,7 +579,7 @@ describe('保存 / 放弃', () => {
     expect(w.find('td.smart-table-xerr').exists()).toBe(true)
   })
 
-  it('放弃修改:全部还原(改过的格回原值、新增行消失),发 @discard', async () => {
+  it('放弃修改(确认后):全部还原(改过的格回原值、新增行消失),发 @discard', async () => {
     const onDiscard = vi.fn()
     const w = mountTable({}, { onDiscard })
     await dirtyOne(w)
@@ -590,6 +590,12 @@ describe('保存 / 放弃', () => {
     await flushPromises()
     expect(w.findAll('.n-data-table-tbody tr')).toHaveLength(4)
     await btnByText(w, 'Discard changes')!.trigger('click')
+    await flushPromises()
+    // 点「放弃修改」只弹确认气泡,草稿还在;点气泡里的「放弃」才还原并发 @discard
+    expect(onDiscard).not.toHaveBeenCalled()
+    expect(w.findAll('.n-data-table-tbody tr')).toHaveLength(4)
+    const confirm = [...document.body.querySelectorAll<HTMLElement>('.n-popconfirm__panel button')]
+    confirm.find((b) => b.textContent?.trim() === 'Discard')!.click()
     await flushPromises()
     expect(onDiscard).toHaveBeenCalledTimes(1)
     expect(w.findAll('.n-data-table-tbody tr')).toHaveLength(3)

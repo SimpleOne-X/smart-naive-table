@@ -436,7 +436,7 @@ const columns: SmartTableColumn<Row>[] = [
 | 已生效条件 chips | `filter-chips`（表格下方、与分页同一行，点击重开面板、× 删一条） |
 | 批量栏 | 有 `{ type: 'selection' }` 列、绑了 `v-model:checked-row-keys`、写了 `#batch="{ checkedRowKeys, clear }"` 插槽，勾选后工具栏换成「本页全选 + 已选 N 项 + 你的按钮 + 取消选择」 |
 | 放大 | `:toolbar="{ maximize: true }"`：表格在页面内铺满视口（不调用浏览器全屏 API，默认层级 1999，宿主顶栏更高时 `maximize: { zIndex }`；Esc 先收浮层、再还原；挂载后不要运行时切换这个开关） |
-| 可编辑表格 | `editable` + `@save="({ changes, done, fail }) => ..."`。**一个布尔值就够用**：选中格再点 / Enter / F2 / 直接打字进入编辑，Enter / Tab / Shift+Enter 移动，Esc 放弃；改动留在草稿里（改过的格左上角小三角），工具栏出现「放弃修改」和「保存修改(N)」；新增行、删除所选（可恢复）也是待保存。控件按「列上写的 `editor` → `editorProps` 里有 `columns` + `data` / `fetcher`（外部 / 主数据）→ 下拉表格 → `options` / `format` → 数据值 → 输入框」自动推断（含数组值 + `options` → 多选；选项 > 8 个自动可搜索）；写了 `render` / `#cell-*` 的列不可编辑；`rules.required` 的列表头自动带红 `*`。Excel 粘贴 / 复制（Ctrl+V 多格块、Ctrl+C）、Ctrl+Z 撤销最近一次提交。保存前统一校验（含异步 `rules.validator`），第一个不合法的格被选中并滚进视口。行级只读：`editable: { rowReadonly: (row) => boolean }` 或列的 `readonly: (row, index) => boolean`。拖拽重排：序号列 `{ type: 'index' }` 自己跟着位置变、不产生脏标记（`@row-drag-sort` 里即时保存顺序，草稿按行主键跟着行走）；真要把排序号写进数据字段，用实例的 `setCell(rowKey, field, value)` 逐行改（走草稿，有脏标记、进 `@save`）。`editable: { save: 'cell' }` = 每提交一个格就立刻 `@save`（失败回滚该格）。翻页 / 搜索 / 排序不拦截，草稿跨页保留；有未保存修改时离开页面有浏览器提示，宿主路由守卫用实例的 `isDirty`。窄档（`card-on-narrow`）点卡片开底部抽屉表单、整行即时保存。**默认关，不开时行为完全不变**；必须监听 `@save`（宿主提交后调 `done()`，失败 `fail()` 保留草稿） |
+| 可编辑表格 | `editable` + `@save="({ changes, done, fail }) => ..."`。**一个布尔值就够用**：选中格再点 / Enter / F2 / 直接打字进入编辑，Enter / Tab / Shift+Enter 移动，Esc 放弃；改动留在草稿里（改过的格左上角小三角），工具栏出现「放弃修改」和「保存修改(N)」；新增行、删除所选（可恢复）也是待保存。控件按「列上写的 `editor` → `editorProps` 里有 `columns` + `data` / `fetcher`（外部 / 主数据）→ 下拉表格 → `options` / `format` → 数据值 → 输入框」自动推断（含数组值 + `options` → 多选；选项 > 8 个自动可搜索）；写了 `render` / `#cell-*` 的列不可编辑；`rules.required` 的列表头自动带红 `*`。Excel 粘贴 / 复制（Ctrl+V 多格块、Ctrl+C）、Ctrl+Z 撤销最近一次提交。保存前统一校验（含异步 `rules.validator`），第一个不合法的格被选中并滚进视口。行级只读：`editable: { rowReadonly: (row) => boolean }` 或列的 `readonly: (row, index) => boolean`。拖拽重排：序号列 `{ type: 'index' }` 自己跟着位置变、不产生脏标记（`@row-drag-sort` 里即时保存顺序，草稿按行主键跟着行走）；真要把排序号写进数据字段，用实例的 `setCell(rowKey, field, value)` 逐行改（走草稿，有脏标记、进 `@save`）。`editable: { save: 'cell' }` = 每提交一个格就立刻 `@save`（失败回滚该格）。点「放弃修改」先弹确认气泡（点「放弃」才还原）；翻页 / 搜索 / 排序不拦截，草稿跨页保留（被挡住的已改行在「保存修改(N)」旁标出「含 M 条当前不可见」）；有未保存修改时离开页面有浏览器提示，宿主路由守卫用实例的 `isDirty`。窄档（`card-on-narrow`）点卡片开底部抽屉表单、整行即时保存。**默认关，不开时行为完全不变**；必须监听 `@save`（宿主提交后调 `done()`，失败 `fail()` 保留草稿） |
 | 工具栏「更多」菜单 | `:toolbar="{ more: [{ label: '导出', key: 'export' }] }"` + `@more-select="(key) => ..."`（选项即官方 `NDropdown` 的 `options`；库不内置导出 / 导入） |
 | 单元格竖线 | 默认开启(内部 `single-line: false`);想回单线样式写 `:single-line="true"` |
 | 虚拟滚动 | `virtual-scroll` + `max-height` |
@@ -511,7 +511,7 @@ async function onSave({ changes, done, fail }: EditSavePayload<Row>) {
 - **推断**：`editor`（显式）→ `readonly` / `editor: false` → 有 `render` / `#cell-*` → 不可编辑 → `editorProps` 里有 `columns` 且有 `data` 或 `fetcher` → **`select-table`**（外部 / 主数据：下拉里是一张带搜索 + 分页的表，见下面的 `SmartSelectTable`）→ `options`（下拉；值是数组 = 多选）→ `format: 'date' | 'datetime' | 'money'` → 数据值（前 20 行第一个非空值：boolean / number / 日期串 / 含换行或超过 30 字 → 多行 / 其余 → 输入框）→ 输入框。`inferEditor(column, rows)` 是公开的纯函数。
 - **键盘与剪贴板**：↑ ↓ ← → / Tab / Shift+Tab 移动（只读列跳过；锁定的格可选中、可复制，只是不能编辑）；Enter / F2 进入编辑；直接打字替换原值；Space 切复选框；Delete 清空（必填列拒绝）；编辑中 Enter 提交下移、Shift+Enter 提交上移、Esc 放弃；Ctrl+C 复制选中格；Ctrl+V 粘贴 Excel 的单格或多格块（制表符分列、换行分行），从选中格起向右向下依次填充，按各列类型转换（数字去千分位、布尔认 TRUE / 是、选项按标签或值、日期补零）并校验，**任何一格不合法则整块不应用**；只读 / 锁定 / 待删的格跳过，超出当前列表的行忽略（不自动追加新行）；Ctrl+Z 撤销最近一次提交（栈 50，一次粘贴 = 一步，保存 / 放弃后清空，`save: 'cell'` 下不可用）。
 - **保存**：保存前统一校验（草稿格的同步规则 + 新增行全部格 + 异步校验的结果），不通过就不发 `@save`、选中第一个不合法的格并发 `@invalid`。异步 `rules.validator`：提交后单元格显示加载态、结果落定为不通过则标红（悬停看原因）、过期结果丢弃，「保存」会等它。
-- **翻页 / 搜索 / 排序**：不拦截；草稿叠在数据上，翻页 / 重新请求都保留（被筛选条件挡住的已改行看不见，但仍计入 N、仍会被保存）。**离开页面**：有未保存修改时注册 `beforeunload` 提示（`editable: { beforeunload: false }` 可关）；宿主的路由守卫用实例的 `isDirty` / `dirtyCount`，再配合 `save()` / `discard()`。
+- **翻页 / 搜索 / 排序**：不拦截；草稿叠在数据上，翻页 / 重新请求都保留（被筛选条件或翻页挡住的已改行看不见，但仍计入 N、仍会被保存，工具栏在「保存修改(N)」旁标出「含 M 条当前不可见」）。**离开页面**：有未保存修改时注册 `beforeunload` 提示（`editable: { beforeunload: false }` 可关）；宿主的路由守卫用实例的 `isDirty` / `dirtyCount`，再配合 `save()` / `discard()`。
 - **fillHeight / 虚拟滚动**：可用。草稿在仓库里不在 DOM 里，编辑中的格滚出窗口再滚回来内容还在；方向键 / Tab 走到还没渲染的行会自动滚进视口。
 - **下拉表格（`select-table`）**：外部 / 主数据（几十行以上、或来自接口）用它，小的静态枚举仍用 `options`（> 8 项自动可搜索）。`editorProps: { columns, data | fetcher, valueKey?, labelKey?, searchKeys?, fill? }`，单元格的值 = 选中行的 `labelKey` 字段（缺省 = 本列 key）；`fill(picked, row)` 返回 `{ 其它列 key: 值 }`，随选中一并写入（普通草稿编辑：各自脏标记、一次 Ctrl+Z 全部撤销、同样校验，任何一格不合法则整次不应用并标红）。粘贴的文本在有本地 `data` 时必须是已有的名称或 `valueKey` 编码（命中同样 `fill`），只给 `fetcher` 时照收文本。单元格内只支持单选（小枚举的多选用 `multiselect`）；窄档抽屉里它是一个触发框，点开贴底选择面板。
 - **新增行**：默认放第 1 行；`editable: { add: { position: 'bottom' } }` 追加到列表末尾（有顺序的数据，如工艺路线）。新增后自动进入编辑的是第一个「必填且为空」的格。`add: false` 隐藏工具栏按钮。
@@ -734,7 +734,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | `row-drag-sort` | `{ from, to, reordered }` | 行拖拽结束 |
 | `cell-change` | `{ row, key, value, oldValue }` | 可编辑表格：草稿变化（改了一个格），`row` 已带上这次改动 |
 | `save` | `{ changes: { updated, added, removed, rows }, done, fail }` | 可编辑表格：点「保存修改」（或 `save()`）。`changes.rows` 把三类拍平成每项带 `type`（`created` / `updated` / `deleted`）；宿主提交后调 `done()` 清草稿（远程自动刷新）/ `fail(e?)` 保留草稿（`save: 'cell'` 下失败回滚该格）；窄档抽屉的整行保存同样走它 |
-| `discard` | — | 可编辑表格：点「放弃修改」 |
+| `discard` | — | 可编辑表格：放弃全部改动。点「放弃修改」后在确认气泡里点「放弃」才触发（收到时就是已确认）；实例的 `discard()` 不弹气泡、同样触发 |
 | `invalid` | `{ row, key, message }` | 可编辑表格：保存时发现某格不合法（已选中并标红），可据此弹提示 |
 | `filter-change` | `key, value, state` | 表头过滤变化（`clearFilters`、模式 2 的批量提交时 `key` 为空串，且一次批量只触发一次） |
 | `column-resize` | `key, width` | 拖拽列宽（拖动过程中持续触发） |
@@ -824,7 +824,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | 条件构造器 | `searchBy`、`searchMoreConditions`、`searchConditionN` |
 | 批量栏 | `selectedCount`（含 `{n}`）、`clearSelection` |
 | 窄档 | `operations`、`sort`、`sortNone`、`sortAscend`、`sortDescend` |
-| 可编辑表格 | `editSave`（含 `{n}`）、`editDiscard`、`editAddRow`、`editDeleteSelected`、`editNewTitle`、`editEditTitle` 等（完整列表见 `SmartTableLabels`） |
+| 可编辑表格 | `editSave`（含 `{n}`）、`editDiscard`、`editDiscardConfirm`（含 `{n}`，放弃确认气泡的正文）、`editDiscardOk`、`editHiddenDirty`（含 `{n}`，「含 M 条当前不可见」）、`editAddRow`、`editDeleteSelected`、`editNewTitle`、`editEditTitle` 等（完整列表见 `SmartTableLabels`） |
 | 下拉表格选择 | `pickTotal`、`pickSelected`、`pickClearSel`、`pickOk` |
 
 ## 行为说明

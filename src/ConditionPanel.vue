@@ -181,7 +181,6 @@ function onRemove(i: number) {
         secondary
         :size="size"
         :disabled="draft.rows.length >= MAX_BUILDER_ROWS"
-        :theme-overrides="{ iconSizeSmall: '13px' }"
         @click="update(addRow(draft, fields))"
       >
         <template #icon><PlusIcon /></template>

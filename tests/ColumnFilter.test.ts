@@ -825,17 +825,59 @@ describe('ColumnFilter 面板排布(L0-5,对齐原型 .hpop)', () => {
     w.unmount()
   })
 
-  it('「添加条件」:官方 small 档的文字按钮,带加号图标,文字不带「+ 」前缀,也不是主色', async () => {
+  it('「添加条件」:淡灰 secondary 的 small 档按钮,带加号图标,文字不带「+ 」前缀,也不是主色', async () => {
     const w = await openPanel(conditionDef(), null)
     const add = q('.smart-table-filter-add')!
     expect(add.querySelector('svg')).not.toBeNull()
     expect(add.textContent!.trim()).toBe('添加条件')
     expect(add.classList.contains('n-button--primary-type')).toBe(false)
-    // 官方 small 档(与同一面板里 small 的值控件一致):字 14 / 图标 18 / 高取主题 heightSmall 28
+    expect(add.classList.contains('n-button--secondary')).toBe(true)
+    expect(add.classList.contains('n-button--text')).toBe(false)
+    // 官方 small 档(与同一面板里 small 的值控件一致):字 14 / 图标 18 / 高 heightSmall 28 / 内边距 0 10px
     expect(add.getAttribute('style')).toContain('--n-font-size: 14px')
     expect(add.getAttribute('style')).toContain('--n-icon-size: 18px')
-    expect(add.getAttribute('style')).toContain('height: 28px')
+    expect(add.getAttribute('style')).toContain('--n-height: 28px')
+    expect(add.getAttribute('style')).toContain('--n-padding: 0 10px')
     w.unmount()
+  })
+
+  it('按钮里的加号:24 视口、笔画 2、1em(与其它按钮图标同一套几何),图标槽 18px', async () => {
+    const w = await openPanel(conditionDef(), null)
+    const svg = q('.smart-table-filter-add')!.querySelector('svg')!
+    expect(svg.getAttribute('viewBox')).toBe('0 0 24 24')
+    expect(svg.getAttribute('stroke-width')).toBe('2')
+    expect(svg.getAttribute('width')).toBe('1em')
+    w.unmount()
+  })
+
+  describe('面板按钮统一(设计 §2.15 D)', () => {
+    const style = (el: Element | null) => el!.getAttribute('style') ?? ''
+    const isNeutralSecondary = (el: Element | null) =>
+      el!.classList.contains('n-button--secondary') &&
+      el!.classList.contains('n-button--default-type') &&
+      !el!.classList.contains('n-button--text')
+
+    it('底部「重置」= 淡灰 secondary tiny、不带图标;「确认」= 实心主色 tiny、不带图标', async () => {
+      const w = await openPanel(conditionDef(), null)
+      const [reset, ok] = qa('.smart-table-filter-footer button')
+      expect(isNeutralSecondary(reset)).toBe(true)
+      expect(style(reset)).toContain('--n-height: 22px')
+      expect(style(reset)).toContain('--n-font-size: 12px')
+      expect(reset.querySelector('svg')).toBeNull()
+      expect(ok.classList.contains('n-button--primary-type')).toBe(true)
+      expect(ok.classList.contains('n-button--secondary')).toBe(false)
+      expect(style(ok)).toContain('--n-height: 22px')
+      expect(ok.querySelector('svg')).toBeNull()
+      w.unmount()
+    })
+
+    it('condition 面板的工具行:「添加条件」= 淡灰 secondary small', async () => {
+      const w = await openPanel(conditionDef(), null)
+      const add = q('.smart-table-filter-add')
+      expect(isNeutralSecondary(add)).toBe(true)
+      expect(style(add)).toContain('--n-height: 28px')
+      w.unmount()
+    })
   })
 
   it('底部「重置 / 确认」在 footer 里,footer 在面板最底部、带分隔线', async () => {
@@ -887,6 +929,23 @@ describe('ColumnFilter 面板排布(L0-5,对齐原型 .hpop)', () => {
       click(q('.smart-table-filter-advanced-open'))
       await nextTick()
       expect(q('.smart-table-filter-advanced-close')!.textContent!.trim()).toBe('返回列表 ▴')
+      w.unmount()
+    })
+
+    it('「高级条件 ▾」「返回列表 ▴」= 淡灰 secondary small(28px),不是文字按钮', async () => {
+      const w = await open(null)
+      const adv = (el: Element | null) => {
+        expect(el!.classList.contains('n-button--secondary')).toBe(true)
+        expect(el!.classList.contains('n-button--default-type')).toBe(true)
+        expect(el!.classList.contains('n-button--text')).toBe(false)
+        expect(el!.getAttribute('style')).toContain('--n-height: 28px')
+        expect(el!.getAttribute('style')).toContain('--n-font-size: 14px')
+      }
+      adv(q('.smart-table-filter-advanced-open'))
+      click(q('.smart-table-filter-advanced-open'))
+      await nextTick()
+      adv(q('.smart-table-filter-advanced-close'))
+      adv(q('.smart-table-filter-add'))
       w.unmount()
     })
 

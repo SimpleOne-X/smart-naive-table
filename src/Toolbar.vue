@@ -2,11 +2,29 @@
 // 表格卡片头:标题 + 左侧操作区(#left)+ 右侧:宿主按钮(#right)、「更多」菜单、内置图标(刷新/密度/列设置 #settings)。
 // 批量栏:有勾选时原地替换「标题 + 宿主按钮 + 更多」那一段,变成「已选 N 项 + #batch 插槽 + 取消选择」;
 // 内置图标组留在右侧。批量栏的 min-height = 勾选前工具栏的实测高度(同一个根元素,勾选不让表格跳动)。
-import { computed, onBeforeUnmount, onMounted, ref, useSlots, type PropType, type Slots } from 'vue'
-import { NButton, NCheckbox, NConfigProvider, NDropdown, NTooltip, useThemeVars } from 'naive-ui'
-import type { DropdownMenuProps, DropdownOption } from 'naive-ui'
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  useSlots,
+  watch,
+  type PropType,
+  type Slots,
+} from 'vue'
+import {
+  NButton,
+  NCheckbox,
+  NConfigProvider,
+  NDropdown,
+  NPopconfirm,
+  NTooltip,
+  useThemeVars,
+} from 'naive-ui'
+import type { ButtonProps, DropdownMenuProps, DropdownOption } from 'naive-ui'
 import type { Density, SmartTableLabels, ToolbarConfig, ToolbarMoreOption } from './types'
 import { fmt } from './labels'
+import { useButtonTint } from './buttonTint'
 import { useEscClose } from './useEscClose'
 import {
   CheckIcon,
@@ -63,6 +81,8 @@ const props = defineProps({
       add: boolean
       remove: boolean
       restore: boolean
+      /** 带草稿、但不在当前页里的行数;> 0 时在「保存修改(N)」旁显示「含 M 条当前不可见」。 */
+      hidden?: number
     } | null>,
     default: null,
   },
@@ -92,6 +112,14 @@ const densityShow = ref(false)
 useEscClose(moreShow)
 useEscClose(densityShow)
 
+// 「放弃修改」的确认气泡(官方 NPopconfirm,默认 small 按钮、不设最小宽):取消 = 淡灰,放弃 = 实心红。
+// 受控,好让 Esc 能关(NPopover 不管键盘)。批量栏与工具栏的「放弃修改」不会同时存在,共用一个状态;
+// 它们消失(取消勾选 / 收起「操作」/ 没有修改了 / 保存中)时一并收起,免得下次出现时气泡直接弹着。
+const discardShow = ref(false)
+useEscClose(discardShow)
+const DISCARD_OK_BTN: ButtonProps = { type: 'error' }
+const DISCARD_CANCEL_BTN: ButtonProps = { secondary: true }
+
 // Teleport 搬 DOM 会让原来聚焦的按钮失焦;键盘操作后由 SmartTable 经它把焦点还给按钮
 const maximizeBtnRef = ref<{ $el?: HTMLElement } | null>(null)
 defineExpose({ focusMaximize: () => maximizeBtnRef.value?.$el?.focus({ preventScroll: true }) })
@@ -117,6 +145,7 @@ const rootStyle = computed(() =>
 )
 
 const themeVars = useThemeVars()
+const tint = useButtonTint()
 // 显式标注:slots 参与 hasBizActions 的推断,不写会让 dts 生成报 TS7022(同 SmartTable.vue 的 slots)
 const slots: Slots = useSlots()
 
@@ -142,6 +171,10 @@ const moreOptions = computed<ToolbarMoreOption[]>(() => {
 
 // 窄档折叠:业务按钮(宿主 #right + 「更多」)收进「操作 ▾」,点开原位多出一行(不是浮层、不加动画)。批量栏出现时不折叠。
 const opsOpen = ref(false)
+watch(
+  () => [!!props.batch, opsOpen.value, (props.edit?.count ?? 0) > 0, !!props.edit?.saving],
+  () => (discardShow.value = false),
+)
 const foldActive = computed(() => props.fold && !props.batch)
 const hasBizActions = computed<boolean>(
   () => !!slots.right || moreOptions.value.length > 0 || !!props.edit,
@@ -212,6 +245,7 @@ const moreThemeOverrides = computed(() => ({
               secondary
               type="error"
               :disabled="edit.saving"
+              :theme-overrides="tint.error"
               @click="emit('editDeleteSelected')"
             >
               <template #icon><TrashIcon /></template>
@@ -227,14 +261,40 @@ const moreThemeOverrides = computed(() => ({
               {{ labels.editRestoreSelected }}
             </n-button>
             <template v-if="edit.count > 0">
-              <n-button secondary :disabled="edit.saving" @click="emit('editDiscard')">
-                <template #icon><ResetIcon /></template>
-                {{ labels.editDiscard }}
-              </n-button>
-              <n-button secondary type="primary" :loading="edit.saving" @click="emit('editSave')">
+              <n-popconfirm
+                v-model:show="discardShow"
+                placement="top"
+                :disabled="edit.saving"
+                :positive-text="labels.editDiscardOk"
+                :negative-text="labels.editCancel"
+                :positive-button-props="DISCARD_OK_BTN"
+                :negative-button-props="DISCARD_CANCEL_BTN"
+                @positive-click="emit('editDiscard')"
+              >
+                <template #trigger>
+                  <n-button secondary :disabled="edit.saving">
+                    <template #icon><ResetIcon /></template>
+                    {{ labels.editDiscard }}
+                  </n-button>
+                </template>
+                {{ fmt(labels.editDiscardConfirm, { n: edit.count }) }}
+              </n-popconfirm>
+              <n-button
+                secondary
+                type="primary"
+                :loading="edit.saving"
+                :theme-overrides="tint.primary"
+                @click="emit('editSave')"
+              >
                 <template #icon><CheckIcon /></template>
                 {{ fmt(labels.editSave, { n: edit.count }) }}
               </n-button>
+              <span
+                v-if="edit.hidden"
+                class="smart-table-edit-hidden"
+                :style="{ color: themeVars.textColor3 }"
+                >{{ fmt(labels.editHiddenDirty, { n: edit.hidden }) }}</span
+              >
             </template>
           </template>
         </div>
@@ -297,21 +357,31 @@ const moreThemeOverrides = computed(() => ({
         >
           <!-- 可编辑表格:放弃修改(静默)/ 新增行 / 保存修改(N)(有修改时的唯一主色) -->
           <template v-if="edit">
-            <n-button
+            <n-popconfirm
               v-if="edit.count > 0"
-              secondary
+              v-model:show="discardShow"
+              placement="top"
               :disabled="edit.saving"
-              @click="emit('editDiscard')"
+              :positive-text="labels.editDiscardOk"
+              :negative-text="labels.editCancel"
+              :positive-button-props="DISCARD_OK_BTN"
+              :negative-button-props="DISCARD_CANCEL_BTN"
+              @positive-click="emit('editDiscard')"
             >
-              <template #icon><ResetIcon /></template>
-              {{ labels.editDiscard }}
-            </n-button>
+              <template #trigger>
+                <n-button secondary :disabled="edit.saving">
+                  <template #icon><ResetIcon /></template>
+                  {{ labels.editDiscard }}
+                </n-button>
+              </template>
+              {{ fmt(labels.editDiscardConfirm, { n: edit.count }) }}
+            </n-popconfirm>
             <n-button
               v-if="edit.add"
               secondary
               type="primary"
               :disabled="edit.saving"
-              :theme-overrides="{ iconSizeMedium: '13px', iconSizeLarge: '13px' }"
+              :theme-overrides="tint.primary"
               @click="emit('editAdd')"
             >
               <template #icon><PlusIcon /></template>
@@ -322,11 +392,18 @@ const moreThemeOverrides = computed(() => ({
               secondary
               type="primary"
               :loading="edit.saving"
+              :theme-overrides="tint.primary"
               @click="emit('editSave')"
             >
               <template #icon><CheckIcon /></template>
               {{ fmt(labels.editSave, { n: edit.count }) }}
             </n-button>
+            <span
+              v-if="edit.hidden"
+              class="smart-table-edit-hidden"
+              :style="{ color: themeVars.textColor3 }"
+              >{{ fmt(labels.editHiddenDirty, { n: edit.hidden }) }}</span
+            >
           </template>
           <slot name="right" />
           <n-dropdown
@@ -477,6 +554,11 @@ const moreThemeOverrides = computed(() => ({
   align-items: center;
   gap: 4px;
 }
+/* 「含 M 条当前不可见」:「保存修改(N)」旁的次要说明(颜色走 textColor3,在模板里绑),不换行 */
+.smart-table-edit-hidden {
+  font-size: 12px;
+  white-space: nowrap;
+}
 /* 宿主的 #right 插槽里全是 v-if 为假的内容时,组容器是空的:不占位 */
 .smart-table-toolbar-actions:empty,
 .smart-table-toolbar-icons:empty {
@@ -601,6 +683,12 @@ const moreThemeOverrides = computed(() => ({
   min-width: max-content;
   justify-content: center;
 }
+/* 提示单独占一行、排在按钮之后,不被等分的按钮挤掉 */
+.smart-table-toolbar--batch-narrow .smart-table-batch-acts > .smart-table-edit-hidden {
+  flex: 1 0 100%;
+  order: 1;
+  text-align: center;
+}
 .smart-table-toolbar--batch-narrow .smart-table-toolbar-right {
   display: none;
 }
@@ -649,6 +737,7 @@ const moreThemeOverrides = computed(() => ({
 }
 .smart-table-toolbar--fold.smart-table-toolbar--ops-open .smart-table-toolbar-actions {
   display: flex;
+  flex-wrap: wrap;
 }
 /* 展开行里的按钮(「新增」等 + 「更多」)等分整行;padding 会计入 flex 基准,不清零就不等宽 */
 .smart-table-toolbar--fold .smart-table-toolbar-actions > :deep(*) {
@@ -662,6 +751,12 @@ const moreThemeOverrides = computed(() => ({
 .smart-table-toolbar--fold .smart-table-toolbar-icons {
   grid-area: icons;
   gap: 0;
+}
+/* 「含 M 条当前不可见」在展开行里单独占一行、居中、排在按钮之后(不进等分) */
+.smart-table-toolbar--fold .smart-table-toolbar-actions > .smart-table-edit-hidden {
+  flex: 1 0 100%;
+  order: 1;
+  text-align: center;
 }
 /* 排序入口:另起一行占满整行(落在命名区域之后的隐式行里,没有它时不多出空行 / 行距) */
 .smart-table-toolbar-entries {

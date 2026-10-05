@@ -57,9 +57,6 @@ const emit = defineEmits<{
 }>()
 
 const themeVars = useThemeVars()
-// 工具行的文字按钮用官方 small 档(与同一面板里 small 的值控件一致):字 14 / 图标 18 / 内边距 0 10px / 高 heightSmall(28)。
-// 官方文字按钮(text)把高度与内边距重置成 initial,所以高度取主题的 heightSmall、内边距在样式里写 paddingSmall 的值
-const toolsBtnStyle = computed(() => ({ height: themeVars.value.heightSmall }))
 const show = ref(false)
 const active = computed(() => isFilterActive(props.value))
 const activeCount = computed(() => activeConditions(props.value).length)
@@ -561,15 +558,14 @@ function reset() {
             />
           </div>
 
-          <!-- 工具行:condition / 高级条件 = 「添加条件」(文字按钮 + 加号);options 勾选态 = 「高级条件 ▾」;
-               options 的高级条件态再靠右放「返回列表 ▴」 -->
+          <!-- 工具行:condition / 高级条件 = 「添加条件」(淡灰按钮 + 加号);options 勾选态 = 「高级条件 ▾」;
+               options 的高级条件态再靠右放「返回列表 ▴」(▾ ▴ 充当图标) -->
           <div class="smart-table-filter-tools">
             <n-button
               v-if="def.mode === 'options' && !advanced"
               class="smart-table-filter-advanced-open"
-              text
+              secondary
               size="small"
-              :style="toolsBtnStyle"
               @click="openAdvanced"
             >
               {{ labels.filterAdvanced }} ▾
@@ -577,9 +573,8 @@ function reset() {
             <template v-else>
               <n-button
                 class="smart-table-filter-add"
-                text
+                secondary
                 size="small"
-                :style="toolsBtnStyle"
                 :disabled="draft.conditions.length >= MAX_CONDITIONS"
                 @click="onAdd"
               >
@@ -589,9 +584,8 @@ function reset() {
               <n-button
                 v-if="def.mode === 'options'"
                 class="smart-table-filter-advanced-close"
-                text
+                secondary
                 size="small"
-                :style="toolsBtnStyle"
                 :disabled="!canCollapse"
                 @click="closeAdvanced"
               >
@@ -614,7 +608,7 @@ function reset() {
         class="smart-table-filter-footer"
         :style="{ borderTop: `1px solid ${themeVars.dividerColor}` }"
       >
-        <n-button size="tiny" @click="reset">{{ labels.filterReset }}</n-button>
+        <n-button secondary size="tiny" @click="reset">{{ labels.filterReset }}</n-button>
         <n-button size="tiny" type="primary" @click="confirm">{{ labels.filterConfirm }}</n-button>
       </div>
     </div>
@@ -729,17 +723,13 @@ function reset() {
   flex-direction: column;
   gap: 12px;
 }
-/* 工具行:与上方内容 8px、与下方 8px;按钮是官方 small 档(`button/styles/_common.mjs`:`heightSmall` 28 / `paddingSmall` 0 10px /
-   `fontSizeSmall` 14 / `iconSizeSmall` 18),原型 `.hp-tools .n-btn.text` 同款。官方文字按钮(text)把高度与内边距重置成 initial,
-   所以高度由模板里取主题 heightSmall(`toolsBtnStyle`),内边距在这里写 paddingSmall 的值;颜色保持官方文字按钮的 textColor2 / 悬停主色 */
+/* 工具行:与上方内容 8px、与下方 8px;按钮是淡灰 secondary 的官方 small 档(`button/styles/_common.mjs`:`heightSmall` 28 /
+   `paddingSmall` 0 10px / `fontSizeSmall` 14 / `iconSizeSmall` 18),与同一面板里 small 的值控件同高,尺寸与底色全由官方给(原型 `.hp-tools .n-btn.sec.sm`) */
 .smart-table-filter-tools {
   display: flex;
   align-items: center;
   margin-top: 8px;
   margin-bottom: 8px;
-}
-.smart-table-filter-tools .n-button {
-  padding: 0 10px;
 }
 .smart-table-filter-advanced-close {
   margin-left: auto;

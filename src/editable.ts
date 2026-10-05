@@ -370,6 +370,11 @@ export interface EditStore<T> {
   changesFor: (cells: Array<{ id: string; key: string }>) => EditChanges<T>
   /** 清掉某一格的草稿(即时保存成功 / 失败回滚后)。 */
   clearCell: (id: string, key: string) => void
+  /**
+   * 带草稿(改过的格 / 新增行 / 待删行)、但 id 不在 visibleIds 里的行数:搜索 / 翻页不拦截,草稿保留,
+   * 保存时这些看不见的行会一起提交,工具栏据此提示。一行不论改了几格、是否同时待删,只算一次。
+   */
+  hiddenCount: (visibleIds: Iterable<string>) => number
   clear: () => void
   /** 只清某一行的草稿(窄档抽屉整行即时保存之后)。 */
   clearRow: (id: string) => void
@@ -532,6 +537,14 @@ export function createEditStore<T extends object>(
     if (!Object.keys(d.cells).length) delete edits[id]
   }
 
+  function hiddenCount(visibleIds: Iterable<string>): number {
+    const visible = new Set(visibleIds)
+    const dirty = new Set<string>([...Object.keys(edits), ...dels.keys(), ...news.map(idOf)])
+    let n = 0
+    for (const id of dirty) if (!visible.has(id)) n++
+    return n
+  }
+
   function clear() {
     for (const id of Object.keys(edits)) delete edits[id]
     news.splice(0)
@@ -556,6 +569,7 @@ export function createEditStore<T extends object>(
     dirtyCells,
     changesFor,
     clearCell,
+    hiddenCount,
     clear,
     clearRow: (id) => void delete edits[id],
   }

@@ -169,7 +169,7 @@ const emit = defineEmits<{
   cellChange: [payload: CellChange<T>]
   /** 可编辑表格:点「保存修改」(或 save());宿主提交后调 payload.done() / fail()。窄档抽屉的整行保存同样走它(changes 里只有那一行)。 */
   save: [payload: EditSavePayload<T>]
-  /** 可编辑表格:点「放弃修改」。 */
+  /** 可编辑表格:放弃全部改动 —— 用户在「放弃修改」的确认气泡里点了「放弃」(收到时就是已确认),或宿主调用实例的 discard()。 */
   discard: []
   /** 可编辑表格:保存时发现某格不合法(已选中并标红),宿主可据此弹提示。 */
   invalid: [payload: EditInvalid<T>]
@@ -880,6 +880,7 @@ function editToolbarState() {
     add: editCfg.value.add !== false,
     remove: editCfg.value.remove !== false && c.live,
     restore: c.deleted,
+    hidden: editor.hiddenDirty.value,
   }
 }
 

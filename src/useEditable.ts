@@ -132,6 +132,8 @@ export function useEditable<T extends object>(opts: UseEditableOpts<T>) {
   const enabled = computed(() => opts.enabled())
   const count = store.count
   const isDirty = computed(() => count.value > 0)
+  /** 带草稿、但不在当前页里的行数(「保存修改」旁的「含 M 条当前不可见」);pageRows 含新增行与待删行,所以它们在本页就算可见。 */
+  const hiddenDirty = computed(() => store.hiddenCount(opts.pageRows().map(idOf)))
   const saving = ref(false)
   const themeVars = useThemeVars()
   const edit = ref<EditState | null>(null)
@@ -1735,6 +1737,7 @@ export function useEditable<T extends object>(opts: UseEditableOpts<T>) {
     addPosition,
     count: count as ComputedRef<number>,
     isDirty: isDirty as ComputedRef<boolean>,
+    hiddenDirty: hiddenDirty as ComputedRef<number>,
     saving,
     edit,
     err,

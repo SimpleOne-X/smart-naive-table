@@ -181,3 +181,55 @@ describe('操作区底栏(设计 §2.15 B):默认动作实心主色、其余淡�
     expect(save.classList.contains('n-button--loading')).toBe(true)
   })
 })
+
+describe('按钮里的加号(设计 §2.15 A):24 视口、1em,图标槽用官方默认尺寸(不再缩到 13px)', () => {
+  const plusOf = (btn: Element) => btn.querySelector('.n-button__icon svg')!
+  const iconSize = (btn: Element) => btn.getAttribute('style') ?? ''
+
+  it('可编辑表格工具栏的「新增行」', () => {
+    const w = mount(Toolbar, {
+      props: {
+        labels: defaultLabels,
+        config: {} as never,
+        density: 'compact',
+        edit: { count: 0, saving: false, add: true, remove: true, restore: true },
+      },
+      attachTo: document.body,
+    })
+    mounted.push(w)
+    const add = byText(w.element as HTMLElement, defaultLabels.editAddRow)
+    expect(plusOf(add).getAttribute('viewBox')).toBe('0 0 24 24')
+    expect(iconSize(add)).toContain('--n-icon-size: 18px')
+  })
+
+  it('条件面板的「添加条件」', () => {
+    const defs: FilterDef[] = [
+      {
+        key: 'name',
+        field: 'name',
+        optionsKey: 'name',
+        title: '名称',
+        mode: 'condition',
+        type: 'input',
+        multiple: true,
+        actions: ['contains', 'equal'],
+      },
+    ]
+    const w = mount(ConditionPanel, {
+      props: {
+        fields: defs,
+        draft: { rows: [blankRow(defs[0])], logic: {} } as BuilderDraft,
+        labels: defaultLabels,
+        getOptions: () => [],
+        isLoadingOptions: () => false,
+        dateValueFormat: 'yyyy-MM-dd',
+        size: 'small',
+      },
+      attachTo: document.body,
+    })
+    mounted.push(w)
+    const add = byText(w.element as HTMLElement, defaultLabels.filterAddCondition)
+    expect(plusOf(add).getAttribute('viewBox')).toBe('0 0 24 24')
+    expect(iconSize(add)).toContain('--n-icon-size: 18px')
+  })
+})

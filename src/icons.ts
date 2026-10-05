@@ -27,7 +27,7 @@ export const ColumnsIcon = lineIcon([
   'M9 3v18',
   'M15 3v18',
 ])
-// 小号图标(chevron / 关闭 / 加号):与设计原型 I_CHEV / I_X / I_PLUS 同一套几何(16 × 16 视口、笔画 1.8 / 1.6),
+// 小号图标(chevron / 关闭):与设计原型 I_CHEV / I_X 同一套几何(16 × 16 视口、笔画 1.8),
 // 用在 12–13px 的小尺寸上;笔画随视口缩放,换成 24 视口 + 2 的笔画会在 12px 下细一圈。
 function smallIcon(paths: string[], strokeWidth: number): FunctionalComponent {
   return () =>
@@ -49,7 +49,8 @@ function smallIcon(paths: string[], strokeWidth: number): FunctionalComponent {
 }
 export const ChevronDownIcon = smallIcon(['m4 6 4 4 4-4'], 1.8)
 export const CloseIcon = smallIcon(['M4 4l8 8M12 4l-8 8'], 1.8)
-export const PlusIcon = smallIcon(['M8 3v10M3 8h10'], 1.6)
+// 按钮里的加号(原型 I_BTN_PLUS):与其它按钮图标同一套几何,1em 跟随按钮图标槽(medium 18px / large 20px),不缩小
+export const PlusIcon = lineIcon(['M12 5v14M5 12h14'])
 // 「更多条件」:双尖括号 »(不用「…」:工具栏的「更多」菜单按钮已经是文字 + 下箭头,两个「更多」不能同形)
 export const MoreConditionsIcon = lineIcon(['m7 7 5 5-5 5', 'M14 7l5 5-5 5'])
 // 构造器里文本输入框右侧的放大镜(原型 I_SEARCH:16 视口、14px、笔画 1.6)

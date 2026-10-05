@@ -18,6 +18,7 @@ import { fmt } from './labels'
 import { filterDefTitle, type FilterDef } from './useColumns'
 import { FunnelIcon, MagnifierIcon, MoreConditionsIcon, PlusIcon, ResetIcon } from './icons'
 import { loopTab } from './maximize'
+import { useButtonTint } from './buttonTint'
 import {
   MAX_BUILDER_ROWS,
   addRow,
@@ -52,6 +53,7 @@ const emit = defineEmits<{
 }>()
 
 const themeVars = useThemeVars()
+const tint = useButtonTint()
 const update = (d: BuilderDraft) => emit('update:draft', d)
 
 const narrow = computed(() => props.tier === 'narrow')
@@ -294,7 +296,13 @@ function onNarrowValue(v: unknown) {
             >
           </span>
           <!-- 搜索 = 淡主色底 + 放大镜,重置 = 淡灰底 + 逆时针箭头(设计 §2.13 / §2.15 A);图标槽一直在,loading 时官方在同一个槽里换成转圈,宽度不变(issue #5) -->
-          <n-button secondary type="primary" :loading="loading" @click="onSearch">
+          <n-button
+            secondary
+            type="primary"
+            :loading="loading"
+            :theme-overrides="tint.primary"
+            @click="onSearch"
+          >
             <template #icon><MagnifierIcon /></template>
             {{ labels.search }}
           </n-button>
