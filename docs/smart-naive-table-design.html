@@ -747,6 +747,8 @@ table.n-table td.acts .n-btn.text + .n-btn.text { margin-left: 12px; }   /* 间�
   .tb-actions { display: none; }
   .tb.ops-open .tb-actions { display: flex; }
   .tb-actions .n-btn { flex: 1 1 0; justify-content: center; }
+  .tb-actions:has(.xl-hid) { flex-wrap: wrap; }                          /* 「含 M 条当前不可见」另起一行,不被等分的按钮挤掉 */
+  .tb-actions .xl-hid { flex: 1 0 100%; text-align: center; }
   .tb-actions .pop-wrap { flex: 1 1 0; }                                   /* 「更多」包了一层定位锚,等分宽度要落在锚上 */
   .tb-actions .pop-wrap > .n-btn { width: 100%; }
   .more-pop { right: 0; min-width: 0; }                                    /* 窄档菜单与按钮同宽,不越出屏幕 */
@@ -1781,6 +1783,8 @@ html[data-theme="dark"] { --n-td-striped: rgb(36, 36, 39); }   /* dark:composite
 [data-xl] td.xk-ck .n-check { vertical-align: middle; }
 [data-xl] td.xsel { box-shadow: inset 0 0 0 2px var(--n-primary); outline: 0; }
 [data-xl] td.xerr { box-shadow: inset 0 0 0 2px var(--n-error); }
+/* 「含 M 条当前不可见」:带草稿、但被搜索挡住的行数,放在「保存修改(N)」旁(次要文字色,12px) */
+.xl-hid { align-self: center; font-size: 12px; color: var(--n-text-2); white-space: nowrap; }
 [data-xl] td.xd::before {
   content: ""; position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none;
   border-style: solid; border-width: 6px 6px 0 0; border-color: var(--warn) transparent transparent transparent;
@@ -4620,11 +4624,11 @@ function renderOverlay() {
 
 /* ---- 删除确认:NPopconfirm(placement top,默认带箭头;popconfirm/src/PopconfirmPanel.mjs、styles/index.cssr.mjs)---- */
 function pcOpen(no) { state.open = null; state.dp = null; state.pc = { no }; renderPreview(); }
-const pconfHtml = () => `<div class="pop top pconf" data-stop role="dialog" aria-label="确认删除"><div class="pc-body"><span class="ico">${I_WARN}</span><span>${state.pc.no === '__batch' ? `确认删除所选 ${state.checked.length} 项?` : '确认删除该行?'}</span></div><div class="pc-act"><button class="n-btn sm sec" data-act="pcNo">取消</button><button class="n-btn sm err" data-act="pcYes">删除</button></div><div class="pop-arrow"><i></i></div></div>`;
+const pconfHtml = () => `<div class="pop top pconf" data-stop role="dialog" aria-label="${state.pc.no === '__discard' ? '确认放弃修改' : '确认删除'}"><div class="pc-body"><span class="ico">${I_WARN}</span><span>${state.pc.no === '__discard' ? `放弃全部 ${xlCount()} 处未保存的修改?` : state.pc.no === '__batch' ? `确认删除所选 ${state.checked.length} 项?` : '确认删除该行?'}</span></div><div class="pc-act"><button class="n-btn sm sec" data-act="pcNo">取消</button><button class="n-btn sm err" data-act="pcYes">${state.pc.no === '__discard' ? '放弃' : '删除'}</button></div><div class="pop-arrow"><i></i></div></div>`;
 function placePc() {
   const pop = document.querySelector('#overlay .pconf');
   if (!pop || !state.pc) return;
-  const a = [...document.querySelectorAll('#preview [data-act="delAsk"], #preview [data-act="batchDelAsk"]')].find(x => x.dataset.v === state.pc.no && x.offsetParent !== null);
+  const a = [...document.querySelectorAll('#preview [data-act="delAsk"], #preview [data-act="batchDelAsk"], #preview [data-act="xlDiscard"]')].find(x => x.dataset.v === state.pc.no && x.offsetParent !== null);
   if (!a) { pop.style.visibility = 'hidden'; return; }
   const r = a.getBoundingClientRect(), sc = document.querySelector('#preview .tbl-scroll, #preview .tbl-cards')?.getBoundingClientRect();
   if (sc && a.dataset.act === 'delAsk' && (r.bottom < sc.top || r.top > sc.bottom)) { pop.style.visibility = 'hidden'; return; }   // 行滚出表体:气泡跟着藏
@@ -4886,6 +4890,7 @@ function runAct(act, v) {
     case 'dlgYes': { state.dlg = null; const n = batchDel(); requery(); toast(`已删除 ${n} 项`, 'success'); return; }
     case 'pcYes': {
       const no = state.pc?.no; state.pc = null;
+      if (no === '__discard') { xlDiscard(); return; }
       if (no === '__batch') { const n = batchDel(); requery(); toast(`已删除 ${n} 项`); return; }
       if (no && delRow(no)) { requery(); toast(`已删除 ${no}`); } else renderPreview();
       return;
@@ -5024,7 +5029,7 @@ document.addEventListener('click', (e) => {
   /* 日期面板:点触发器之外一律收起,未确认的范围丢弃 */
   if (state.dp && !t.closest('[data-dp]')) { dpClose(); dirty = true; }
   /* 删除确认气泡:点它自己和删除按钮之外一律收起 */
-  if (state.pc && !t.closest('.pconf') && act !== 'delAsk' && act !== 'batchDelAsk') { state.pc = null; dirty = true; }
+  if (state.pc && !t.closest('.pconf') && act !== 'delAsk' && act !== 'batchDelAsk' && act !== 'xlDiscard') { state.pc = null; dirty = true; }
 
   /* 列设置气泡:点它自己和它的按钮之外一律收起(任何 act 执行前都先收) */
   if (state.colsOpen && !t.closest('.colset-pop') && act !== 'cols') { state.colsOpen = false; dirty = true; }
@@ -5957,12 +5962,22 @@ function xlTd(c, r) {
 const xlTrCls = (r) => [state.xl.news.has(r.no) && 'xnew', state.xl.dels.has(r.no) && 'xdel'].filter(Boolean).join(' ');
 const xlRcCls = (r) => [state.xl.news.has(r.no) && ' xnew', state.xl.dels.has(r.no) && ' xdel', state.xl.orig[r.no] && !state.xl.dels.has(r.no) && ' xdirty', xlRowLocked(r) && ' xlk'].filter(Boolean).join('');
 
+/* ---- 带草稿、但不在当前搜索结果里的行数(搜索不拦截,草稿保留;保存会连这些行一起提交,所以要标出来) ---- */
+function xlHiddenDirty() {
+  const x = state.xl, rm = state.remote.excel;
+  if (!rm || !rm.loaded) return 0;
+  const vis = new Set(rm.items.map((r) => r.no));
+  let m = 0;
+  for (const no of new Set([...Object.keys(x.orig), ...x.news, ...x.dels])) if (!vis.has(no)) m++;
+  return m;
+}
+
 /* ---- 工具栏:平时「新增行」是主色;有待保存修改时主色让给「保存修改(N)」 ---- */
 function xlActionsHtml() {
-  const x = state.xl, n = xlCount();
-  return `${n ? `<button class="n-btn sec" data-act="xlDiscard"${x.saving ? ' disabled' : ''}>${I_BTN_RESET}放弃修改</button>` : ''}
+  const x = state.xl, n = xlCount(), hid = xlHiddenDirty();
+  return `${n ? `<button class="n-btn sec" data-act="xlDiscard" data-v="__discard" aria-haspopup="dialog"${x.saving ? ' disabled' : ''}>${I_BTN_RESET}放弃修改</button>` : ''}
         <button class="n-btn tint" data-act="add"${x.saving ? ' disabled' : ''}>${I_BTN_PLUS} 新增工序</button>
-        ${n ? `<button class="n-btn tint${x.saving ? ' loading' : ''}" data-act="xlSave" aria-busy="${x.saving}">${x.saving ? I_LOAD : I_BTN_CHECK}保存修改(${n})</button>` : ''}`;
+        ${n ? `<button class="n-btn tint${x.saving ? ' loading' : ''}" data-act="xlSave" aria-busy="${x.saving}">${x.saving ? I_LOAD : I_BTN_CHECK}保存修改(${n})</button>${hid ? `<span class="xl-hid">含 ${hid} 条当前不可见</span>` : ''}` : ''}`;
 }
 
 /* ---- 进入 / 提交 / 放弃编辑 ---- */
@@ -6129,6 +6144,11 @@ function xlSave() {
     load('excel');
     toast(`已保存 ${n} 处修改`, 'success');
   }, 500);
+}
+function xlDiscardAsk() {
+  const x = state.xl;
+  if (x.saving || !xlCount()) return;
+  state.open = null; state.dp = null; state.pc = { no: '__discard' }; renderPreview();
 }
 function xlDiscard() {
   const x = state.xl;
@@ -6444,7 +6464,7 @@ function b4Act(act, v) {
   switch (act) {
     case 'add': if (state.mod === 'excel') { xlAdd(); return true; } return false;
     case 'xlSave': xlSave(); return true;
-    case 'xlDiscard': xlDiscard(); return true;
+    case 'xlDiscard': xlDiscardAsk(); return true;   // 放弃修改先确认(NPopconfirm),点「放弃」才真还原
     case 'xlDel': xlDeleteChecked(); return true;
     case 'xfCancel': xfClose(); return true;
     case 'xfSave': xfSave(); return true;
