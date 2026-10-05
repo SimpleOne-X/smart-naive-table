@@ -68,6 +68,38 @@ export const SearchIcon: FunctionalComponent = () =>
     },
     [h('circle', { cx: 7, cy: 7, r: 4.5 }), h('path', { d: 'M10.5 10.5 14 14' })],
   )
+// 按钮图标(设计 §2.15 A):放在 NButton 的 icon 插槽里,1em = 官方 iconSize(18px),stroke 取 currentColor 跟随按钮字色。
+// 笔画按 18px 渲染都约 1.5px:搜索用 16 视口 × 1.35,其余用 24 视口 × 2,几枚粗细一致。
+// 只收库自己渲染的按钮要用的;宿主按钮(编辑、导出…)的图标由宿主自备,不进库(零依赖、不膨胀)。
+// 搜索:放大镜(与 SearchIcon 同一几何,只是 1em、笔画更细;SearchIcon 固定 14px、是输入框后缀用的)
+export const MagnifierIcon: FunctionalComponent = () =>
+  h(
+    'svg',
+    {
+      viewBox: '0 0 16 16',
+      width: '1em',
+      height: '1em',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': 1.35,
+      'stroke-linecap': 'round',
+      'aria-hidden': 'true',
+    },
+    [h('circle', { cx: 7, cy: 7, r: 4.5 }), h('path', { d: 'M10.5 10.5 14 14' })],
+  )
+// 重置:逆时针箭头(RefreshIcon 的镜像;刷新是顺时针,靠位置与文字区分)
+export const ResetIcon = lineIcon(['M1 4v6h6', 'M3.51 15a9 9 0 1 0 2.13-9.36L1 10'])
+export const TrashIcon = lineIcon([
+  'M3 6h18',
+  'M8 6V4h8v2',
+  'M19 6l-1 14H6L5 6',
+  'M10 11v6M14 11v6',
+])
+export const CheckIcon = lineIcon(['M20 6 9 17l-5-5'])
+// 清除选择 / 取消:叉号(与 CloseIcon 的小号 16 视口不同,这枚是按钮图标尺寸)
+export const ClearIcon = lineIcon(['M6 6l12 12M18 6 6 18'])
+export const FunnelIcon = lineIcon(['M3 5h18l-7 8v6l-4-2v-4Z'])
+export const SortIcon = lineIcon(['M7 4v16', 'm3 8 4-4 4 4', 'M17 20V4', 'm13 16 4 4 4-4'])
 // 放大 = 四角括号向外展开,还原 = 向内收拢(只有折线、没有箭头;与「复制」图标不混)
 export const MaximizeIcon = lineIcon([
   'M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3',

@@ -322,15 +322,14 @@ describe('ConditionBar 气泡阴影只有一份', () => {
   })
 })
 
-describe('ConditionBar 「搜索」按钮的 loading 不改变按钮宽度', () => {
-  // 官方 NButton 的 loading 会往按钮里塞 span.n-button__icon(16px + 6px 间距),进 / 出 loading 时它走 width 过渡,
-  // 按钮宽度逐帧变化,同一行 flex: 1 的值输入框被动跟着变宽(issue #5)。
-  // jsdom 不做布局,量不出像素:这里只锁住「按钮带了隔离用的 class + 样式规则让转圈槽脱离文档流」这两个结构事实,
-  // 真实宽度由浏览器实测(见任务汇报)。
-  const searchBtn = () =>
+describe('ConditionBar 「搜索」「重置」按钮:淡色底 + 左图标(设计 §2.13 / §2.15),loading 不改变按钮宽度(issue #5)', () => {
+  // 图标槽(.n-button__icon)一直在:空闲时放图标,loading 时官方把同一个槽里的图标换成转圈,按钮宽度不变,
+  // 取代了 3.0.1 之后临时的「转圈槽脱离文档流」写法。jsdom 不做布局,量不出像素:这里只锁结构事实,真实宽度由浏览器实测。
+  const btnOf = (text: string) =>
     [...document.querySelectorAll<HTMLElement>('.smart-table-cond__main > .n-button')].find(
-      (b) => b.textContent!.trim() === 'Search',
+      (b) => b.textContent!.trim() === text,
     )!
+  const searchBtn = () => btnOf('Search')
   function mountBar(extra: Record<string, unknown> = {}) {
     const w = mount(ConditionBar, {
       props: { ...common, draft: base(), ...extra },
@@ -340,21 +339,29 @@ describe('ConditionBar 「搜索」按钮的 loading 不改变按钮宽度', () 
     return w
   }
 
-  it('转圈槽 .n-button__icon 脱离文档流:不撑宽按钮,过渡期间也不挪动邻居', () => {
-    expect(conditionBarSource).toMatch(
-      /\.smart-table-cond__search\.n-button :deep\(\.n-button__icon\)\s*\{[^}]*position: absolute/,
-    )
+  it('不再用「转圈槽脱离文档流」的临时写法', () => {
+    expect(conditionBarSource).not.toMatch(/\.n-button__icon\)\s*\{[^}]*position: absolute/)
   })
 
-  it('loading 与否按钮都带 smart-table-cond__search,且 loading 时仍是官方 loading 态', async () => {
+  it('「搜索」= secondary + primary(淡主色底),图标槽空闲与 loading 时都在', async () => {
     const w = mountBar()
-    expect(searchBtn().classList.contains('smart-table-cond__search')).toBe(true)
+    expect(searchBtn().classList.contains('n-button--primary-type')).toBe(true)
+    expect(searchBtn().classList.contains('n-button--secondary')).toBe(true)
+    expect(searchBtn().querySelector('.n-button__icon svg')).not.toBeNull()
     expect(searchBtn().classList.contains('n-button--loading')).toBe(false)
     await w.setProps({ loading: true })
-    expect(searchBtn().classList.contains('smart-table-cond__search')).toBe(true)
     expect(searchBtn().classList.contains('n-button--loading')).toBe(true)
+    expect(searchBtn().querySelector('.n-button__icon')).not.toBeNull()
     await w.setProps({ loading: false })
-    expect(searchBtn().classList.contains('smart-table-cond__search')).toBe(true)
+    expect(searchBtn().querySelector('.n-button__icon svg')).not.toBeNull()
+  })
+
+  it('「重置」= secondary 默认型(淡灰底,不是无底的 quaternary),带图标', () => {
+    mountBar()
+    const reset = btnOf('Reset')
+    expect(reset.classList.contains('n-button--default-type')).toBe(true)
+    expect(reset.classList.contains('n-button--secondary')).toBe(true)
+    expect(reset.querySelector('.n-button__icon svg')).not.toBeNull()
   })
 
   it('loading 期间点「搜索」不发 search(不可重复触发),结束后恢复', async () => {

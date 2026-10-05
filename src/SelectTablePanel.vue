@@ -295,7 +295,7 @@ defineExpose({ clearKeyword, focusInput })
         fmt(labels.pickSelected, { n: draft.length })
       }}</span>
       <span class="smart-table-xpick-gap" />
-      <n-button size="small" quaternary :disabled="!draft.length" @click="draft = []">{{
+      <n-button size="small" secondary :disabled="!draft.length" @click="draft = []">{{
         labels.pickClearSel
       }}</n-button>
       <n-button size="small" type="primary" @click="confirm">{{ labels.pickOk }}</n-button>

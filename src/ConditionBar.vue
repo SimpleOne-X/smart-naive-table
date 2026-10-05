@@ -16,7 +16,7 @@ import type { FilterAction, SmartTableLabels, SmartTableOption } from './types'
 import { actionValueKind } from './filter'
 import { fmt } from './labels'
 import { filterDefTitle, type FilterDef } from './useColumns'
-import { MoreConditionsIcon, PlusIcon } from './icons'
+import { FunnelIcon, MagnifierIcon, MoreConditionsIcon, PlusIcon, ResetIcon } from './icons'
 import { loopTab } from './maximize'
 import {
   MAX_BUILDER_ROWS,
@@ -160,12 +160,15 @@ function onNarrowValue(v: unknown) {
       <span class="smart-table-cond__more">
         <n-button
           ref="moreBtnRef"
+          secondary
           size="large"
           aria-haspopup="dialog"
           :aria-expanded="panelOpen"
           @click="togglePanel"
-          >{{ labels.filter }}</n-button
         >
+          <template #icon><FunnelIcon /></template>
+          {{ labels.filter }}
+        </n-button>
         <span
           v-if="appliedCount > 0"
           class="smart-table-cond__badge"
@@ -187,6 +190,7 @@ function onNarrowValue(v: unknown) {
           closable
           :native-scrollbar="true"
           body-content-style="padding: 0 24px 8px"
+          footer-style="border-top: none"
         >
           <ConditionPanel
             stack
@@ -205,7 +209,7 @@ function onNarrowValue(v: unknown) {
           <template #footer>
             <div class="smart-table-cond__drawer-foot">
               <n-button
-                quaternary
+                secondary
                 size="large"
                 :disabled="draft.rows.length >= MAX_BUILDER_ROWS"
                 @click="update(addRow(draft, fields))"
@@ -213,7 +217,7 @@ function onNarrowValue(v: unknown) {
                 <template #icon><PlusIcon /></template>
                 {{ labels.filterAddCondition }}
               </n-button>
-              <n-button size="large" @click="onReset">{{ labels.filterReset }}</n-button>
+              <n-button secondary size="large" @click="onReset">{{ labels.filterReset }}</n-button>
               <n-button size="large" type="primary" @click="onSearch">{{
                 labels.filterConfirm
               }}</n-button>
@@ -289,10 +293,15 @@ function onNarrowValue(v: unknown) {
               >{{ appliedCount }}</span
             >
           </span>
-          <n-button class="smart-table-cond__search" :loading="loading" @click="onSearch">{{
-            labels.search
-          }}</n-button>
-          <n-button quaternary @click="onReset">{{ labels.reset }}</n-button>
+          <!-- 搜索 = 淡主色底 + 放大镜,重置 = 淡灰底 + 逆时针箭头(设计 §2.13 / §2.15 A);图标槽一直在,loading 时官方在同一个槽里换成转圈,宽度不变(issue #5) -->
+          <n-button secondary type="primary" :loading="loading" @click="onSearch">
+            <template #icon><MagnifierIcon /></template>
+            {{ labels.search }}
+          </n-button>
+          <n-button secondary @click="onReset">
+            <template #icon><ResetIcon /></template>
+            {{ labels.reset }}
+          </n-button>
         </div>
       </template>
 
@@ -355,24 +364,6 @@ function onNarrowValue(v: unknown) {
 .smart-table-cond__more {
   flex: none;
 }
-/* 「搜索」按钮进 / 出 loading 时宽度不变:官方 loading 会塞一个 16px + 6px 间距的转圈槽(.n-button__icon)撑宽按钮,
-   退出时它再走 width 过渡收回,按钮逐帧变窄,同排 flex: 1 的值输入框被动跟着变宽(issue #5)。
-   所以让转圈槽脱离文档流、居中盖在按钮上,loading 期间文字淡出给它让位(进出各 .2s 交叉淡入淡出);
-   max-width 钉死,官方进出场过渡改 max-width 的动画就不会把转圈槽裁掉。点击拦截 / 无障碍状态仍是官方 loading 的。 */
-.smart-table-cond__search.n-button :deep(.n-button__icon) {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  margin: 0;
-  max-width: var(--n-icon-size) !important;
-  transform: translate(-50%, -50%);
-}
-.smart-table-cond__search.n-button :deep(.n-button__content) {
-  transition: opacity 0.2s var(--n-bezier);
-}
-.smart-table-cond__search.n-button--loading :deep(.n-button__content) {
-  opacity: 0;
-}
 .smart-table-cond__more {
   position: relative;
   display: inline-flex;
@@ -426,12 +417,15 @@ function onNarrowValue(v: unknown) {
   flex: 1 1 auto;
   min-height: 0;
 }
-/* 抽屉页脚:「添加条件」靠左,重置 / 确认靠右(设计原型 .sheet-foot) */
+/* 抽屉页脚(设计 §2.15 B):「添加条件」靠最左,重置 / 确认靠右;按钮最小宽 80px,不画页脚分隔线(footer-style) */
 .smart-table-cond__drawer-foot {
   display: flex;
   flex: 1 1 auto;
   align-items: center;
   gap: 8px;
+}
+.smart-table-cond__drawer-foot > .n-button {
+  min-width: 80px;
 }
 .smart-table-cond__drawer-foot > :first-child {
   margin-right: auto;

@@ -86,9 +86,9 @@ describe('SearchForm 操作区对齐(L0-7)', () => {
   })
 })
 
-describe('SearchForm 「搜索」按钮的 loading 不改变按钮宽度(与 ConditionBar 同一缺陷,issue #5)', () => {
-  // 官方 NButton 的 loading 会加一个 16px + 6px 间距的转圈槽,进 / 出 loading 时按钮宽度逐帧变化,
-  // 同排的「重置」/「展开」被推着动。jsdom 不做布局,这里只锁结构事实;真实宽度由浏览器实测(见任务汇报)。
+describe('SearchForm 「搜索」「重置」按钮:淡色底 + 左图标(设计 §2.13 / §2.15),loading 不改变按钮宽度(issue #5)', () => {
+  // 图标槽(.n-button__icon)一直在:空闲时放图标,loading 时官方把同一个槽里的图标换成转圈,按钮宽度不变。
+  // 这取代了 3.0.1 之后临时的「转圈槽脱离文档流」写法。jsdom 不做布局,这里只锁结构事实;真实宽度由浏览器实测。
   function mountLoading(layout: 'grid' | 'inline', loading: boolean) {
     return mount(SearchForm, {
       props: {
@@ -103,20 +103,36 @@ describe('SearchForm 「搜索」按钮的 loading 不改变按钮宽度(与 Con
       attachTo: document.body,
     })
   }
+  const btnOf = (w: ReturnType<typeof mountLoading>, text: string) =>
+    w.findAll('button').find((b) => b.text() === text)!
 
-  it('转圈槽 .n-button__icon 脱离文档流', () => {
-    expect(searchFormSource).toMatch(
-      /\.smart-table-search-submit\.n-button :deep\(\.n-button__icon\)\s*\{[^}]*position: absolute/,
-    )
+  it('不再用「转圈槽脱离文档流」的临时写法', () => {
+    expect(searchFormSource).not.toMatch(/\.n-button__icon\)\s*\{[^}]*position: absolute/)
   })
 
   it.each(['grid', 'inline'] as const)(
-    '%s 布局:「搜索」按钮带 smart-table-search-submit',
+    '%s 布局:「搜索」= secondary + primary(淡主色底),图标槽空闲与 loading 时都在',
+    async (layout) => {
+      const w = mountLoading(layout, false)
+      const btn = btnOf(w, 'Search')
+      expect(btn.classes()).toContain('n-button--primary-type')
+      expect(btn.classes()).toContain('n-button--secondary')
+      expect(btn.find('.n-button__icon svg').exists()).toBe(true)
+      await w.setProps({ loading: true })
+      expect(btnOf(w, 'Search').classes()).toContain('n-button--loading')
+      expect(btnOf(w, 'Search').find('.n-button__icon').exists()).toBe(true)
+      w.unmount()
+    },
+  )
+
+  it.each(['grid', 'inline'] as const)(
+    '%s 布局:「重置」= secondary 默认型(淡灰底),带图标',
     (layout) => {
-      const w = mountLoading(layout, true)
-      const btn = w.findAll('button').find((b) => b.text() === 'Search')!
-      expect(btn.classes()).toContain('smart-table-search-submit')
-      expect(btn.classes()).toContain('n-button--loading')
+      const w = mountLoading(layout, false)
+      const btn = btnOf(w, 'Reset')
+      expect(btn.classes()).toContain('n-button--default-type')
+      expect(btn.classes()).toContain('n-button--secondary')
+      expect(btn.find('.n-button__icon svg').exists()).toBe(true)
       w.unmount()
     },
   )

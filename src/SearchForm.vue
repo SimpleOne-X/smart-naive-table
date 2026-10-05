@@ -23,6 +23,7 @@ import type { SmartTableLabels, SmartTableOption, SearchFormConfig } from './typ
 import type { SearchDef } from './useColumns'
 import { optionLabel } from './useOptions'
 import { countTracks, effectiveCollapsedRows } from './searchCols'
+import { MagnifierIcon, ResetIcon } from './icons'
 
 // 官方没有公开导出 SelectMixedOption(只在 select/src/interface 里,深导入会随版本改路径),用公开的两个选项类型拼出同一个联合。
 type SelectMixedOption = SelectOption | SelectGroupOption
@@ -182,14 +183,16 @@ function renderField(f: SearchDef): VNodeChild {
         <component :is="() => renderField(f)" />
       </n-form-item>
       <n-space :size="8">
-        <n-button
-          class="smart-table-search-submit"
-          type="primary"
-          :loading="loading"
-          @click="emit('search')"
-          >{{ labels.search }}</n-button
-        >
-        <n-button @click="emit('reset')">{{ labels.reset }}</n-button>
+        <!-- 搜索 = 淡主色底 + 放大镜,重置 = 淡灰底 + 逆时针箭头(设计 §2.13 / §2.15 A):官方 secondary,不是实心;
+             图标槽一直在,loading 时官方把同一个槽里的图标换成转圈,按钮宽度不变(issue #5 不再需要额外 CSS) -->
+        <n-button secondary type="primary" :loading="loading" @click="emit('search')">
+          <template #icon><MagnifierIcon /></template>
+          {{ labels.search }}
+        </n-button>
+        <n-button secondary @click="emit('reset')">
+          <template #icon><ResetIcon /></template>
+          {{ labels.reset }}
+        </n-button>
       </n-space>
     </div>
   </n-form>
@@ -220,14 +223,14 @@ function renderField(f: SearchDef): VNodeChild {
           </n-form-item-gi>
           <n-form-item-gi suffix>
             <n-space align="center">
-              <n-button
-                class="smart-table-search-submit"
-                type="primary"
-                :loading="loading"
-                @click="emit('search')"
-                >{{ labels.search }}</n-button
-              >
-              <n-button @click="emit('reset')">{{ labels.reset }}</n-button>
+              <n-button secondary type="primary" :loading="loading" @click="emit('search')">
+                <template #icon><MagnifierIcon /></template>
+                {{ labels.search }}
+              </n-button>
+              <n-button secondary @click="emit('reset')">
+                <template #icon><ResetIcon /></template>
+                {{ labels.reset }}
+              </n-button>
               <n-button
                 v-if="collapsible"
                 class="smart-table-search-toggle"
@@ -247,22 +250,6 @@ function renderField(f: SearchDef): VNodeChild {
 </template>
 
 <style scoped>
-/* 「搜索」按钮进 / 出 loading 时宽度不变(与 ConditionBar 的「搜索」同一处理,原因见那边的注释,issue #5):
-   官方转圈槽(.n-button__icon)撑宽按钮,同排的「重置 / 展开」会被推着动;让它脱离文档流、居中盖在按钮上,loading 期间文字淡出。 */
-.smart-table-search-submit.n-button :deep(.n-button__icon) {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  margin: 0;
-  max-width: var(--n-icon-size) !important;
-  transform: translate(-50%, -50%);
-}
-.smart-table-search-submit.n-button :deep(.n-button__content) {
-  transition: opacity 0.2s var(--n-bezier);
-}
-.smart-table-search-submit.n-button--loading :deep(.n-button__content) {
-  opacity: 0;
-}
 /* 「展开 / 收起」:官方文字按钮没有固定高度和内边距(--n-height 是 initial,实测 28×14,比同排 34px 的按钮矮、还窄 8px);
    与设计原型一致:高度与同排按钮同高(模板里取主题的 heightMedium)、左右内边距 4px */
 .smart-table-search-toggle {

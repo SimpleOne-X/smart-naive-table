@@ -14,7 +14,6 @@ import {
   NInput,
   NInputNumber,
   NSelect,
-  NSpace,
   useThemeVars,
 } from 'naive-ui'
 import type { EditorKind, SmartTableLabels, SmartTableOption } from './types'
@@ -106,6 +105,7 @@ const placeholderOf = (f: SheetField): string => {
       closable
       :native-scrollbar="true"
       body-content-style="padding: 16px 24px 8px"
+      footer-style="border-top: none"
     >
       <n-form
         label-placement="left"
@@ -208,8 +208,10 @@ const placeholderOf = (f: SheetField): string => {
         </n-form-item>
       </n-form>
       <template #footer>
-        <n-space justify="end" style="flex: 1 1 auto">
-          <n-button size="large" :disabled="form.saving" @click="emit('close')">{{
+        <!-- 底部抽屉的两个按钮等宽并排(设计 §2.15 B3):取消 = 淡灰,保存 = 实心主色(这个表单唯一的默认动作),都不带图标;
+             保存中转圈替换在文字左边、「取消」同时置灰 -->
+        <div class="smart-table-sheet-foot">
+          <n-button secondary size="large" :disabled="form.saving" @click="emit('close')">{{
             labels.editCancel
           }}</n-button>
           <n-button
@@ -220,7 +222,7 @@ const placeholderOf = (f: SheetField): string => {
             @click="emit('save')"
             >{{ labels.editSheetSave }}</n-button
           >
-        </n-space>
+        </div>
       </template>
     </n-drawer-content>
   </n-drawer>
@@ -244,6 +246,16 @@ const placeholderOf = (f: SheetField): string => {
 .n-drawer.smart-table-sheet .n-drawer-content .n-drawer-body {
   flex: 1 1 auto;
   min-height: 0;
+}
+/* 页脚:两个按钮各占一半(窄档底部抽屉的 macOS 做法,设计 §2.15 B3) */
+.smart-table-sheet-foot {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 8px;
+}
+.smart-table-sheet-foot > .n-button {
+  flex: 1 1 0;
+  min-width: 0;
 }
 /* label 区 72px 放不下「物料编码 + 星号」:不换行 */
 .smart-table-sheet .n-form-item-label {

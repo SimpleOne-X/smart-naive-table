@@ -176,9 +176,9 @@ function onRemove(i: number) {
       class="smart-table-cond-panel__footer"
       :style="{ borderTop: `1px solid ${themeVars.dividerColor}` }"
     >
-      <!-- 原型 .panel-foot:「添加条件」「重置」是无边框的次级按钮(quaternary),「确认」是默认描边(主色实心留给宿主的「新增」) -->
+      <!-- 原型 .panel-foot(设计 §2.15 B):「添加条件」「重置」是淡灰底(secondary),「确认」是实心主色 = 这个面板里唯一的默认动作 -->
       <n-button
-        quaternary
+        secondary
         :size="size"
         :disabled="draft.rows.length >= MAX_BUILDER_ROWS"
         :theme-overrides="{ iconSizeSmall: '13px' }"
@@ -188,8 +188,10 @@ function onRemove(i: number) {
         {{ labels.filterAddCondition }}
       </n-button>
       <div class="smart-table-cond-panel__actions">
-        <n-button quaternary :size="size" @click="emit('reset')">{{ labels.filterReset }}</n-button>
-        <n-button :size="size" @click="emit('confirm')">{{ labels.filterConfirm }}</n-button>
+        <n-button secondary :size="size" @click="emit('reset')">{{ labels.filterReset }}</n-button>
+        <n-button type="primary" :size="size" @click="emit('confirm')">{{
+          labels.filterConfirm
+        }}</n-button>
       </div>
     </div>
   </div>

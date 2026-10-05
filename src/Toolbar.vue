@@ -8,7 +8,19 @@ import type { DropdownMenuProps, DropdownOption } from 'naive-ui'
 import type { Density, SmartTableLabels, ToolbarConfig, ToolbarMoreOption } from './types'
 import { fmt } from './labels'
 import { useEscClose } from './useEscClose'
-import { ChevronDownIcon, DensityIcon, MaximizeIcon, RefreshIcon, RestoreIcon } from './icons'
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ClearIcon,
+  DensityIcon,
+  MaximizeIcon,
+  PlusIcon,
+  RefreshIcon,
+  ResetIcon,
+  RestoreIcon,
+  SortIcon,
+  TrashIcon,
+} from './icons'
 
 const props = defineProps({
   title: { type: String, default: undefined },
@@ -42,7 +54,7 @@ const props = defineProps({
   sortCount: { type: Number, default: 0 },
   /**
    * 可编辑表格(editable)的工具栏按钮:非 null 时「放弃修改 / 新增行 / 保存修改(N)」放在业务组最前,批量栏里带「删除所选 / 放弃修改 / 保存修改(N)」。
-   * 平时「新增行」是主色;有待保存修改(count > 0)时主色让给「保存修改」,「新增行」降为默认描边 —— 一屏只有一个主色按钮。
+   * 按钮统一(设计 §2.15):「新增行 / 保存修改(N)」淡主色底 + 图标,「放弃修改」淡灰 + 图标;页面上没有实心按钮,保存修改只在有待保存修改(count > 0)时出现。
    */
   edit: {
     type: Object as PropType<{
@@ -130,8 +142,6 @@ const moreOptions = computed<ToolbarMoreOption[]>(() => {
 
 // 窄档折叠:业务按钮(宿主 #right + 「更多」)收进「操作 ▾」,点开原位多出一行(不是浮层、不加动画)。批量栏出现时不折叠。
 const opsOpen = ref(false)
-// 「放弃修改」是静默按钮(原型 .n-btn.quiet):内边距 8px(窄档触控尺寸 12px),比官方 quaternary 默认的 12px 窄
-const quietPadding = { paddingMedium: '0 8px', paddingLarge: '0 12px' }
 const foldActive = computed(() => props.fold && !props.batch)
 const hasBizActions = computed<boolean>(
   () => !!slots.right || moreOptions.value.length > 0 || !!props.edit,
@@ -196,36 +206,46 @@ const moreThemeOverrides = computed(() => ({
           <slot name="batch" />
           <!-- 可编辑表格:删除所选(待删除,保存才生效)+ 待保存的修改在批量栏里也够得着 -->
           <template v-if="edit">
+            <!-- 按钮统一(设计 §2.15 A):破坏性 = 淡红底 + 垃圾桶;中性 = 淡灰底 + 图标;保存 = 淡主色底 + 对勾(保存中官方在同一个槽里换成转圈) -->
             <n-button
               v-if="edit.remove"
+              secondary
+              type="error"
               :disabled="edit.saving"
-              :text-color="themeVars.errorColor"
               @click="emit('editDeleteSelected')"
-              >{{ labels.editDeleteSelected }}</n-button
             >
-            <n-button v-if="edit.restore" :disabled="edit.saving" @click="emit('editRestore')">{{
-              labels.editRestoreSelected
-            }}</n-button>
+              <template #icon><TrashIcon /></template>
+              {{ labels.editDeleteSelected }}
+            </n-button>
+            <n-button
+              v-if="edit.restore"
+              secondary
+              :disabled="edit.saving"
+              @click="emit('editRestore')"
+            >
+              <template #icon><ResetIcon /></template>
+              {{ labels.editRestoreSelected }}
+            </n-button>
             <template v-if="edit.count > 0">
-              <n-button
-                quaternary
-                :disabled="edit.saving"
-                :theme-overrides="quietPadding"
-                @click="emit('editDiscard')"
-                >{{ labels.editDiscard }}</n-button
-              >
-              <n-button type="primary" :loading="edit.saving" @click="emit('editSave')">{{
-                fmt(labels.editSave, { n: edit.count })
-              }}</n-button>
+              <n-button secondary :disabled="edit.saving" @click="emit('editDiscard')">
+                <template #icon><ResetIcon /></template>
+                {{ labels.editDiscard }}
+              </n-button>
+              <n-button secondary type="primary" :loading="edit.saving" @click="emit('editSave')">
+                <template #icon><CheckIcon /></template>
+                {{ fmt(labels.editSave, { n: edit.count }) }}
+              </n-button>
             </template>
           </template>
         </div>
         <n-button
-          quaternary
+          secondary
           :size="tier === 'narrow' ? 'large' : 'medium'"
           @click="emit('clearSelection')"
-          >{{ labels.clearSelection }}</n-button
         >
+          <template #icon><ClearIcon /></template>
+          {{ labels.clearSelection }}
+        </n-button>
       </div>
       <!-- 模式 2:标题 + 条件构造器(#cond)。宽档整行 1:1 分成两半(左 = 标题 + 构造器,右 = 按钮 + 图标);中 / 窄档 main 退场(display: contents),
          标题 / 构造器 / 右半区落进各自的网格区域,构造器独占第 2 行 -->
@@ -258,11 +278,11 @@ const moreThemeOverrides = computed(() => ({
       <n-button
         v-if="foldActive && hasBizActions"
         class="smart-table-toolbar-ops"
-        quaternary
+        secondary
         size="large"
         :aria-expanded="opsOpen"
         :theme-overrides="{
-          colorQuaternary: opsOpen ? themeVars.buttonColor2Hover : undefined,
+          colorSecondary: opsOpen ? themeVars.buttonColor2Hover : undefined,
           paddingLarge: '0 12px',
         }"
         @click="opsOpen = !opsOpen"
@@ -279,42 +299,34 @@ const moreThemeOverrides = computed(() => ({
           <template v-if="edit">
             <n-button
               v-if="edit.count > 0"
-              quaternary
+              secondary
               :disabled="edit.saving"
-              :theme-overrides="quietPadding"
               @click="emit('editDiscard')"
-              >{{ labels.editDiscard }}</n-button
             >
+              <template #icon><ResetIcon /></template>
+              {{ labels.editDiscard }}
+            </n-button>
             <n-button
               v-if="edit.add"
-              :type="edit.count > 0 ? 'default' : 'primary'"
+              secondary
+              type="primary"
               :disabled="edit.saving"
               :theme-overrides="{ iconSizeMedium: '13px', iconSizeLarge: '13px' }"
               @click="emit('editAdd')"
             >
-              <template #icon>
-                <svg
-                  viewBox="0 0 16 16"
-                  width="1em"
-                  height="1em"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  aria-hidden="true"
-                >
-                  <path d="M8 3v10M3 8h10" />
-                </svg>
-              </template>
+              <template #icon><PlusIcon /></template>
               {{ labels.editAddRow }}
             </n-button>
             <n-button
               v-if="edit.count > 0"
+              secondary
               type="primary"
               :loading="edit.saving"
               @click="emit('editSave')"
-              >{{ fmt(labels.editSave, { n: edit.count }) }}</n-button
             >
+              <template #icon><CheckIcon /></template>
+              {{ fmt(labels.editSave, { n: edit.count }) }}
+            </n-button>
           </template>
           <slot name="right" />
           <n-dropdown
@@ -329,6 +341,7 @@ const moreThemeOverrides = computed(() => ({
           >
             <!-- 默认 medium(34px),与宿主的业务按钮同高;chevron 12px、iconColor(原型 --n-text-3),右内边距 12px(chevron 自带的留白算进去) -->
             <n-button
+              secondary
               icon-placement="right"
               :aria-label="labels.more"
               :theme-overrides="{ iconSizeMedium: '12px', iconSizeLarge: '12px' }"
@@ -407,9 +420,15 @@ const moreThemeOverrides = computed(() => ({
       <!-- 窄档折叠:没有表头,排序入口放在工具栏最下面一行(原型 .tb-search 的「排序」按钮,带生效条数角标) -->
       <div v-if="foldActive && sortEntry" class="smart-table-toolbar-entries">
         <span class="smart-table-toolbar-sort-wrap">
-          <n-button class="smart-table-toolbar-sort" size="large" @click="emit('openSort')">{{
-            labels.sort
-          }}</n-button>
+          <n-button
+            class="smart-table-toolbar-sort"
+            secondary
+            size="large"
+            @click="emit('openSort')"
+          >
+            <template #icon><SortIcon /></template>
+            {{ labels.sort }}
+          </n-button>
           <span
             v-if="sortCount > 0"
             class="smart-table-toolbar-sort-badge"
@@ -553,6 +572,8 @@ const moreThemeOverrides = computed(() => ({
 /* 窄档批量栏(原型 .tb-batch @ < 600):第 1 行「已选 N 项 | 取消选择」,第 2 行宿主按钮整行等分;右侧内置图标收起。控件 40px(large) */
 .smart-table-toolbar--batch-narrow {
   display: block;
+  /* fillHeight 下卡片内容是纵向 flex:不禁止收缩的话,按钮换行后的第 3 行会被压回 min-height,盖到下面的卡片上 */
+  flex-shrink: 0;
 }
 .smart-table-toolbar--batch-narrow .smart-table-batch {
   display: grid;
@@ -570,11 +591,14 @@ const moreThemeOverrides = computed(() => ({
 .smart-table-toolbar--batch-narrow .smart-table-batch > .n-button {
   grid-area: clear;
 }
+/* 放得下就等分一行;放不下(英文文案 + 图标)就换行各占一整行,不让按钮被卡片右缘截断。min-width: max-content 是换行的判据 */
 .smart-table-toolbar--batch-narrow .smart-table-batch-acts {
   grid-area: acts;
+  flex-wrap: wrap;
 }
 .smart-table-toolbar--batch-narrow .smart-table-batch-acts > * {
   flex: 1 1 0;
+  min-width: max-content;
   justify-content: center;
 }
 .smart-table-toolbar--batch-narrow .smart-table-toolbar-right {
