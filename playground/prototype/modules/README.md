@@ -146,7 +146,7 @@ moreOptions(t): ToolbarMoreOption[]      // 导出 / 导入 / 分隔线 / 下载
 downloadCsv(name: string, text: string)  // UTF-8 BOM
 ProtoAddButton                            // <proto-add-button :label="t('新增')" @click="…" />,放 #toolbar-right
 ```
-`ProtoAddButton` **没有 `type` 属性**:所有模块(含模块 1)的「新增」都是淡绿底 + 加号(官方 `secondary` + `type="primary"`,设计 §2.15),图标盒调成 13px;只有 `label` 一个 prop、一个 `click` 事件。
+`ProtoAddButton` **没有 `type` 属性**:所有模块(含模块 1)的「新增」都是淡绿底 + 加号(官方 `secondary` + `type="primary"`,设计 §2.15),加号图标盒是官方默认尺寸(18px / 窄档 20px);只有 `label` 一个 prop、一个 `click` 事件。
 
 ### `modules/shared/btn.ts`
 宿主按钮的统一写法(设计 §2.15):页面上的按钮 = 淡色底 + 左图标;表格行内的「编辑 / 删除」是无底文字按钮,只加颜色和小图标;确认弹窗 / 确认气泡的按钮按 macOS 两档。

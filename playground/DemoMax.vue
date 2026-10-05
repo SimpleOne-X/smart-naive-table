@@ -9,8 +9,10 @@ import { allRows, mockPage, type DemoRow } from './mock'
 import { labels } from './locale'
 import { DownloadIcon, TrashIcon } from './prototype/modules/shared/btn'
 import { ProtoAddButton } from './prototype/modules/shared/toolbar'
+import { useButtonTint } from '../src/buttonTint'
 
 const message = useMessage()
+const tint = useButtonTint()
 const checked = ref<Array<string | number>>([])
 const fill = ref(false)
 const transformHost = ref(false)
@@ -111,6 +113,7 @@ const toolbar = computed(() => ({
           <NButton
             secondary
             type="error"
+            :theme-overrides="tint.error"
             data-testid="batch-del"
             @click="
               () => {

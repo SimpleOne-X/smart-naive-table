@@ -3,6 +3,8 @@
 import { defineComponent, h } from 'vue'
 import { NButton } from 'naive-ui'
 import type { ToolbarConfig, ToolbarMoreOption } from '../../../../src/index'
+import { PlusIcon } from '../../../../src/icons'
+import { useButtonTint } from '../../../../src/buttonTint'
 
 type T = (zh: string) => string
 
@@ -36,26 +38,11 @@ export function downloadCsv(name: string, text: string) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000)
 }
 
-const PLUS = () =>
-  h(
-    'svg',
-    {
-      width: 13,
-      height: 13,
-      viewBox: '0 0 16 16',
-      fill: 'none',
-      stroke: 'currentColor',
-      'stroke-width': 1.6,
-      'stroke-linecap': 'round',
-    },
-    [h('path', { d: 'M8 3v10M3 8h10' })],
-  )
-
 /**
  * 工具栏右侧「新增」按钮(`#toolbar-right` 插槽里用):
  *   <ProtoAddButton :label="t('新增')" @click="openCreate" />
  * 设计 §2.15:页面上的「新增」是淡主色底(secondary + primary)+ 加号,所有模块一样(模块 1 也是淡主色底,不降成描边)。
- * 原型的「新增」图标是 13px;官方 NButton 的图标盒默认 18px(会让按钮宽 3px),所以这里把 iconSizeMedium 调成 13px。
+ * 加号用库内的按钮图标(24 视口 / 1em),图标盒保持官方默认(medium 18px / large 20px),不另调尺寸。
  */
 export const ProtoAddButton = defineComponent({
   name: 'ProtoAddButton',
@@ -64,16 +51,17 @@ export const ProtoAddButton = defineComponent({
   },
   emits: ['click'],
   setup(props, { emit }) {
+    const tint = useButtonTint()
     return () =>
       h(
         NButton,
         {
           secondary: true,
           type: 'primary',
-          themeOverrides: { iconSizeMedium: '13px', iconSizeLarge: '13px' }, // 窄档卡片模式下工具栏按钮是 large
+          themeOverrides: tint.value.primary,
           onClick: (e: MouseEvent) => emit('click', e),
         },
-        { icon: PLUS, default: () => props.label },
+        { icon: PlusIcon, default: () => props.label },
       )
   },
 })

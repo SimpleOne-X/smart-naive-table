@@ -139,7 +139,7 @@ describe('模块 13 页面', { timeout: 20000 }, () => {
     restore()
   })
 
-  it('英文下表头不被截断:列宽 >= 标题文字宽度 + 28(原型 titleFit);中文列宽不变', async () => {
+  it('英文下表头不被截断:列宽 >= 标题文字宽度 + 30(原型 titleFit);中文列宽不变', async () => {
     const restore = stubCanvas()
     const widthOf = (w: VueWrapper, key: string) => colsOf(w).find((c) => c.key === key)?.width ?? 0
     const zh = await mountApp(13)

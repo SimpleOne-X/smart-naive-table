@@ -247,9 +247,9 @@ describe('侧栏 / 占位 / 档位', () => {
     expect(await flags(2)).toEqual([false, false])
   }, 30000)
 
-  it('窄档分组条 + 子页签:i18n 没有分组条高亮;版本行 v3.0.0 · 2026-10-03 且没有「升级变更」', async () => {
+  it('窄档分组条 + 子页签:i18n 没有分组条高亮;版本行 v3.0.1 · 2026-10-04 且没有「升级变更」', async () => {
     const w = await mountApp(7)
-    expect(w.find('#verLine').text()).toBe('v3.0.0 · 2026-10-03')
+    expect(w.find('#verLine').text()).toBe('v3.0.1 · 2026-10-04')
     expect(w.text()).not.toContain('升级变更')
     expect(w.findAll('#grpBar .mod').map((b) => b.text())).toEqual([
       '查询',

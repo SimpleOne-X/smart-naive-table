@@ -26,7 +26,8 @@ import {
   type OpRow,
   type RouteRow,
 } from '../data/m14-routing'
-import { registerDict, textW } from '../i18n'
+import { registerDict } from '../i18n'
+import { fitTitles } from './shared/fitTitles'
 import { OPS_BY_TYPE } from './shared/ops'
 import { useProtoTable } from './shared/useProtoTable'
 import { useTier } from './shared/useTier'
@@ -302,17 +303,9 @@ const baseColumns = computed<SmartTableColumn<RouteRow>[]>(() => [
   },
 ])
 
-/* 英文表头宽度按 t(标题) 的真实文字宽度重算,不让标题被截断(原型 titleFit:textW + 28);中文不动 */
+/* 英文表头宽度按 t(标题) 的真实文字宽度重算,不让标题折行 / 被截断(原型 titleFit:文字宽 + 12 + 16 + 1 + 1,见 i18n.ts titleFit);中文不动 */
 const columns = computed<SmartTableColumn<RouteRow>[]>(() =>
-  shell.lang !== 'en'
-    ? baseColumns.value
-    : baseColumns.value.map((c) => {
-        if (!('key' in c) || typeof c.title !== 'function') return c
-        const w = Math.ceil(textW(String(c.title()))) + 28
-        return c.width !== undefined
-          ? { ...c, width: Math.max(Number(c.width), w) }
-          : { ...c, minWidth: Math.max(Number(c.minWidth ?? 0), w) }
-      }),
+  fitTitles(baseColumns.value, shell.lang === 'en'),
 )
 
 /* 新增行追加在末尾并立刻打开工序库(工艺路线是有序的);停用的工序行级只读 */

@@ -28,6 +28,7 @@ import CrudModal from './shared/CrudModal.vue'
 import { statusOptions } from './shared/options'
 import { ProtoAddButton, protoToolbar } from './shared/toolbar'
 import { useTier } from './shared/useTier'
+import { useButtonTint } from '../../../src/buttonTint'
 
 registerDict([
   ['全部部门', 'All departments'],
@@ -37,6 +38,7 @@ registerDict([
 
 const crudRef = ref<InstanceType<typeof CrudModal> | null>(null)
 const { el, width, tier } = useTier()
+const tint = useButtonTint()
 const themeVars = useThemeVars()
 const {
   t,
@@ -171,13 +173,19 @@ function onSaved(p: { mode: 'create' | 'edit'; orig: string | null; no: string }
             ><ProtoAddButton :label="t('新增')" @click="crudRef?.openCreate()"
           /></template>
           <template #batch="{ checkedRowKeys, clear }">
-            <n-button secondary type="primary" @click="onBatchApprove(checkedRowKeys, clear)">
+            <n-button
+              secondary
+              type="primary"
+              :theme-overrides="tint.primary"
+              @click="onBatchApprove(checkedRowKeys, clear)"
+            >
               <template #icon><CheckIcon /></template>
               {{ t('批量审核') }}
             </n-button>
             <n-button
               secondary
               type="error"
+              :theme-overrides="tint.error"
               aria-haspopup="dialog"
               @click="onBatchDelete(checkedRowKeys, clear)"
             >

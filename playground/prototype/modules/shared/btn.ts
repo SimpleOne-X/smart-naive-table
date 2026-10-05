@@ -5,6 +5,7 @@ import { h, type FunctionalComponent } from 'vue'
 import { NButton } from 'naive-ui'
 import type { ButtonProps } from 'naive-ui'
 import { ACT_BTN } from './toolbar'
+import { useButtonTint } from '../../../../src/buttonTint'
 
 export {
   CheckIcon,
@@ -80,11 +81,26 @@ export const UserIcon: FunctionalComponent = () =>
 /** 行内文字按钮:图标 14px(= 字号 1em)、与字间距 4px(原型 .n-btn.text .btn-ic),高度沿用 ACT_BTN。 */
 const TEXT_ICON = { iconSizeMedium: '14px', iconMarginMedium: '4px' }
 
+/**
+ * 行内文字按钮的主题覆盖:小图标 + 字色取当前主题的 pressed 色(设计 §2.15 E,与库内淡色按钮同一来源)。
+ * 在渲染函数里调用(列的 render 在表格渲染期执行),明暗切换时随渲染重取。
+ */
+function textOverrides(type: 'primary' | 'error') {
+  const tint = useButtonTint().value
+  return { ...TEXT_ICON, ...(type === 'primary' ? tint.primaryText : tint.errorText) }
+}
+
 /** 行内「编辑」:主色字 + 铅笔,无底。 */
 export const editAction = (label: string, onClick: () => void) =>
   h(
     NButton,
-    { text: true, type: 'primary', style: ACT_BTN, themeOverrides: TEXT_ICON, onClick },
+    {
+      text: true,
+      type: 'primary',
+      style: ACT_BTN,
+      themeOverrides: textOverrides('primary'),
+      onClick,
+    },
     { icon: () => h(EditIcon), default: () => label },
   )
 
@@ -92,7 +108,13 @@ export const editAction = (label: string, onClick: () => void) =>
 export const detailAction = (label: string, onClick: () => void) =>
   h(
     NButton,
-    { text: true, type: 'primary', style: ACT_BTN, themeOverrides: TEXT_ICON, onClick },
+    {
+      text: true,
+      type: 'primary',
+      style: ACT_BTN,
+      themeOverrides: textOverrides('primary'),
+      onClick,
+    },
     { icon: () => h(DetailIcon), default: () => label },
   )
 
@@ -100,7 +122,7 @@ export const detailAction = (label: string, onClick: () => void) =>
 export const deleteTrigger = (label: string) =>
   h(
     NButton,
-    { text: true, type: 'error', style: ACT_BTN, themeOverrides: TEXT_ICON },
+    { text: true, type: 'error', style: ACT_BTN, themeOverrides: textOverrides('error') },
     { icon: () => h(TrashIcon), default: () => label },
   )
 
@@ -108,7 +130,7 @@ export const deleteTrigger = (label: string) =>
 export const removeAction = (label: string, onClick: () => void) =>
   h(
     NButton,
-    { text: true, type: 'error', style: ACT_BTN, themeOverrides: TEXT_ICON, onClick },
+    { text: true, type: 'error', style: ACT_BTN, themeOverrides: textOverrides('error'), onClick },
     { icon: () => h(TrashIcon), default: () => label },
   )
 

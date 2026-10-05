@@ -173,7 +173,7 @@ const setShell = (field: Seg['field'], v: string) => ((shell as any)[field] = v)
         <div class="app">
           <aside class="side">
             <h1>{{ t('SmartTable 设计方案') }}</h1>
-            <p class="sub" id="verLine">v3.0.0 · 2026-10-03</p>
+            <p class="sub" id="verLine">v3.0.1 · 2026-10-04</p>
             <div class="group-title">{{ t('设计模块') }}</div>
             <nav id="modList">
               <template v-for="g in groups" :key="g.meta.name">

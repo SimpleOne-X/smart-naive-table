@@ -346,6 +346,12 @@ describe('对照页 ?m=14', () => {
       .find((b) => b.text() === '放弃修改')!
       .trigger('click')
     await settle()
+    // 先弹确认气泡,点「放弃」才还原
+    ;[...document.body.querySelectorAll<HTMLElement>('.n-popconfirm__panel button')]
+      .find((b) => b.textContent?.trim() === '放弃')!
+      .click()
+    await settle()
+    expect(w.findAll('td.smart-table-xd')).toHaveLength(0) // 草稿确已放弃
     expect(
       w
         .findAll('.n-data-table-tbody .n-data-table-tr:not(.n-data-table-tr--summary)')

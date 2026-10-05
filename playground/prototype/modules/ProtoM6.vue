@@ -5,12 +5,13 @@ import { computed } from 'vue'
 import { SmartTable } from '../../../src/index'
 import { fetchDict } from '../backends/m6-dict'
 import { dictColumns } from '../data/m6-columns'
+import { fitTitles } from './shared/fitTitles'
 import { protoToolbar } from './shared/toolbar'
 import { useProtoTable } from './shared/useProtoTable'
 
-const { t, tableProps } = useProtoTable()
+const { shell, t, tableProps } = useProtoTable()
 // computed:placeholder 是静态串,切语言才会重算
-const columns = computed(() => dictColumns(t))
+const columns = computed(() => fitTitles(dictColumns(t), shell.lang === 'en'))
 </script>
 
 <template>

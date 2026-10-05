@@ -11,6 +11,7 @@ import type {
 } from '../../../src/index'
 import { CSV_HEAD, approveRows, delRow, delRows, rowsToCsv, type Row } from '../data'
 import { queryRows } from '../fetcher'
+import { fitTitles } from '../modules/shared/fitTitles'
 import { materialCols } from '../modules/shared/materialCols'
 import { downloadCsv, moreOptions } from '../modules/shared/toolbar'
 import {
@@ -63,7 +64,10 @@ export function useMaterialPage(opts: MaterialPageOpts) {
     ])
 
   const columns = computed<SmartTableColumn<Row>[]>(() =>
-    materialCols({ t, selection: true, index: true, memo: true, actions: rowActions }),
+    fitTitles(
+      materialCols({ t, selection: true, index: true, memo: true, actions: rowActions }),
+      shell.lang === 'en',
+    ),
   )
 
   /* 记下最近一次请求的参数:「导出」= 后端按当前生效的条件导出全部行(不是当前页) */

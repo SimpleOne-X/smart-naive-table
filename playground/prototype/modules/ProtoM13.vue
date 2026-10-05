@@ -41,7 +41,6 @@ import {
   type RowForm,
 } from '../data'
 import { MOCK_DELAY, fetchRows, queryRows } from '../fetcher'
-import { textW } from '../i18n'
 import {
   CheckIcon,
   DELETE_DIALOG_BTNS,
@@ -50,13 +49,21 @@ import {
   deleteTrigger,
   editAction,
 } from './shared/btn'
+import { fitTitles } from './shared/fitTitles'
 import { materialCols } from './shared/materialCols'
 import { STATUS_VALUES } from './shared/options'
-import { downloadCsv, moreOptions as makeMoreOptions, protoToolbar } from './shared/toolbar'
+import {
+  ProtoAddButton,
+  downloadCsv,
+  moreOptions as makeMoreOptions,
+  protoToolbar,
+} from './shared/toolbar'
 import { useProtoTable } from './shared/useProtoTable'
+import { useButtonTint } from '../../../src/buttonTint'
 
 const { shell, t, tableProps, toast, message } = useProtoTable()
 const dialog = useDialog()
+const tint = useButtonTint()
 const themeVars = useThemeVars()
 
 const tableRef = ref<SmartTableInst<Row> | null>(null)
@@ -120,17 +127,6 @@ const rowActions = (row: Row) =>
       },
     ),
   ])
-/* 英文表头宽度按 t(标题) 的真实文字宽度重算,不让标题被截断(原型 titleFit:textW + 28);中文不动 */
-const fitTitles = (cols: SmartTableColumn<Row>[]): SmartTableColumn<Row>[] =>
-  shell.lang !== 'en'
-    ? cols
-    : cols.map((c) => {
-        if ('type' in c || typeof c.title !== 'function' || c.key === 'actions') return c
-        const w = Math.ceil(textW(String(c.title()))) + 28
-        if (c.width != null) return w > Number(c.width) ? { ...c, width: w } : c
-        return w > Number(c.minWidth ?? 0) ? { ...c, minWidth: w } : c
-      })
-
 const columns = computed<SmartTableColumn<Row>[]>(() =>
   fitTitles(
     materialCols({
@@ -151,6 +147,7 @@ const columns = computed<SmartTableColumn<Row>[]>(() =>
         },
       },
     }),
+    shell.lang === 'en',
   ),
 )
 
@@ -260,35 +257,22 @@ async function onSave() {
       @more-select="onMore"
     >
       <template #toolbar-right>
-        <n-button
-          type="primary"
-          :theme-overrides="{ iconSizeMedium: '13px' }"
-          @click="crud.openCreate()"
-        >
-          <template #icon>
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.6"
-              stroke-linecap="round"
-            >
-              <path d="M8 3v10M3 8h10" />
-            </svg>
-          </template>
-          {{ t('新增') }}
-        </n-button>
+        <proto-add-button :label="t('新增')" @click="crud.openCreate()" />
       </template>
       <template #batch="{ checkedRowKeys, clear }">
-        <n-button secondary type="primary" @click="onBatchApprove(checkedRowKeys, clear)">
+        <n-button
+          secondary
+          type="primary"
+          :theme-overrides="tint.primary"
+          @click="onBatchApprove(checkedRowKeys, clear)"
+        >
           <template #icon><CheckIcon /></template>
           {{ t('批量审核') }}
         </n-button>
         <n-button
           secondary
           type="error"
+          :theme-overrides="tint.error"
           aria-haspopup="dialog"
           @click="onBatchDelete(checkedRowKeys, clear)"
         >

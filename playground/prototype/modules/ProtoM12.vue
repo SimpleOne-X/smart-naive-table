@@ -48,7 +48,7 @@ import {
 } from '../data'
 import { PICK_PS, detRow, initialDet, pickCandidates, sumDet, type DetRow } from '../data/m12-det'
 import { MOCK_DELAY, fetchRows, queryRows } from '../fetcher'
-import { registerDict, textW } from '../i18n'
+import { registerDict } from '../i18n'
 import {
   CheckIcon,
   DELETE_DIALOG_BTNS,
@@ -57,6 +57,7 @@ import {
   deleteTrigger,
   editAction,
 } from './shared/btn'
+import { fitTitles } from './shared/fitTitles'
 import { materialCols } from './shared/materialCols'
 import { STATUS_VALUES, statusOptions } from './shared/options'
 import {
@@ -68,6 +69,7 @@ import {
 import { useProtoTable } from './shared/useProtoTable'
 import { PlusIcon, removeAction } from './shared/btn'
 import { useTier } from './shared/useTier'
+import { useButtonTint } from '../../../src/buttonTint'
 
 registerDict(
   [
@@ -84,6 +86,7 @@ const { shell, t, tableProps, toast, message } = useProtoTable()
 const dialog = useDialog()
 const themeVars = useThemeVars()
 const { el: hostEl, tier } = useTier()
+const tint = useButtonTint()
 const isNarrow = computed(() => tier.value === 'narrow')
 
 /* ================= ① 入库明细子表 ================= */
@@ -91,24 +94,30 @@ const det = ref<DetRow[]>(initialDet())
 const fmtMoney = (n: number) =>
   n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const num = { align: 'right', titleAlign: 'right' } as const
-const subColumns = computed<SmartTableColumn<DetRow>[]>(() => [
-  { type: 'index', title: () => t('序号'), width: 64 },
-  { key: 'no', title: () => t('物料编码'), width: 120 },
-  { key: 'name', title: () => t('物料名称'), minWidth: 120 },
-  { key: 'qty', title: () => t('数量'), width: 96, ...num },
-  { key: 'price', title: () => t('单价'), width: 112, format: 'money', ...num },
-  { key: 'amt', title: () => t('金额'), width: 128, format: 'money', ...num },
-  {
-    key: 'ops',
-    title: '',
-    width: 72,
-    // 套一层 NSpace(flex):按钮直接放进 td 会落在行内基线上,把行撑高 2px(41.4),与大表行(39.4)对不齐
-    render: (row: DetRow) =>
-      h(NSpace, { size: 12, wrapItem: false }, () => [
-        removeAction(t('移除'), () => (det.value = det.value.filter((d) => d.no !== row.no))),
-      ]),
-  },
-])
+/* 子表的英文表头也按 titleFit 加宽(原型 embedPageHtml 的 sw()):「Material Code」放不进 120px */
+const subColumns = computed<SmartTableColumn<DetRow>[]>(() =>
+  fitTitles(
+    [
+      { type: 'index', title: () => t('序号'), width: 64 },
+      { key: 'no', title: () => t('物料编码'), width: 120 },
+      { key: 'name', title: () => t('物料名称'), minWidth: 120 },
+      { key: 'qty', title: () => t('数量'), width: 96, ...num },
+      { key: 'price', title: () => t('单价'), width: 112, format: 'money', ...num },
+      { key: 'amt', title: () => t('金额'), width: 128, format: 'money', ...num },
+      {
+        key: 'ops',
+        title: '',
+        width: 72,
+        // 套一层 NSpace(flex):按钮直接放进 td 会落在行内基线上,把行撑高 2px(41.4),与大表行(39.4)对不齐
+        render: (row: DetRow) =>
+          h(NSpace, { size: 12, wrapItem: false }, () => [
+            removeAction(t('移除'), () => (det.value = det.value.filter((d) => d.no !== row.no))),
+          ]),
+      },
+    ],
+    shell.lang === 'en',
+  ),
+)
 /** 合计行(原型 .sum-row):合计 / 数量合计 / 金额合计;没有行时不出合计。 */
 const summary = (): Record<string, { value: string | number }> | [] => {
   if (!det.value.length) return []
@@ -224,19 +233,11 @@ const rowActions = (row: Row) =>
       },
     ),
   ])
-/* 英文表头宽度按 t(标题) 的真实文字宽度重算,不让标题被截断(原型 titleFit:textW + 28);中文不动 */
-const fitTitles = (cols: SmartTableColumn<Row>[]): SmartTableColumn<Row>[] =>
-  shell.lang !== 'en'
-    ? cols
-    : cols.map((c) => {
-        if ('type' in c || typeof c.title !== 'function' || c.key === 'actions') return c
-        const w = Math.ceil(textW(String(c.title()))) + 28
-        if (c.width != null) return w > Number(c.width) ? { ...c, width: w } : c
-        return w > Number(c.minWidth ?? 0) ? { ...c, minWidth: w } : c
-      })
-
 const columns = computed<SmartTableColumn<Row>[]>(() =>
-  fitTitles(materialCols({ t, selection: true, index: true, memo: true, actions: rowActions })),
+  fitTitles(
+    materialCols({ t, selection: true, index: true, memo: true, actions: rowActions }),
+    shell.lang === 'en',
+  ),
 )
 
 async function onDel(no: string) {
@@ -351,13 +352,19 @@ async function onSave() {
           <proto-add-button :label="t('新增')" @click="crud.openCreate()" />
         </template>
         <template #batch="{ checkedRowKeys, clear }">
-          <n-button secondary type="primary" @click="onBatchApprove(checkedRowKeys, clear)">
+          <n-button
+            secondary
+            type="primary"
+            :theme-overrides="tint.primary"
+            @click="onBatchApprove(checkedRowKeys, clear)"
+          >
             <template #icon><CheckIcon /></template>
             {{ t('批量审核') }}
           </n-button>
           <n-button
             secondary
             type="error"
+            :theme-overrides="tint.error"
             aria-haspopup="dialog"
             @click="onBatchDelete(checkedRowKeys, clear)"
           >
@@ -387,12 +394,7 @@ async function onSave() {
         max-height="clamp(140px, 28vh, 280px)"
       >
         <template #toolbar-right>
-          <n-button
-            secondary
-            type="primary"
-            :theme-overrides="{ iconSizeMedium: '13px' }"
-            @click="openPick"
-          >
+          <n-button secondary type="primary" :theme-overrides="tint.primary" @click="openPick">
             <template #icon><PlusIcon /></template>
             {{ t('添加物料') }}
           </n-button>

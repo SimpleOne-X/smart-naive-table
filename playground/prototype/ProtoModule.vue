@@ -48,7 +48,7 @@ import {
   type RowForm,
 } from './data'
 import { MOCK_DELAY, fetchRows, queryRows } from './fetcher'
-import { textW } from './i18n'
+import { textW, titleFit } from './i18n'
 import {
   deptOptions as makeDeptOptions,
   statusOptions as makeStatusOptions,
@@ -69,12 +69,14 @@ import {
   moreOptions as makeMoreOptions,
 } from './modules/shared/toolbar'
 import { useProtoTable } from './modules/shared/useProtoTable'
+import { useButtonTint } from '../../src/buttonTint'
 
 type Mod = 'search' | 'toolbar' | 'filter' | 'sort'
 const props = defineProps<{ mod: Mod }>()
 
 const { shell, t, tableProps, toast, message } = useProtoTable()
 const dialog = useDialog()
+const tint = useButtonTint()
 const tableRef = ref<SmartTableInst<Row> | null>(null)
 const checked = ref<Array<string | number>>([])
 
@@ -113,9 +115,13 @@ const hdrColW = (c: (typeof COLS)[number]) =>
    下限 = 库的 headerIconFloor(useColumns.ts)同一套算法:左内边距 12 + 标题占位 44(两个字)+ 漏斗簇 30(模块 3 / 4 列头恒有过滤)
    + 箭头簇 21(可排序时)+ 右内边距 16;与库的 resizeMinWidth 下限(60)取大者——这两个数恒 ≥ 60,下面直接按 102 / 123 算。*/
 const colMin = (c: (typeof COLS)[number]) => (sorterOf(c.key) ? 123 : 102)
-// 英文表头宽度按 t(label) 的真实文字宽度重算,不让标题被截断(原型 titleFit:textW + 28)
+// 英文表头宽度按 t(label) 的真实文字宽度重算,不让标题折行 / 被截断(原型 titleFit:文字宽 + 12 + 16 + 1 + 1,见 i18n.ts titleFit)
 const colW = (c: (typeof COLS)[number]) =>
-  hdr ? Math.max(hdrColW(c), colMin(c)) : shell.lang === 'en' ? Math.max(c.w, labelW(c) + 28) : c.w
+  hdr
+    ? Math.max(hdrColW(c), colMin(c))
+    : shell.lang === 'en'
+      ? Math.max(c.w, titleFit(t(c.label)))
+      : c.w
 
 /* 比较符 ACT = 原型 OPS_BY_TYPE(modules/shared/ops.ts):库默认只给 8 个,宿主在列上写 search.actions / filter.actions 才出现新的 */
 
@@ -513,18 +519,24 @@ const searchCfg =
         </n-button>
       </template>
       <template #toolbar-right>
-        <!-- 「新增」图标 13px:见 modules/shared/toolbar.ts ProtoAddButton -->
+        <!-- 「新增」= 淡主色底 + 加号:见 modules/shared/toolbar.ts ProtoAddButton -->
         <proto-add-button :label="t('新增')" @click="crud.openCreate()" />
       </template>
       <!-- 批量栏(原型 .tb-batch):批量审核 + 批量删除(原型是 NDialog warning 确认,这里 useDialog().warning) -->
       <template #batch="{ checkedRowKeys, clear }">
-        <n-button secondary type="primary" @click="onBatchApprove(checkedRowKeys, clear)">
+        <n-button
+          secondary
+          type="primary"
+          :theme-overrides="tint.primary"
+          @click="onBatchApprove(checkedRowKeys, clear)"
+        >
           <template #icon><CheckIcon /></template>
           {{ t('批量审核') }}
         </n-button>
         <n-button
           secondary
           type="error"
+          :theme-overrides="tint.error"
           aria-haspopup="dialog"
           @click="onBatchDelete(checkedRowKeys, clear)"
         >
