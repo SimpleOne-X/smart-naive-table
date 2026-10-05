@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import ConditionBar from '../src/ConditionBar.vue'
+import conditionBarSource from '../src/ConditionBar.vue?raw'
 import ConditionPanel from '../src/ConditionPanel.vue'
 import ConditionRow from '../src/ConditionRow.vue'
 import { defaultLabels } from '../src/labels'
@@ -318,5 +319,52 @@ describe('ConditionBar 气泡阴影只有一份', () => {
       'color',
     ] as const)
       expect(panel.style[prop]).toBe('')
+  })
+})
+
+describe('ConditionBar 「搜索」按钮的 loading 不改变按钮宽度', () => {
+  // 官方 NButton 的 loading 会往按钮里塞 span.n-button__icon(16px + 6px 间距),进 / 出 loading 时它走 width 过渡,
+  // 按钮宽度逐帧变化,同一行 flex: 1 的值输入框被动跟着变宽(issue #5)。
+  // jsdom 不做布局,量不出像素:这里只锁住「按钮带了隔离用的 class + 样式规则让转圈槽脱离文档流」这两个结构事实,
+  // 真实宽度由浏览器实测(见任务汇报)。
+  const searchBtn = () =>
+    [...document.querySelectorAll<HTMLElement>('.smart-table-cond__main > .n-button')].find(
+      (b) => b.textContent!.trim() === 'Search',
+    )!
+  function mountBar(extra: Record<string, unknown> = {}) {
+    const w = mount(ConditionBar, {
+      props: { ...common, draft: base(), ...extra },
+      attachTo: document.body,
+    })
+    mounted.push(w)
+    return w
+  }
+
+  it('转圈槽 .n-button__icon 脱离文档流:不撑宽按钮,过渡期间也不挪动邻居', () => {
+    expect(conditionBarSource).toMatch(
+      /\.smart-table-cond__search\.n-button :deep\(\.n-button__icon\)\s*\{[^}]*position: absolute/,
+    )
+  })
+
+  it('loading 与否按钮都带 smart-table-cond__search,且 loading 时仍是官方 loading 态', async () => {
+    const w = mountBar()
+    expect(searchBtn().classList.contains('smart-table-cond__search')).toBe(true)
+    expect(searchBtn().classList.contains('n-button--loading')).toBe(false)
+    await w.setProps({ loading: true })
+    expect(searchBtn().classList.contains('smart-table-cond__search')).toBe(true)
+    expect(searchBtn().classList.contains('n-button--loading')).toBe(true)
+    await w.setProps({ loading: false })
+    expect(searchBtn().classList.contains('smart-table-cond__search')).toBe(true)
+  })
+
+  it('loading 期间点「搜索」不发 search(不可重复触发),结束后恢复', async () => {
+    const w = mountBar({ loading: true })
+    searchBtn().click()
+    await nextTick()
+    expect(w.emitted('search')).toBeUndefined()
+    await w.setProps({ loading: false })
+    searchBtn().click()
+    await nextTick()
+    expect(w.emitted('search')).toHaveLength(1)
   })
 })

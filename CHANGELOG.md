@@ -1,5 +1,11 @@
 # Changelog
 
+## 未发布
+
+### 修复
+
+- **条件搜索栏「搜索」按钮的 loading 转圈会撑宽按钮,带动同排的值输入框左右晃(issue #5)**:官方 `NButton` 的 `loading` 会往按钮里塞一个 16px + 6px 间距的转圈槽(`span.n-button__icon`),表格进入加载态时按钮变宽 24px,加载结束再走官方的 `fade-in-width-expand` 过渡逐帧收回;`ConditionBar` 里 `flex: 1` 的值输入框(`.smart-table-filter-value`)被动跟着变宽 / 变窄。`SearchForm`(`grid` / `inline` 两种布局)的「搜索」按钮是同一个缺陷,同排的「重置 / 展开」会被推着动。现在转圈槽脱离文档流、居中盖在按钮上,loading 期间按钮文字淡出,进出 loading 按钮自身宽度恒定。`loading` 的语义、点击拦截(loading 期间不触发 `search`)与 3.0.1 一致;不 loading 时的外观没有任何变化,唯一的可见差异是 loading 期间转圈由「文字左侧」变成「居中盖住文字」。
+
 ## 3.0.1 - 2026-10-04
 
 ### 修复

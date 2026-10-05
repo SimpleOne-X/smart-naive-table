@@ -182,9 +182,13 @@ function renderField(f: SearchDef): VNodeChild {
         <component :is="() => renderField(f)" />
       </n-form-item>
       <n-space :size="8">
-        <n-button type="primary" :loading="loading" @click="emit('search')">{{
-          labels.search
-        }}</n-button>
+        <n-button
+          class="smart-table-search-submit"
+          type="primary"
+          :loading="loading"
+          @click="emit('search')"
+          >{{ labels.search }}</n-button
+        >
         <n-button @click="emit('reset')">{{ labels.reset }}</n-button>
       </n-space>
     </div>
@@ -216,9 +220,13 @@ function renderField(f: SearchDef): VNodeChild {
           </n-form-item-gi>
           <n-form-item-gi suffix>
             <n-space align="center">
-              <n-button type="primary" :loading="loading" @click="emit('search')">{{
-                labels.search
-              }}</n-button>
+              <n-button
+                class="smart-table-search-submit"
+                type="primary"
+                :loading="loading"
+                @click="emit('search')"
+                >{{ labels.search }}</n-button
+              >
               <n-button @click="emit('reset')">{{ labels.reset }}</n-button>
               <n-button
                 v-if="collapsible"
@@ -239,6 +247,22 @@ function renderField(f: SearchDef): VNodeChild {
 </template>
 
 <style scoped>
+/* 「搜索」按钮进 / 出 loading 时宽度不变(与 ConditionBar 的「搜索」同一处理,原因见那边的注释,issue #5):
+   官方转圈槽(.n-button__icon)撑宽按钮,同排的「重置 / 展开」会被推着动;让它脱离文档流、居中盖在按钮上,loading 期间文字淡出。 */
+.smart-table-search-submit.n-button :deep(.n-button__icon) {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  max-width: var(--n-icon-size) !important;
+  transform: translate(-50%, -50%);
+}
+.smart-table-search-submit.n-button :deep(.n-button__content) {
+  transition: opacity 0.2s var(--n-bezier);
+}
+.smart-table-search-submit.n-button--loading :deep(.n-button__content) {
+  opacity: 0;
+}
 /* 「展开 / 收起」:官方文字按钮没有固定高度和内边距(--n-height 是 initial,实测 28×14,比同排 34px 的按钮矮、还窄 8px);
    与设计原型一致:高度与同排按钮同高(模板里取主题的 heightMedium)、左右内边距 4px */
 .smart-table-search-toggle {

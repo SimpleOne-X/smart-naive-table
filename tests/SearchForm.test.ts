@@ -4,6 +4,7 @@ import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import { NGrid } from 'naive-ui'
 import SearchForm from '../src/SearchForm.vue'
+import searchFormSource from '../src/SearchForm.vue?raw'
 import { defaultLabels } from '../src/labels'
 import { deriveSearchDefs } from '../src/useColumns'
 
@@ -83,4 +84,59 @@ describe('SearchForm 操作区对齐(L0-7)', () => {
     expect(toggle.attributes('style')).toContain('height: 34px')
     w.unmount()
   })
+})
+
+describe('SearchForm 「搜索」按钮的 loading 不改变按钮宽度(与 ConditionBar 同一缺陷,issue #5)', () => {
+  // 官方 NButton 的 loading 会加一个 16px + 6px 间距的转圈槽,进 / 出 loading 时按钮宽度逐帧变化,
+  // 同排的「重置」/「展开」被推着动。jsdom 不做布局,这里只锁结构事实;真实宽度由浏览器实测(见任务汇报)。
+  function mountLoading(layout: 'grid' | 'inline', loading: boolean) {
+    return mount(SearchForm, {
+      props: {
+        fields,
+        params: {},
+        config: { layout },
+        labels: defaultLabels,
+        loading,
+        getOptions: () => [],
+        isLoadingOptions: () => false,
+      },
+      attachTo: document.body,
+    })
+  }
+
+  it('转圈槽 .n-button__icon 脱离文档流', () => {
+    expect(searchFormSource).toMatch(
+      /\.smart-table-search-submit\.n-button :deep\(\.n-button__icon\)\s*\{[^}]*position: absolute/,
+    )
+  })
+
+  it.each(['grid', 'inline'] as const)(
+    '%s 布局:「搜索」按钮带 smart-table-search-submit',
+    (layout) => {
+      const w = mountLoading(layout, true)
+      const btn = w.findAll('button').find((b) => b.text() === 'Search')!
+      expect(btn.classes()).toContain('smart-table-search-submit')
+      expect(btn.classes()).toContain('n-button--loading')
+      w.unmount()
+    },
+  )
+
+  it.each(['grid', 'inline'] as const)(
+    '%s 布局:loading 期间点「搜索」不发 search',
+    async (layout) => {
+      const w = mountLoading(layout, true)
+      await w
+        .findAll('button')
+        .find((b) => b.text() === 'Search')!
+        .trigger('click')
+      expect(w.emitted('search')).toBeUndefined()
+      await w.setProps({ loading: false })
+      await w
+        .findAll('button')
+        .find((b) => b.text() === 'Search')!
+        .trigger('click')
+      expect(w.emitted('search')).toHaveLength(1)
+      w.unmount()
+    },
+  )
 })

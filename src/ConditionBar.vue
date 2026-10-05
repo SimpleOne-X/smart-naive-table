@@ -289,7 +289,9 @@ function onNarrowValue(v: unknown) {
               >{{ appliedCount }}</span
             >
           </span>
-          <n-button :loading="loading" @click="onSearch">{{ labels.search }}</n-button>
+          <n-button class="smart-table-cond__search" :loading="loading" @click="onSearch">{{
+            labels.search
+          }}</n-button>
           <n-button quaternary @click="onReset">{{ labels.reset }}</n-button>
         </div>
       </template>
@@ -352,6 +354,24 @@ function onNarrowValue(v: unknown) {
 .smart-table-cond__main > :deep(.n-button),
 .smart-table-cond__more {
   flex: none;
+}
+/* 「搜索」按钮进 / 出 loading 时宽度不变:官方 loading 会塞一个 16px + 6px 间距的转圈槽(.n-button__icon)撑宽按钮,
+   退出时它再走 width 过渡收回,按钮逐帧变窄,同排 flex: 1 的值输入框被动跟着变宽(issue #5)。
+   所以让转圈槽脱离文档流、居中盖在按钮上,loading 期间文字淡出给它让位(进出各 .2s 交叉淡入淡出);
+   max-width 钉死,官方进出场过渡改 max-width 的动画就不会把转圈槽裁掉。点击拦截 / 无障碍状态仍是官方 loading 的。 */
+.smart-table-cond__search.n-button :deep(.n-button__icon) {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  max-width: var(--n-icon-size) !important;
+  transform: translate(-50%, -50%);
+}
+.smart-table-cond__search.n-button :deep(.n-button__content) {
+  transition: opacity 0.2s var(--n-bezier);
+}
+.smart-table-cond__search.n-button--loading :deep(.n-button__content) {
+  opacity: 0;
 }
 .smart-table-cond__more {
   position: relative;
