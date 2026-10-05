@@ -746,10 +746,10 @@ table.n-table td.acts .n-btn.text + .n-btn.text { margin-left: 12px; }   /* 间�
   .tb .ops-toggle { display: inline-flex; }
   .tb-actions { display: none; }
   .tb.ops-open .tb-actions { display: flex; }
-  .tb-actions .n-btn { flex: 1 1 0; justify-content: center; }
-  .tb-actions:has(.xl-hid) { flex-wrap: wrap; }                          /* 「含 M 条当前不可见」另起一行,不被等分的按钮挤掉 */
-  .tb-actions .xl-hid { flex: 1 0 100%; text-align: center; }
-  .tb-actions .pop-wrap { flex: 1 1 0; }                                   /* 「更多」包了一层定位锚,等分宽度要落在锚上 */
+  .tb-actions { flex-wrap: wrap; }                                           /* 英文文案长:一行放不下就换行,不挤扁、不超出视口 */
+  .tb-actions .n-btn { flex: 1 1 0; min-width: max-content; justify-content: center; }   /* 等分整行,但不小于内容宽(带图标的英文按钮) */
+  .tb-actions .xl-hid { flex: 1 0 100%; order: 1; text-align: center; }     /* 「含 M 条当前不可见」另起一行,排在按钮之后 */
+  .tb-actions .pop-wrap { flex: 1 1 0; min-width: max-content; }                                   /* 「更多」包了一层定位锚,等分宽度要落在锚上 */
   .tb-actions .pop-wrap > .n-btn { width: 100%; }
   .more-pop { right: 0; min-width: 0; }                                    /* 窄档菜单与按钮同宽,不越出屏幕 */
 
@@ -1118,6 +1118,11 @@ html, body { overflow: hidden; }
   /* 虚拟滚动要求每张卡片等高(spacer = 张数 × 间距):字段值单行显示、过长省略,不折行 */
   .tbl-cards .rc-desc > div { flex-wrap: nowrap; }
   .tbl-cards .rc-desc dd { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* 值是标签(.pill = 库里的 NTag)时标签让位:英文标签长(「Document Status」约 100px),dt 是 flex: none,每对只有约 137px,
+     值只剩 29px,dd 的 overflow 会把 70px 的 Approved 标签裁成「App」。标签是整块、没法像文字那样省略,所以这一对里改成
+     dt 收缩 + 省略、dd 不收缩(只用 max-width 封顶,不撑破卡片)。文字值不受影响。 */
+  .tbl-cards .rc-desc > div:has(dd .pill) dt { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tbl-cards .rc-desc > div:has(dd .pill) dd { flex-shrink: 0; max-width: 100%; }
 }
 
 /* ============================================================
@@ -4450,7 +4455,7 @@ function measureTb(w) {
 function renderMods() {
   const en = state.lang === 'en', hl = en ? 'Highlight' : '亮点', inDoc = !!state.view;
   /* 版本行:v3.0.0 +「升级变更」入口(文字链接,不占目录高度) */
-  $('verLine').innerHTML = `v3.0.0 · 2026-10-03 · <button class="ver-link ${state.view === 'changes' ? 'on' : ''}" data-act="view" data-v="changes">${en ? 'Upgrade notes' : '升级变更'}</button>`;
+  $('verLine').innerHTML = `v3.0.1 · 2026-10-04 · <button class="ver-link ${state.view === 'changes' ? 'on' : ''}" data-act="view" data-v="changes">${en ? 'Upgrade notes' : '升级变更'}</button>`;
   /* 宽档两级目录:组名小标题 + 全部子页(当前子页高亮;★ = 亮点;状态徽标只在「提议 / 待议」时出);在文档页时不高亮任何子页 */
   $('modList').innerHTML = GROUPS.map((g) => `<div class="nav-h">${navName(g)}</div>` + g.keys.map((k) => {
     const m = MODULES[k];
@@ -5438,7 +5443,11 @@ const tl = (s) => (state.lang === 'en' ? trText(s) : s);
 /* 文本宽度(canvas):英文表头宽度按「函数式列标题」随语言重算,不让标题被截断 */
 const _tcv = document.createElement('canvas').getContext('2d');
 const textW = (s, weight = 500) => { _tcv.font = `${weight} 14px ${getComputedStyle(document.body).fontFamily}`; return _tcv.measureText(s).width; };
-const titleFit = (c) => (state.lang === 'en' ? Math.ceil(textW(trText(c.label))) + 28 : 0);
+/* 英文表头列宽下限 = 标题真实文字宽度(canvas 量，和 DOM 量出来的差不到 0.02px，向上取整)+ 30：
+   th 左内边距 12 + 右内边距 16(库给除勾选 / 展开列外的所有 th 都是 padding-right: 16，见 3.11)+ 右边框 1(th 列宽含边框，内容盒少 1px)+ 1px 亚像素余量。
+   不留这 2px 的后果：真实 NDataTable 的表头标题没有 nowrap，内容盒比文字窄 1px 就整列折成两行、整行表头从 47 撑到 70px(甚至在单词中间断开)。
+   这是「默认列宽」的下限，不是拖拽下限；中文不受影响(返回 0)，列自己声明的宽度更宽时以声明为准。 */
+const titleFit = (c) => (state.lang === 'en' ? Math.ceil(textW(trText(c.label))) + 12 + 16 + 1 + 1 : 0);
 
 const TR_ATTRS = ['placeholder', 'aria-label', 'title', 'data-tip'];
 const TR_SKIP = new Set(['SCRIPT', 'STYLE', 'INPUT', 'TEXTAREA']);
@@ -5689,12 +5698,14 @@ function drawerHtml() {
    ③ 页面恒为一屏、不整页滚动(设计 12.3):上方「物料单据」大表 = 与其它模块相同的 fillHeight + 虚拟滚动,吃掉除下方子表外的全部剩余高度;
       下方「入库明细」子表自然高度、封顶(.sub-card .tbl-scroll 的 max-height),超出在子表内部滚动,表头吸顶、合计行吸底。
    ============================================================ */
+/* 入库明细子表的列宽:英文下不低于 titleFit(表头标题真实文字宽 + 30,见 titleFit),否则真实 NDataTable 的「Material Code」在 120px 里折成两行;中文按原宽。 */
+const sw = (w, label) => Math.max(w, titleFit({ label }));
 function embedPageHtml() {
   const dens = state.compact ? 'compact' : 'normal', narrow = state.tier === 'narrow';
   const rows = state.det.map(d => ({ ...d, name: DATA.find(r => r.no === d.no)?.name ?? '', amt: d.qty * d.price }));
   const qty = rows.reduce((n, r) => n + r.qty, 0), amt = rows.reduce((n, r) => n + r.amt, 0);
   const sub = `<div class="n-card sub-card"><div class="card-hd"><span class="card-title">入库明细</span><button class="n-btn tint" data-act="pickOpen">${I_BTN_PLUS} 添加物料</button></div>
-    <div class="dt"><div class="tbl-scroll" style="position:static;overflow-x:auto"><table class="n-table sub striped" style="min-width:${narrow ? 760 : 0}px"><colgroup><col style="width:64px"><col style="width:120px"><col><col style="width:96px"><col style="width:112px"><col style="width:128px"><col style="width:72px"></colgroup>
+    <div class="dt"><div class="tbl-scroll" style="position:static;overflow-x:auto"><table class="n-table sub striped" style="min-width:${narrow ? 760 : 0}px"><colgroup><col style="width:64px"><col style="width:${sw(120, '物料编码')}px"><col><col style="width:${sw(96, '数量')}px"><col style="width:${sw(112, '单价')}px"><col style="width:${sw(128, '金额')}px"><col style="width:72px"></colgroup>
       <thead><tr><th class="idx">序号</th><th>物料编码</th><th>物料名称</th><th class="num">数量</th><th class="num">单价</th><th class="num">金额</th><th></th></tr></thead>
       <tbody>${rows.map((r, i) => `<tr><td class="idx">${i + 1}</td><td>${esc(r.no)}</td><td>${esc(r.name)}</td><td class="num">${r.qty}</td><td class="num">${fmtMoney(r.price)}</td><td class="num">${fmtMoney(r.amt)}</td><td class="acts"><button class="n-btn text danger" data-act="detRm" data-v="${esc(r.no)}">${I_BTN_TRASH}移除</button></td></tr>`).join('')}
       ${rows.length ? `<tr class="sum-row"><td></td><td>合计</td><td></td><td class="num">${qty}</td><td></td><td class="num">${fmtMoney(amt)}</td><td></td></tr>` : ''}</tbody></table>
