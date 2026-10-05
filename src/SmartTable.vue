@@ -1564,7 +1564,11 @@ let observedBody: HTMLElement | null = null
 function measureHost() {
   // 放大态:根元素在原位只剩一个占位,宽度取放大层的内容宽(减去两侧各 16px 内边距);否则取根元素
   const el = maxActive.value ? layerRef.value : rootRef.value
-  rootWidth.value = el ? Math.max(0, el.clientWidth - (maxActive.value ? 32 : 0)) : 0
+  // 量到 0 = 被 keep-alive 摘下(或 display: none),不是真的 0 宽:沿用上一次的宽度,
+  // 否则档位会掉回「还没量到」的宽档,容器实际更窄时挂回页面要多渲染一帧宽档布局才回到真实档位。从没量到过(rootWidth 仍是 0)照旧。
+  const measured = el?.clientWidth ?? 0
+  if (measured > 0 || rootWidth.value === 0)
+    rootWidth.value = Math.max(0, measured - (maxActive.value ? 32 : 0))
   const body = scopeEl()?.querySelector<HTMLElement>('.n-data-table-base-table-body') ?? null
   if (resizeObserver && body !== observedBody) {
     if (observedBody) resizeObserver.unobserve(observedBody)
