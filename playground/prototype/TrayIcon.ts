@@ -1,4 +1,4 @@
-// 空状态图标:线性托盘(原型 const I_EMPTY / 设计文档「空状态图标改为线性托盘」一节)。
+// 空状态图标:线性托盘(原型 const I_EMPTY)。
 // 宿主经官方接口全局替换,库默认值不变:
 //   <NConfigProvider :component-options="{ Empty: { renderIcon: () => h(TrayIcon) } }">
 // (config-provider/src/internal-interface.d.ts 的 Empty: Pick<EmptyProps, 'description' | 'renderIcon'>),下拉 / 树 / 穿梭框的空状态也一起换。

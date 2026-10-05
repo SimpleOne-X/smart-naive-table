@@ -55,7 +55,7 @@ describe('SmartTable 当前行高亮色(D1)', () => {
     expect(trs[1].classes()).toContain('smart-table-row--active')
   })
 
-  it('亮色主题:默认取主题主色 9%(不再是写死的靛蓝 rgba(99,102,241,0.08))', async () => {
+  it('亮色主题:默认取主题主色 9%(不是写死的靛蓝 rgba(99,102,241,0.08))', async () => {
     const { root } = await mountIn(lightTheme)
     expect(root.style.getPropertyValue(AUTO)).toBe(
       `color-mix(in srgb, ${lightTheme.common.primaryColor} 9%, transparent)`,

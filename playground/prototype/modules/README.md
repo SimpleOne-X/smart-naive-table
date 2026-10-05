@@ -28,7 +28,7 @@ tests/proto/
 **新增一个模块只需新建 `modules/ProtoM{N}.vue`**:注册表用 `import.meta.glob('./ProtoM*.vue')` 按 `ProtoM${no}.vue` 自动解析(懒加载,一个模块写坏只影响它自己那页)。
 模块的元数据(名称 / 组 / ★ / natural / rowClick)在 `registry.ts` 的 `META`,逐项照原型,已填好;发现与原型不一致告诉协调者,不要自己改。
 
-### 文件所有权(下一波分组)
+### 文件所有权(分组)
 
 | 组 | 模块 | 你可以新建 / 改 | 不要碰 |
 |---|---|---|---|
@@ -76,7 +76,7 @@ const columns = computed(() => materialCols({ t, selection: true, index: true, m
 .proto-host > :deep(.smart-table) { flex: 1 1 0; }
 </style>
 ```
-natural 模块(现在只剩 10)不开 `fill-height`(整页在主区里滚动);模块 12「上下布局」已不是 natural,恒为一屏(上方主表 `fill-height`,下方子表自然高度、封顶)。
+natural 模块(只有 10)不开 `fill-height`(整页在主区里滚动);模块 12「上下布局」不是 natural,恒为一屏(上方主表 `fill-height`,下方子表自然高度、封顶)。
 
 ### 必配项(除模块 1 外所有模块)
 
@@ -122,7 +122,7 @@ materialCols(o: { t; keys?: MaterialKey[]; selection?: boolean; index?: boolean
   actions?: (row, index) => VNodeChild; search?: boolean /*默认 true*/; memo?: boolean; patch?: Partial<Record<MaterialKey|'memo'|'actions', object>> }): SmartTableColumn<Row>[]
 MATERIAL_COLS   // 原型 COLS:no 112 / name 176(弹性 minWidth)/ owner 88 / status 96 / dept 88 / amount 104 / bizDate 112
 ```
-`selection` → 勾选(40,固定左);`index` → 序号(64,固定左);`actions` → 操作列(140,固定右、不可拖、不进列设置;原型 ACTS_W,设计 §2.15 D 由 120 放宽,放得下「编辑 / 删除」两个带图标的文字按钮);`memo` → hideInTable 的「备注」构造器专用字段(原型 FIELD_DEFS 第 8 个)。
+`selection` → 勾选(40,固定左);`index` → 序号(64,固定左);`actions` → 操作列(140,固定右、不可拖、不进列设置;原型 ACTS_W,设计 §2.15 D:放得下「编辑 / 删除」两个带图标的文字按钮);`memo` → hideInTable 的「备注」构造器专用字段(原型 FIELD_DEFS 第 8 个)。
 标题 / options label 是函数;`placeholder` 是静态串 → 在 `computed` 里调用。`patch.amount = { width: 200 }` 是浅合并。
 
 ### `modules/shared/options.ts`
@@ -196,11 +196,11 @@ fetchPage(rows, params, spec?): Promise<PageResult>        // delay + applyCommo
 
 ## 5. 浏览器实测
 
-dev server 已在 5173:`http://localhost:5173/prototype.html?m=N`。真实 Edge 用 `tools/parity/cdp.mjs`(只读使用)的 `launch(port)` / `Page`,端口用协调者分给你的那段(9410–9419 是外壳阶段用过的,模块 agent 别占)。不要杀任何 node / vite / msedge 进程。
+dev server 已在 5173:`http://localhost:5173/prototype.html?m=N`。真实 Edge 用 `tools/parity/cdp.mjs`(只读使用)的 `launch(port)` / `Page`,端口用协调者分给你的那段(9410–9419 留给外壳,模块 agent 别占)。不要杀任何 node / vite / msedge 进程。
 
 ## 6. 容易踩的坑
 
-- **不要在 bash 双引号 / heredoc 里写反斜杠、反引号**:Bash 工具会把 `\r` `\n` `\u` 展开,正则 / 字符串被悄悄写坏(已发生过:`/\r?\n/` 被拆成三行导致 SFC 编译失败)。含 `\` 的代码用 Edit / Write 工具写,或 Python 里用 `chr(92)` 拼。
+- **不要在 bash 双引号 / heredoc 里写反斜杠、反引号**:Bash 工具会把 `\r` `\n` `\u` 展开,正则 / 字符串被悄悄写坏(例如 `/\r?\n/` 会被拆成三行导致 SFC 编译失败)。含 `\` 的代码用 Edit / Write 工具写,或 Python 里用 `chr(92)` 拼。
 - 行尾:仓库是 LF;不要用 `sed -i`;改前按字节看 CRLF / LF。
 - `import.meta.glob` 懒加载:你的模块文件有编译错误时,整个 vite 页面只有你这一页白,但 `npm test` 里 `mountApp(N)` 会抛错 —— 提交前跑通你自己的测试。
 - 不要给模块根外再包 Provider;不要在模块里 `provide(SMART_TABLE_DEFAULTS, …)`(全局默认在外壳);密度不要放全局默认(`resolveDefaults` 把它拷成标量,不响应),一律 `v-bind="tableProps"`。

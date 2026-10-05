@@ -271,7 +271,7 @@ describe('ConditionBar', () => {
   })
 })
 
-describe('ConditionRow 新增的 size / valueOnly / placeholder(列头面板默认不变)', () => {
+describe('ConditionRow 的 size / valueOnly / placeholder(列头面板默认不变)', () => {
   const row = (extra: Record<string, unknown> = {}) =>
     mount(ConditionRow, {
       props: {
@@ -301,8 +301,8 @@ describe('ConditionRow 新增的 size / valueOnly / placeholder(列头面板默�
 })
 
 describe('ConditionBar 气泡阴影只有一份', () => {
-  // 同列头面板:外壳 .n-popover 的官方阴影关掉,面板的底色 / 圆角 / 阴影 / 文字色来自样式表里的官方 --n-* 变量,不再内联手抄。
-  // jsdom 不加载 SFC 样式,真实浏览器里的视觉值实测见任务汇报。
+  // 同列头面板:外壳 .n-popover 的官方阴影关掉,面板的底色 / 圆角 / 阴影 / 文字色来自样式表里的官方 --n-* 变量,不内联手抄。
+  // jsdom 不加载 SFC 样式,真实浏览器里的视觉值靠浏览器实测。
   it('外壳 .n-popover 的 box-shadow 为 none;面板不带内联的底色 / 圆角 / 阴影 / 文字色', async () => {
     const w = mount(ConditionBar, { props: { ...common, draft: base() }, attachTo: document.body })
     mounted.push(w)
@@ -324,7 +324,7 @@ describe('ConditionBar 气泡阴影只有一份', () => {
 
 describe('ConditionBar 「搜索」「重置」按钮:淡色底 + 左图标(设计 §2.13 / §2.15),loading 不改变按钮宽度(issue #5)', () => {
   // 图标槽(.n-button__icon)一直在:空闲时放图标,loading 时官方把同一个槽里的图标换成转圈,按钮宽度不变,
-  // 取代了 3.0.1 之后临时的「转圈槽脱离文档流」写法。jsdom 不做布局,量不出像素:这里只锁结构事实,真实宽度由浏览器实测。
+  // 转圈槽不脱离文档流。jsdom 不做布局,量不出像素:这里只锁结构事实,真实宽度由浏览器实测。
   const btnOf = (text: string) =>
     [...document.querySelectorAll<HTMLElement>('.smart-table-cond__main > .n-button')].find(
       (b) => b.textContent!.trim() === text,
@@ -339,7 +339,7 @@ describe('ConditionBar 「搜索」「重置」按钮:淡色底 + 左图标(设�
     return w
   }
 
-  it('不再用「转圈槽脱离文档流」的临时写法', () => {
+  it('图标槽(.n-button__icon)不设 position: absolute:转圈槽不脱离文档流', () => {
     expect(conditionBarSource).not.toMatch(/\.n-button__icon\)\s*\{[^}]*position: absolute/)
   })
 

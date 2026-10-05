@@ -137,7 +137,7 @@ describe('useSmartTable', () => {
   })
 })
 
-describe('请求失败后的页码(D3:3.0.0 起还原到上一次成功展示的页)', () => {
+describe('请求失败后的页码(D3:还原到上一次成功展示的页)', () => {
   const failing = () => Promise.reject(new Error('boom'))
 
   /** 先成功拉到第 1 页(每页 10),再让 fetcher 之后的调用失败 */

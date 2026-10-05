@@ -124,7 +124,7 @@ const cfg = computed<ToolbarConfig>(() =>
   props.config === false ? { refresh: false, density: false, columnSettings: false } : props.config,
 )
 
-// 选中态交给 NDropdown 的 value(官方给选中项 active 样式),label 里不再手拼勾;label 在渲染期取,切语言即时跟随
+// 选中态交给 NDropdown 的 value(官方给选中项 active 样式),label 里不手拼勾;label 在渲染期取,切语言即时跟随
 const densityOptions = computed(() => [
   { label: props.labels.densityComfortable, key: 'comfortable' },
   { label: props.labels.densityCompact, key: 'compact' },

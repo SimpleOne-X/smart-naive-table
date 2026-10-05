@@ -79,7 +79,7 @@ export const META: ModMeta[] = [
   { no: 11, key: 'ms', name: '主从联动', en: 'Master-detail', status: 'done', rowClick: true },
   { no: 12, key: 'embed', name: '上下布局', en: 'Stacked layout', status: 'done' },
   { no: 13, key: 'i18n', name: '多语言与页面底色', en: 'Language & background', status: 'done' },
-  // 可编辑表格(Excel 式单元格编辑 + 类型推断);侧栏「数据」组第 3 项,不加 ★。2026-10-05 起不再是提议:状态改「已定」,不带徽标
+  // 可编辑表格(Excel 式单元格编辑 + 类型推断);侧栏「数据」组第 3 项,不加 ★;状态「已定」,不带徽标
   { no: 14, key: 'excel', name: '可编辑表格', en: 'Editable grid', status: 'done' },
 ]
 

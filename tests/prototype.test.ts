@@ -270,7 +270,7 @@ describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', ()
         '布局',
       ])
       expect(w.findAll('#modList .mod')).toHaveLength(13)
-      expect(w.find('.smart-table-title').exists()).toBe(false) // 单表模块工具栏不再画表名(设计 §2.14:页顶已有页面标题)
+      expect(w.find('.smart-table-title').exists()).toBe(false) // 单表模块工具栏不画表名(设计 §2.14:页顶已有页面标题)
       const heads = w.findAll('thead th').map((th) => th.text())
       expect(heads).toEqual(
         expect.arrayContaining([
@@ -324,7 +324,7 @@ describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', ()
       false,
       false,
     ]) // 原型 ★:条件搜索 / 表头过滤 / 字典 / 列设置
-    // 状态:全部「已定」,侧栏没有状态徽标(可编辑表格 2026-10-05 起不再是提议)
+    // 状态:全部「已定」,侧栏没有状态徽标
     expect(mods.map((b) => b.find('.st').exists())).toEqual(Array(13).fill(false))
     expect(mods.map((b) => b.classes('on'))).toEqual([false, false, true, ...Array(10).fill(false)])
     expect(w.find('.stage-head h2').text()).toBe('表头过滤')

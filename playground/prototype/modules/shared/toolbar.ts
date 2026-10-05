@@ -54,7 +54,7 @@ const PLUS = () =>
 /**
  * 工具栏右侧「新增」按钮(`#toolbar-right` 插槽里用):
  *   <ProtoAddButton :label="t('新增')" @click="openCreate" />
- * 设计 §2.15:页面上的「新增」是淡主色底(secondary + primary)+ 加号,所有模块一样(模块 1 也不再降成描边)。
+ * 设计 §2.15:页面上的「新增」是淡主色底(secondary + primary)+ 加号,所有模块一样(模块 1 也是淡主色底,不降成描边)。
  * 原型的「新增」图标是 13px;官方 NButton 的图标盒默认 18px(会让按钮宽 3px),所以这里把 iconSizeMedium 调成 13px。
  */
 export const ProtoAddButton = defineComponent({

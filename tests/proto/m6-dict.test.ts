@@ -150,7 +150,7 @@ describe('模块 6 对照页(ProtoApp ?m=6:真实库渲染)', () => {
       if (w.find('.n-data-table').exists() && w.findAll('thead th').length > 3) break
       await new Promise((r) => setTimeout(r, 20))
     }
-    expect(w.find('.smart-table-title').exists()).toBe(false) // 单表模块工具栏不再画表名(设计 §2.14:页顶已有页面标题)
+    expect(w.find('.smart-table-title').exists()).toBe(false) // 单表模块工具栏不画表名(设计 §2.14:页顶已有页面标题)
     expect(w.findAll('thead th').map((th) => th.text())).toEqual([
       '序号',
       '物料编码',

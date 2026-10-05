@@ -60,7 +60,7 @@ describe('SortDrawer 行间分隔线色', () => {
     expect(darkTheme.common.dividerColor).toBe('rgba(255, 255, 255, 0.09)')
   })
 
-  it('样式表不再用 NDrawer 取不到的 var(--n-divider-color),也没有写死的灰', () => {
+  it('样式表不用 NDrawer 取不到的 var(--n-divider-color),也没有写死的灰', () => {
     expect(sortDrawerSource).not.toContain('var(--n-divider-color')
     expect(sortDrawerSource).not.toContain('rgba(128, 128, 128')
   })

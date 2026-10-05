@@ -60,7 +60,7 @@ describe('SearchForm 折叠态的 collapsed-rows(C5,按 n-grid 实际轨道数�
     w.unmount()
   })
 
-  it('宿主自己配了 collapsedRows: 2 时,1 个轨道也不再抬', async () => {
+  it('宿主自己配了 collapsedRows: 2 时,1 个轨道也不自动抬高', async () => {
     const w = mountForm('300px', { collapsible: true, collapsedRows: 2 })
     await nextTick()
     expect(w.findComponent(NGrid).props('collapsedRows')).toBe(2)
@@ -69,7 +69,7 @@ describe('SearchForm 折叠态的 collapsed-rows(C5,按 n-grid 实际轨道数�
 })
 
 describe('SearchForm 操作区对齐(L0-7)', () => {
-  it('搜索 / 重置 / 展开 同排垂直居中(n-space align=center),不再默认顶对齐', () => {
+  it('搜索 / 重置 / 展开 同排垂直居中(n-space align=center),不是顶对齐', () => {
     const w = mountForm('150px 150px')
     const space = w.find('.smart-table-search .n-space')
     expect(space.attributes('style')).toContain('align-items: center')
@@ -88,7 +88,7 @@ describe('SearchForm 操作区对齐(L0-7)', () => {
 
 describe('SearchForm 「搜索」「重置」按钮:淡色底 + 左图标(设计 §2.13 / §2.15),loading 不改变按钮宽度(issue #5)', () => {
   // 图标槽(.n-button__icon)一直在:空闲时放图标,loading 时官方把同一个槽里的图标换成转圈,按钮宽度不变。
-  // 这取代了 3.0.1 之后临时的「转圈槽脱离文档流」写法。jsdom 不做布局,这里只锁结构事实;真实宽度由浏览器实测。
+  // 转圈槽不脱离文档流。jsdom 不做布局,这里只锁结构事实;真实宽度由浏览器实测。
   function mountLoading(layout: 'grid' | 'inline', loading: boolean) {
     return mount(SearchForm, {
       props: {
@@ -106,7 +106,7 @@ describe('SearchForm 「搜索」「重置」按钮:淡色底 + 左图标(设计
   const btnOf = (w: ReturnType<typeof mountLoading>, text: string) =>
     w.findAll('button').find((b) => b.text() === text)!
 
-  it('不再用「转圈槽脱离文档流」的临时写法', () => {
+  it('图标槽(.n-button__icon)不设 position: absolute:转圈槽不脱离文档流', () => {
     expect(searchFormSource).not.toMatch(/\.n-button__icon\)\s*\{[^}]*position: absolute/)
   })
 

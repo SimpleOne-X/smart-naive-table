@@ -184,7 +184,7 @@ function renderField(f: SearchDef): VNodeChild {
       </n-form-item>
       <n-space :size="8">
         <!-- 搜索 = 淡主色底 + 放大镜,重置 = 淡灰底 + 逆时针箭头(设计 §2.13 / §2.15 A):官方 secondary,不是实心;
-             图标槽一直在,loading 时官方把同一个槽里的图标换成转圈,按钮宽度不变(issue #5 不再需要额外 CSS) -->
+             图标槽一直在,loading 时官方把同一个槽里的图标换成转圈,按钮宽度不变,不需要额外 CSS(issue #5) -->
         <n-button secondary type="primary" :loading="loading" @click="emit('search')">
           <template #icon><MagnifierIcon /></template>
           {{ labels.search }}

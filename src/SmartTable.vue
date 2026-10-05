@@ -1070,7 +1070,7 @@ function notifyPageSizeListeners(user: Partial<PaginationProps>, n: number) {
 const mergedPagination = computed<false | PaginationProps>(() => {
   if (props.pagination === false) return false
   const user = props.pagination ?? {}
-  // 3.0 起默认官方 simple;传 { simple: false } 回到页码序列(此时走官方 showSizePicker / pageSizes)
+  // 默认官方 simple;传 { simple: false } 回到页码序列(此时走官方 showSizePicker / pageSizes)
   const simple = user.simple ?? true
   const showSizePicker = user.showSizePicker ?? defaults.showSizePicker // 单表的 false 也要认
   const current = user.pageSize ?? (isRemote.value ? pagination.pageSize : localPageSize.value)

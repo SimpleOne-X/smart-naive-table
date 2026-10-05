@@ -45,7 +45,7 @@ export const MODS = {
         '.n-data-table-tbody .n-data-table-tr td.n-data-table-td--fixed-left, .n-data-table-tbody .n-data-table-tr td.n-data-table-td--fixed-right',
       ],
     ],
-    note: '固定列:lists 里 fixed th / fixed td 比较固定列的矩形(按类名选,不再用 sticky 判定);多级表头的 th 数组两侧同序。',
+    note: '固定列:lists 里 fixed th / fixed td 比较固定列的矩形(按类名选,不用 sticky 判定);多级表头的 th 数组两侧同序。',
   },
   // m6 异步字典:原型 enterModule 后 setTimeout 900ms 才 dictReady,对照页同口径(字典 0.9s 异步)。
   6: { settleMs: 1900, note: '字典 0.9s 异步,就绪后多等到 1900ms。' },

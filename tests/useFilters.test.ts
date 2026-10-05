@@ -42,7 +42,7 @@ describe('deriveFilterDefs', () => {
     expect(num.actions).toEqual(['gt'])
   })
 
-  it('[B7 / D1] 列头面板的默认可选操作符保持 2.1.1:新增的 7 个只在列上显式写 filter.actions 时出现', () => {
+  it('[B7 / D1] 列头面板的默认可选操作符与 2.1.1 相同:另外 7 个只在列上显式写 filter.actions 时出现', () => {
     const [text, num, date, sel, explicit] = deriveFilterDefs<Row>([
       { key: 'name', filter: true },
       { key: 'salary', format: 'money', filter: true },
@@ -150,7 +150,7 @@ describe('useFilters', () => {
     expect(api.state.value).toEqual({})
   })
 
-  it('同值重复提交不再触发 onChange(面板点确定但没改动)', () => {
+  it('同值重复提交不触发 onChange(面板点确定但没改动)', () => {
     const { api, onChange } = build([{ key: 'name', filter: true }])
     api.setFilter('name', v('a'))
     expect(onChange).toHaveBeenCalledTimes(1)

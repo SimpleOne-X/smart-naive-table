@@ -469,7 +469,7 @@ export type ToolbarMoreOption = NonNullable<DropdownProps['options']>[number]
 
 export interface ToolbarConfig {
   refresh?: boolean // 默认 true;静态数据模式(没传 fetcher)一律不显示
-  /** 是否显示「密度」按钮;默认 false(3.0 起密度交给宿主的个人设置经 defaultDensity 传入)。传 true 时存储里的密度优先。 */
+  /** 是否显示「密度」按钮;默认 false(密度交给宿主的个人设置经 defaultDensity 传入)。传 true 时存储里的密度优先。 */
   density?: boolean
   columnSettings?: boolean // 默认 true
   /** 「更多」菜单(导出 / 导入 / …由宿主定义);不传、空数组或只有分隔线时不显示按钮。选中后发 moreSelect。 */
@@ -497,7 +497,7 @@ export interface SmartTableProps<T = any> {
   defaultPageSize?: number // 默认取宿主给的 pageSizes[0],再缺省 100(解析优先级见 pageSize.ts)
   /**
    * false 隐藏分页;对象与内置默认合并后透传 n-data-table 分页。
-   * 3.0 起默认官方 simple(输入框 / 总页数),每页条数选择器由库用官方嵌套 NPagination 画;传 { simple: false } 回到页码序列。
+   * 默认官方 simple(输入框 / 总页数),每页条数选择器由库用官方嵌套 NPagination 画;传 { simple: false } 回到页码序列。
    * pageSizes 没显式给(实例或全局)时按 fillHeight 区分:没开 [100, 500, 1000],开了 [100, 1000, 10000];显式给了照宿主的。
    */
   pagination?: false | Partial<PaginationProps>

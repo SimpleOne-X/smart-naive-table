@@ -323,7 +323,7 @@ const columns = computed<SmartTableColumn<Row>[]>(() => [
   {
     key: 'actions',
     title: () => t('操作'),
-    width: 140, // 原型 ACTS_W:「编辑 / 删除」两个文字按钮 + 小图标放得下(设计 §2.15 D:120 → 140)
+    width: 140, // 原型 ACTS_W:「编辑 / 删除」两个文字按钮 + 小图标放得下(设计 §2.15 D)
     fixed: 'right',
     resizable: false, // 原型:操作列没有拖拽把手、也不吸收余量
     hideInSetting: true,

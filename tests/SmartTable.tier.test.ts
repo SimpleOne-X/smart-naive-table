@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // 容器宽度档位:ResizeObserver 报宽度 0(组件被 keep-alive 摘下)时沿用上一次的档位(issue #5 附带的小问题)。
-// 之前 0 被当成「还没量到」按宽档处理:容器实际 < 1280 时每次切回会先按宽档多渲染一帧,下一帧才回到真实档位。
+// 防回归:若 0 被当成「还没量到」按宽档处理,容器实际 < 1280 时每次切回会先按宽档多渲染一帧,下一帧才回到真实档位。
 // 档位的可观察结果取窄档卡片模式(cardOnNarrow):窄档 = 卡片列表,否则 = 表格(jsdom 不做布局,宽度用 clientWidth 桩)。
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
@@ -74,7 +74,7 @@ describe('SmartTable 容器宽度为 0 时沿用上一次的档位', () => {
     expect(isCards()).toBe(true)
   })
 
-  it('从没量到过宽度(一直是 0)时仍按宽档,与 3.0.1 一致', async () => {
+  it('从没量到过宽度(一直是 0)时仍按宽档', async () => {
     await mountTable()
     await resizeTo(0)
     expect(isCards()).toBe(false)

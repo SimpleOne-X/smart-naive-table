@@ -29,7 +29,7 @@ node tools/parity/parity-all.mjs [--w 1440] [--theme light|dark] [--mods 1,2,3,4
 
 - `--w`:视口宽度,缺省 1440;390 时高度 844,其余 900。
 - `--theme`:`light`(缺省)或 `dark`。
-- `--mods`:模块编号,逗号分隔,缺省 `1,2,3,4`(要跑 5–13 必须显式写)。编号与原型 `enterModule(键)` 的键见下表;取值校验由 `cdp.mjs` 的 `KEY` 生成。
+- `--mods`:模块编号,逗号分隔,缺省 `1,2,3,4`(要跑 5–14 必须显式写)。编号与原型 `enterModule(键)` 的键见下表;取值校验由 `cdp.mjs` 的 `KEY` 生成。
 - `--diff-only`:只打印有差异的项,相同的不打印;没有差异的模块打印 `(无差异)`。
 - `--lang` / `--bg` / `--density`:外壳开关,**只在传了时生效**。原型侧在 `enterModule` 之前执行 `runAct('lang'|'pageBg'|'density', 值)`(每个模块标题下一行 `外壳 proto state:` 是读回的 `state.lang / pageBg / compact`,可确认真的变了);对照页侧追加 `&lang=&bg=&density=` 到 URL。对照页是否认这三个参数取决于外壳是否实现——看标题行里 `prev:html lang=…` 与 `rowH`、`viewport bg` 读数判断,不认时 prev 不变、会出现整片 `≠`,不是脚本问题。文件名带后缀,如 `m6-light-1440-en-white-comfortable-proto.png`。
 
@@ -53,7 +53,7 @@ node tools/parity/parity-all.mjs [--w 1440] [--theme light|dark] [--mods 1,2,3,4
 - `-` 表示该元素在该侧不存在或不可见;`(无)` 表示该侧数组更短。
 - 末尾一行汇总:`差异汇总 · <宽> · <主题>:共 N 项 ≠(模块 x:n;...)`。
 - 同时落盘 `out/read-<主题>-<宽>[-外壳后缀]-m<模块列表>.json`(完整读数;文件名含 `--mods`,并行跑不同模块不会互相覆盖)、`out/m<模块>-<主题>-<宽>[-外壳后缀]-proto.png` 与 `-prev.png`(两侧截图)。
-- 元素表里新增 `bottom row`(表格底部一行 = chips 靠左 + 分页靠右):原型 `.dt-foot` ↔ 对照页 `.n-data-table__pagination`(库把 chips 放进分页的 prefix;分页不画时落到 `.smart-table-chips-foot`)。
+- 元素表里有 `bottom row`(表格底部一行 = chips 靠左 + 分页靠右):原型 `.dt-foot` ↔ 对照页 `.n-data-table__pagination`(库把 chips 放进分页的 prefix;分页不画时落到 `.smart-table-chips-foot`)。
 - 每个模块的就绪判据 / 等待 / 额外元素 / 备注来自 `modules.mjs`;标题下的 `备注:` 行就是它的 `note`。
 
 「一致」的含义:数值是同一浏览器、同一视口下读出的原始 DOM 值,所以一致就是像素级相同(含亚像素,如 `39.41` 与 `39.39` 也会算 ≠)。没有容差——判断「差 0.02px 要不要管」是人的事。
@@ -66,7 +66,7 @@ node tools/parity/parity-all.mjs [--w 1440] [--theme light|dark] [--mods 1,2,3,4
 
 | 模块 | 覆盖 |
 |---|---|
-| 5 wide | `lists`:`sticky th / sticky td`(只留 `position: sticky` 的元素,比固定列矩形) |
+| 5 wide | `lists`:`fixed th / fixed td`(按类名选固定列,比固定列矩形) |
 | 6 dict | `settleMs: 1900`(异步字典 0.9s) |
 | 8 states | 就绪 = 出现 `.n-empty`(`immediate:false`,首屏没有行);`els` 加空状态 |
 | 10 drag | `els` 加 `#stage`;自然高度页 |
@@ -111,8 +111,6 @@ node tools/parity/zoom.mjs [--mod 3] [--theme light|dark]
 
 | 现象 | 归类 | 说明 |
 |---|---|---|
-| 工具栏里原型多一个「放大」按钮(`btns`/`tb-icons` 因此整体错位) | P1 | 放大/全屏尚未实现,属后续项 |
-| 原型有「条件构造器」入口/面板,对照页没有(搜索卡 `btns`、`form`、弹层读数里出现 `(无)`) | P1 | 条件构造器尚未实现 |
 | 窄档(`--w 390` 等)下表格卡片化、行结构不同 | P2 | 窄档卡片布局不做逐像素对齐 |
 | 表头外框差 1px:`thead` 原型 `303,199,…` 对照页 `304,200,…`,高 40.4 对 39.4,`th` 的 x/y 整体偏 1 | 预期 | 对照页的 n-data-table 自带 1px 外框,`th` 的 y 因此整体 +1;漏斗/排序相对 th 的 y 也 -1(`9`→`8`、`13`→`12`),同源 |
 | 标题行高 21 对 25.6(`title` 矩形高度不同) | 预期 | 文字中心一致(`125.5+10.5` 与 `123.2+12.8` 都是 136),视觉无差 |

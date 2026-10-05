@@ -179,7 +179,7 @@ describe('对照页 ?m=14', () => {
     await settle()
     const me = w.findAll('#modList .mod').find((m) => m.find('.nm').text() === '可编辑表格')!
     expect(me.classes('on')).toBe(true)
-    expect(me.find('.st').exists()).toBe(false) // 2026-10-05 起不再是提议:没有「提议」徽标
+    expect(me.find('.st').exists()).toBe(false) // 状态是「已定」:没有「提议」徽标
     expect(w.find('.crumb').text().replace(/\s+/g, ' ')).toBe(
       'SmartTable 设计方案 / 数据 / 可编辑表格',
     )

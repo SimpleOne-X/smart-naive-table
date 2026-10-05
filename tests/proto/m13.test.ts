@@ -63,7 +63,7 @@ describe('模块 13 页面', { timeout: 20000 }, () => {
       '备注',
       '操作',
     ])
-    expect(document.querySelector('.smart-table-title')).toBeNull() // 单表模块工具栏不再画表名(设计 §2.14:页顶已有页面标题)
+    expect(document.querySelector('.smart-table-title')).toBeNull() // 单表模块工具栏不画表名(设计 §2.14:页顶已有页面标题)
     expect(document.querySelector('.smart-table-cond')).toBeTruthy()
     expect(document.querySelector('.smart-table-search')).toBeNull()
     expect(stOf(w).props('fillHeight')).toBe(true)

@@ -138,7 +138,7 @@ describe('模块 5 对照页(ProtoApp ?m=5:真实库渲染)', () => {
 
   it('没有工具栏标题(设计 §2.14);两级表头:「库存」组头跨 3 列,下面是 可用 / 在途 / 锁定', async () => {
     const w = await mountM5()
-    expect(w.find('.smart-table-title').exists()).toBe(false) // 单表模块工具栏不再画表名(设计 §2.14:页顶已有页面标题)
+    expect(w.find('.smart-table-title').exists()).toBe(false) // 单表模块工具栏不画表名(设计 §2.14:页顶已有页面标题)
     const group = w.findAll('thead th').find((th) => th.text() === '库存')!
     expect(group).toBeTruthy()
     expect(group.attributes('colspan')).toBe('3')

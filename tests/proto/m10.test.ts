@@ -70,7 +70,7 @@ describe('对照页 ?m=10', () => {
     expect(names()).toEqual(PROCS.map((p) => p.name))
     expect(document.querySelectorAll('.proto-drag-handle')).toHaveLength(10)
     expect(document.querySelector('.n-pagination')).toBeNull()
-    expect(document.querySelector('.smart-table-title')).toBeNull() // 单表模块工具栏不再画表名(设计 §2.14:页顶已有页面标题)
+    expect(document.querySelector('.smart-table-title')).toBeNull() // 单表模块工具栏不画表名(设计 §2.14:页顶已有页面标题)
     // 备注空 → 破折号;工时一位小数
     const row3 = document.querySelectorAll('.n-data-table-tbody .n-data-table-tr')[2]
     expect([...row3.children].map((c) => c.textContent?.trim())).toEqual([

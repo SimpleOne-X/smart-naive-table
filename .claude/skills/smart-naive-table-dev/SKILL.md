@@ -34,7 +34,7 @@ description: smart-naive-table 仓库的开发与设计铁律。在这个仓库�
 
 ### naive-ui 关键事实（NCard / DataTable）
 
-- **当前仓库本地安装的 naive-ui 版本是 2.44.1**（`node_modules/naive-ui/package.json`）；引用数值与行号时以本地源码为准（行号会漂移，落笔前重新 grep）。
+- **当前仓库本地安装的 naive-ui 版本是 2.45.3**（`node_modules/naive-ui/package.json`）；引用数值与行号时以本地源码为准（行号会漂移，落笔前重新 grep）。
 - **NCard 插槽**：`cover` / `header` / `header-extra` / `default` / `footer` / `action`。
   `header` 内部分 `header__main`（`flex:1; min-width:0`）、`header__extra`
   （`display:flex; align-items:center; font-weight:400`，被 main 挤到右侧）、`header__close`。

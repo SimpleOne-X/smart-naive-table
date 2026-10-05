@@ -14,7 +14,7 @@
    数据是「远程」的:页面里没有本地静态数据,搜索 / 过滤 / 排序 / 分页都发给 apiRun(带 420ms 延迟的 mock 后端,同一份确定性 2000 行),
    表格 loading、搜索按钮转圈、刷新 = 重新请求,与库的远程模式(fetcher)一致。
 
-   已按官方源码校准(tusen-ai/naive-ui main):
+   按官方源码校准(tusen-ai/naive-ui main):
    - NCard padding:官方 medium = 19px 24px 20px、small = 12px 16px 12px(src/card/styles/_common.ts);本稿按设计文档 5.4 取四边相等的 16px(官方 small 的左右值,上下也取 16)
    - NCard borderRadius = 3px,borderColor = dividerColor
    视觉取向:macOS 简洁 —— 克制留白、轻分隔、次级操作降级、一屏一个主色按钮。
@@ -62,7 +62,7 @@
   --n-input-bg-disabled: rgb(250, 250, 252); /* CL:150 inputColorDisabled(用于「不需要填值」的无值态) */
   --n-ring-input: 0 0 0 2px color-mix(in srgb, var(--n-primary) 20%, transparent);   /* input light.mjs:77-79 boxShadowFocus = primary alpha .2 */
   --n-ring-select: 0 0 0 2px color-mix(in srgb, var(--n-primary) 20%, transparent);  /* selection light.mjs:62-67 boxShadowActive/Focus = primary alpha .2 */
-  /* —— 悬停 / 按下(原 --n-hover 按场景拆开) —— */
+  /* —— 悬停 / 按下 —— */
   --n-item-hover: rgb(243, 243, 245);    /* CL:145 hoverColor(NSelect/NDropdown 选项 hover:select-menu light.mjs:52、dropdown light.mjs:46) */
   --n-btn-hover: rgba(46, 51, 56, .09);  /* CL:152 buttonColor2Hover(Button quaternary hover:button/styles/light.mjs:66) */
   --n-btn-bg: rgba(46, 51, 56, .05);     /* CL:151 buttonColor2(Button secondary 默认型的底:button/styles/light.mjs:59、Button.mjs:250-257) */
@@ -834,10 +834,10 @@ table.n-table td.acts .n-btn.text + .n-btn.text { margin-left: 12px; }   /* 间�
 }
 
 /* ============================================================
-   模式 1 · 搜索独立卡片(mode1.css 追加)
+   模式 1 · 搜索独立卡片
    ============================================================ */
 /* ============================================================
-   模式 1 · 搜索独立卡片(模块 1 宿主页面)—— 追加到样式表末尾
+   模式 1 · 搜索独立卡片(模块 1 宿主页面)
    本片段写在基底规则之后,选择器特意多带一层 .search-card,用特异性而非顺序压过基底里的 .search-grid 规则
    (基底的 4 列固定 / 容器窄档 1 列 / .search-actions 靠右,在模块 1 里由本片段接管)。
    只用 CSS 变量,明暗两套由 :root / html[data-theme="dark"] 的 token 决定;无新增 transition / animation / transform。
@@ -921,7 +921,7 @@ table.n-table td.acts .n-btn.text + .n-btn.text { margin-left: 12px; }   /* 间�
 }
 
 /* ============================================================
-   分页 NPagination(模块 1 / 模块 2 的表格卡片底部)—— 追加到样式表末尾
+   分页 NPagination(模块 1 / 模块 2 的表格卡片底部)
    本片段是 .n-pagination 的样式定义(基底里只有 .dt-foot > .n-pagination 的位置规则);
    只用 CSS 变量,明暗两套由 :root / html[data-theme="dark"] 的 token 决定。
 
@@ -1003,7 +1003,7 @@ table.n-table td.acts .n-btn.text + .n-btn.text { margin-left: 12px; }   /* 间�
 
 /* ===== fill viewport + virtual scroll ===== */
 /* ============================================================
-   页面占满视口 + 表格纵向虚拟滚动 —— 追加到样式表末尾(在分页片段之后)
+   页面占满视口 + 表格纵向虚拟滚动
    本片段写在基底规则之后,同特异性靠顺序压过基底;基底里的规则一律不删。
    只用基底已有的 CSS 变量(--n-th-bg 等),明暗两套由 :root / html[data-theme="dark"] 的 token 决定;
    无新增 transition / animation / transform,无硬编码色值。
@@ -1127,7 +1127,7 @@ html, body { overflow: hidden; }
      :196-215 漏斗 = 绝对定位 right:0 宽 36px 整列高、居中、15px,hover / 面板打开底 thButtonColorHover。
    - 筛选菜单 FilterMenu.mjs + cssr:332-352:选项组 padding 12px 12px 0、复选框间距 12px、最高 240px 可滚动;
      底部 action padding 8px 12px、上边 1px 分隔线,「重置」(默认)+「确认」(primary),均为 size="tiny"(高 22px、字 12px、内边距 0 6px)。
-   有意偏离官方(已写入设计文档):
+   有意偏离官方:
    - 图标悬停表头才显示(官方常驻):透明度过渡 .15s;已排序 / 已筛选 / 面板打开的列常驻,否则看不出哪列在起作用。
    - 排序箭头旋转取 .2s(官方 .3s),对齐本库「动效 ≤ .2s」的约束。
    ============================================================ */
@@ -1186,7 +1186,7 @@ table.n-table th.h-th { user-select: none; transition: background-color .15s; }
 .hp-lead { font-size: 12px; color: var(--n-text-2); text-align: center; min-width: 0; }
 .hp-row .n-input, .hp-row .n-select { width: 100%; }
 .hp-tools { display: flex; align-items: center; margin: -4px 0 8px; }
-/* 面板里的「添加条件 / 高级条件 ▾ / 收起高级条件 ▴」= 淡灰 secondary + small 档(28px、0 10px、14px,与同面板的值控件同高;设计 2.15 D:不再是文字按钮) */
+/* 面板里的「添加条件 / 高级条件 ▾ / 收起高级条件 ▴」= 淡灰 secondary + small 档(28px、0 10px、14px,与同面板的值控件同高;设计 2.15 D) */
 .hp-hint { font-size: 12px; color: var(--n-text-2); margin-left: 8px; }
 .hp-foot { display: flex; flex-wrap: nowrap; justify-content: space-evenly; padding: 8px 12px; border-top: 1px solid var(--n-border); }   /* actionPadding 8px 12px;actionDividerColor = dividerColor */
 .hp-foot .n-btn { margin-right: 8px; }
@@ -1441,7 +1441,7 @@ html[data-theme="dark"] { --sw-off: rgba(255, 255, 255, .2); --sw-on: rgb(42, 14
 .colset-foot .n-btn { height: 22px; padding: 0 6px; font-size: 12px; }
 
 /* 按钮 loading(NButton loading:图标位换成 18px spinner,margin-right 6px;button/src/Button.mjs:454-470)*/
-.n-btn .btn-ld, .n-btn .btn-ic { display: inline-flex; width: 18px; height: 18px; font-size: 18px; margin: 0; line-height: 0; }   /* 图标与文字的 6px 由按钮的 gap 给,不再叠加 margin(对照 parity:官方 搜索 / 重置 宽 80,不是 82) */
+.n-btn .btn-ld, .n-btn .btn-ic { display: inline-flex; width: 18px; height: 18px; font-size: 18px; margin: 0; line-height: 0; }   /* 图标与文字的 6px 由按钮的 gap 给,不叠加 margin(对照 parity:官方 搜索 / 重置 宽 80,不是 82) */
 .n-btn .btn-ld svg { display: block; width: 1em; height: 1em; animation: n-rotator 3s linear infinite both; }
 .n-btn .btn-ic svg { display: block; width: 1em; height: 1em; }   /* 按钮图标 1em = 18px;笔画按 18px 渲染都约 1.5px(搜索 16 视口 × 1.35、重置 24 视口 × 2),两枚粗细一致 */
 .n-btn.loading { cursor: default; }
@@ -1888,7 +1888,7 @@ html[data-theme="dark"] { --n-td-striped: rgb(36, 36, 39); }   /* dark:composite
 /* 必填列表头的红色 *(列声明 rules.required 推断,无需配置;标杆 vxe-table showAsterisk 默认 true)。取官方 NFormItem required-mark-placement="left" 的写法:*+ 空格在标题前、颜色 asteriskColor = errorColor(form/styles/light.mjs:22、form/src/styles/form-item.cssr.mjs 的 asterisk),字号继承标题;空格 U+00A0 ≈ 4px,这里写成 margin-right:4px */
 .th-ast { margin-right: 4px; color: var(--n-error); font-weight: 400; user-select: none; }
 [data-xl] .rc.xsum { cursor: default; }
-.rc.xsum { cursor: default; }   /* 模块 5 窄档的合计卡(已定,设计文档 13):不是数据行,不可点 */
+.rc.xsum { cursor: default; }   /* 模块 5 窄档的合计卡(设计文档 13):不是数据行,不可点 */
 </style>
 </head>
 <body>
@@ -1916,7 +1916,7 @@ html[data-theme="dark"] { --n-td-striped: rgb(36, 36, 39); }   /* dark:composite
 
 <script>
 /* ============================================================
-   模块清单 —— 整体设计方案的目录,谈一块加一块
+   模块清单 —— 整体设计方案的目录
    ============================================================ */
 /* 名称 = 功能名:README 有同名章节的跟 README 标题一致(表头过滤 / 列设置 / 字典、标签与格式化 / 增删改弹窗),
    英文名对齐 README.en 与业界文档的叫法(Header filters / Column settings / Row reordering …)。no 是内部编号(对照页 ?m=、基线 m1–m14),界面上不显示。
@@ -1935,7 +1935,7 @@ const MODULES = {
   ms:      { no: 11, name: '主从联动',           en: 'Master-detail',            status: 'done' },
   embed:   { no: 12, name: '上下布局',           en: 'Stacked layout',           status: 'done' },
   i18n:    { no: 13, name: '多语言与页面底色',   en: 'Language & background',    status: 'done' },
-  excel:   { no: 14, name: '可编辑表格',         en: 'Editable grid',            status: 'done' },   // 已定(原为提议):Excel 式单元格编辑 + 按数据类型推断编辑控件(设计文档「可编辑表格」一节);示例场景 = 工艺路线设计(编辑 / 拖动重排并重编号 / 行级只读 / 合计)
+  excel:   { no: 14, name: '可编辑表格',         en: 'Editable grid',            status: 'done' },   // Excel 式单元格编辑 + 按数据类型推断编辑控件(设计文档「可编辑表格」一节);示例场景 = 工艺路线设计(编辑 / 拖动重排并重编号 / 行级只读 / 合计)
 };
 const STATUS_TXT = { done: '已定', doing: '提议', todo: '待议' };
 const STATUS_EN = { done: 'Final', doing: 'Proposed', todo: 'Open' };   // 侧栏是 data-raw(不走文本节点词典),状态徽标的英文要在这里直接出
@@ -2170,7 +2170,7 @@ const hookStates = () => {
 
 /* 分页默认值 —— 按库的默认,不是宿主覆盖:每页 100 条、可选项按是否开 fillHeight 分两套(PAGER_CFG 是开了 fillHeight 的 [100, 1000, 10000],PAGER_NOFILL 是没开的 [100, 500, 1000])、显示 size picker。
    库内置 defaultPageSize 100、pageSizes [100, 500, 1000](config.ts 的 BUILTIN_DEFAULTS.pageSizes);
-   10000 只在开了 fillHeight 时提供(设计文档变更总览 D4;不开时一页 10000 行要 9.4 秒、1.3GB),库已按此实现。
+   10000 只在开了 fillHeight 时提供(设计文档变更总览 D4;不开时一页 10000 行要 9.4 秒、1.3GB)。
    分页统一用官方 simple 简洁模式(页码输入框 / 总页数,见 paginationHtml),自带页码跳转,所以没有页码序列 / 省略号 / pageSlot / showQuickJumper。
    库没有默认 prefix(总数文案只能由宿主经 #pagination-prefix 插槽给),prefix 在这里保留成宿主开启的形态;窄档不显示。 */
 const PAGER_CFG = {
@@ -2354,7 +2354,7 @@ const I_SETTING = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" s
 const I_MORE    = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 7 5 5-5 5M14 7l5 5-5 5"/></svg>`;
 const I_CHEV    = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>`;
 const I_X       = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>`;
-const I_BTN_PLUS = `<span class="btn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span>`;   // 按钮里的加号:1em = 18px,与其它按钮图标一致(设计 2.15 A;原来是 13px 的 I_PLUS)
+const I_BTN_PLUS = `<span class="btn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span>`;   // 按钮里的加号:1em = 18px,与其它按钮图标一致(设计 2.15 A)
 const I_PLUS    = `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>`;
 const I_CHECK   = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5l3 3 6-7"/></svg>`;
 const I_DASH    = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h8"/></svg>`;
@@ -2481,7 +2481,7 @@ const I18N_UNITS = [
   { key: 'memo', label: '备注', w: 128, html: (r) => (r.memo ? esc(r.memo) : dash) },
 ];
 /* ============================================================
-   模块 14:可编辑表格(Excel 式单元格编辑 + 按数据类型自动推断编辑控件)—— 已定(原为提议)。
+   模块 14:可编辑表格(Excel 式单元格编辑 + 按数据类型自动推断编辑控件)。
    本段 = 数据 + 列声明 + 类型推断(自成一体,不依赖后面才定义的 const);交互在文件后部标着 B4-BEGIN 的那一段。
    场景「工艺路线设计」(示例比较完整:有编辑、有拖动):
    产品「变速箱壳体 GB-2201」的 12 道工序,**数组顺序 = 加工顺序**。一页里用到:单元格编辑 · 批量保存 · 行拖拽排序(松手即保存顺序)· select-table(工序名称从工序库里选,自动带出其余列)· 行级只读(状态 = 停用)· 合计行。
@@ -2558,7 +2558,7 @@ const XL_UNITS = [
   { key: 'status', label: '状态', w: 88, options: ['启用', '停用'], tag: { 启用: '', 停用: 'off' }, card: 'meta' },
 ];
 
-/* ---- 类型推断(提议的优先级,设计文档「可编辑表格」一节):① 列显式 editor / readonly → ② 列声明(options / format)→ ③ 数据值(前 20 行里第一个非空值)→ ④ 兜底输入框。
+/* ---- 类型推断(优先级,设计文档「可编辑表格」一节):① 列显式 editor / readonly → ② 列声明(options / format)→ ③ 数据值(前 20 行里第一个非空值)→ ④ 兜底输入框。
    返回 { kind, via }:kind = 'input' | 'textarea' | 'number' | 'select' | 'date' | 'datetime' | 'checkbox' | null(不可编辑);via = 命中的是哪一条。
    这里不用后面才定义的 isoOk(const,会落在暂时性死区),日期校验自带一份 xlYmdOk。 ---- */
 const XL_KINDS = ['input', 'textarea', 'number', 'select', 'select-table', 'date', 'datetime', 'checkbox'];   // select-table = 选项来自外部 / 主数据(长列表):下拉里是一张带搜索 + 分页的表(库里是嵌套的 SmartTable);小静态枚举仍用 select
@@ -2630,7 +2630,7 @@ const MC = {
              pager: { defaultPageSize: 50, pageSizes: [50, 100], showSizePicker: true, prefix: PAGER_CFG.prefix } },
   embed:   { cols: 'material', page: 'embed', title: '物料单据' },   // 设计 12.3:整页恒为一屏,「物料单据」在上、铺满剩余高度、虚拟滚动;「入库明细」在下、限高后内部滚动
   i18n:    { cols: 'i18n' },   // 模块 13 只用工具栏条件搜索,没有搜索卡(页面不在侧栏,避免出现两套搜索);不带默认条件
-  excel:   { cols: 'excel', title: '工艺路线 · 变速箱壳体 GB-2201', excel: true, drag: true, summary: true, indexLabel: '工序号', indexW: 80, pagination: false, virtual: false, acts: false, batch: 'excel' },   // 提议:可编辑表格(工艺路线示例)。12 行 → 整页直出、不分页(pagination:false);序号列 = 工序号(位置,拖动后跟着变、不可编辑);drag = 手柄列 + 行拖拽重排(松手即保存顺序);summary = 合计行;无操作列(删除走勾选 + 批量栏)
+  excel:   { cols: 'excel', title: '工艺路线 · 变速箱壳体 GB-2201', excel: true, drag: true, summary: true, indexLabel: '工序号', indexW: 80, pagination: false, virtual: false, acts: false, batch: 'excel' },   // 可编辑表格(工艺路线示例)。12 行 → 整页直出、不分页(pagination:false);序号列 = 工序号(位置,拖动后跟着变、不可编辑);drag = 手柄列 + 行拖拽重排(松手即保存顺序);summary = 合计行;无操作列(删除走勾选 + 批量栏)
 };
 const MCx = () => MC[state.mod];
 const colKind = (mod = state.mod) => MC[mod].cols;
@@ -2828,7 +2828,7 @@ function apiRun(req) {
   const total = rows.length, page = clampPage(req.page, pageCountOf(total, req.size));
   return { items: rows.slice((page - 1) * req.size, page * req.size), total, page, size: req.size, summary: MC[req.mod].allSum ? sumAllOf(rows, req.mod) : undefined };
 }
-/* 全部合计(已定,设计文档 13):后端对「当前查询命中的全部行」按列声明 sum 求和,不是当前页;随分页结果一起返回,没声明 sum 的列没有键 */
+/* 全部合计(设计文档 13):后端对「当前查询命中的全部行」按列声明 sum 求和,不是当前页;随分页结果一起返回,没声明 sum 的列没有键 */
 const sumAllOf = (rows, mod) => Object.fromEntries(leavesOf(colKind(mod)).filter(c => c.sum).map(c => [c.key, rows.reduce((n, r) => n + (Number(r[c.key]) || 0), 0)]));
 const apiAll = (mod) => sortRows(applyConditions(rowsOf(mod), queryOf(mod).conds, mod), queryOf(mod).sorts);   // 导出:后端按同一条件导出全部行
 /* 各模块的查询(不含页码):生效条件 + 排序。变了就回第 1 页 */
@@ -3118,9 +3118,9 @@ function sfColsNow() {
 /* 折叠时可见的字段数。n-grid 原判定是 childSpan + spanCounter + suffixSpan > collapsedRows * cols 即隐藏(Grid.mjs:198),
    字段 span 都是 1、suffix(操作区)span 1,故原值 = collapsedRows * cols - 1;1 列(视口 < 640)时为 0,折叠态一个字段都看不到。
    有意偏离:至少露出 1 个字段(1 列时操作区落到它下面的下一行),窄档折叠态 = 首个字段 + 一行「搜索 / 重置 / 展开」。
-   这是对库 SearchForm 的改动(3.0.0),不是 naive-ui 官方行为。 */
+   这是库 SearchForm 自有的行为,不是 naive-ui 官方行为。 */
 /* n-grid 的折叠判定:字段(span 取 min(span, cols))累计 + suffix(1)> collapsedRows × cols 即隐藏,之后的字段也隐藏(Grid.mjs:198);
-   有意偏离:首个字段至少露出(1 列时操作区落到它下面的下一行)—— 这是对库 SearchForm 的改动(3.0.0),不是 naive-ui 官方行为。 */
+   有意偏离:首个字段至少露出(1 列时操作区落到它下面的下一行)—— 这是库 SearchForm 自有的行为,不是 naive-ui 官方行为。 */
 const sfCollapsible = () => state.mod === 'search';   // collapsible 只有模块 1 开
 function sfVisible(cols) {
   const vis = {};
@@ -3769,7 +3769,7 @@ function sumRowHtml(rows, label = '合计', all = null) {
   return `<tr class="sum-row">${tds}</tr>`;
 }
 const sumTxt = (c, v) => (c.money ? fmtMoney(v) : c.dec !== undefined ? v.toFixed(c.dec) : v.toLocaleString('en-US'));
-/* 已定(设计文档 13):开了 allSum 且后端随分页结果返回了 summary → 两行「本页合计 / 全部合计」;后端没给 → 只有「本页合计」一行(标签写明「本页」,免得被当成总数) */
+/* 设计文档 13:开了 allSum 且后端随分页结果返回了 summary → 两行「本页合计 / 全部合计」;后端没给 → 只有「本页合计」一行(标签写明「本页」,免得被当成总数) */
 function sumRowsHtml(rows) {
   if (!MCx().allSum) return sumRowHtml(rows);
   const all = state.remote[state.mod]?.summary;
@@ -5544,7 +5544,7 @@ const msPaneW = (w) => (w < 720 ? w : w - msSideW(w) - 16);
    模块 10:行拖拽排序(rowDraggable + dragHandle,@row-drag-sort)
    库:src/useRowDrag.ts(sortablejs 懒加载,animation 150、handle 选择器、onEnd 里直接重排行数组并 emit rowDragSort { from, to, reordered });SmartTable.vue:72-73、521-527;
    手柄图标 = 库的 DragIcon(icons.ts:34-38,2×3 点阵);库不自动加手柄列,宿主自己加一列并给 dragHandle 选择器。
-   原型用指针事件手写等价物(sortablejs 的拖影 / 占位 / 150ms 位移动画);窄档卡片模式:保留拖拽(手柄 44×44 触控目标),不另开「排序模式」—— 最简方案(已定)。
+   原型用指针事件手写等价物(sortablejs 的拖影 / 占位 / 150ms 位移动画);窄档卡片模式:保留拖拽(手柄 44×44 触控目标),不另开「排序模式」—— 最简方案。
    ============================================================ */
 function dragPageHtml() {
   const narrow = state.tier === 'narrow', rows = state.proc, dens = state.compact ? 'compact' : 'normal';

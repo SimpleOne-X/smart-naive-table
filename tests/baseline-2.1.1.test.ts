@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // 默认值与基础行为的特征测试:锁住内置默认值(分页、密度、工具栏)与排序等行为。
-// 标题里的 [Bn] / [Cn] 是对应默认值 / 行为的编号;这些默认值改动属于有意的行为变更,
+// 标题里的 [Bn] / [Cn] 是对应默认值 / 行为的编号;改动这些默认值属于有意的行为变更,
 // 要在同一个提交里改断言,并在提交说明里写明。
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -18,14 +18,14 @@ const rows = [
 
 afterEach(() => localStorage.clear())
 
-describe('2.1.1 特征:内置默认值', () => {
-  it('[B1 已翻转] 内置兜底:每页 [100,500,1000];[B2 已翻转] 密度 compact', () => {
+describe('特征:内置默认值', () => {
+  it('[B1] 内置兜底:每页 [100,500,1000];[B2] 密度 compact', () => {
     expect(BUILTIN_DEFAULTS.pageSizes).toEqual([100, 500, 1000])
     expect(BUILTIN_DEFAULTS.density).toBe('compact')
   })
 })
 
-describe('3.0 分页(B1 / B4 已翻转)', () => {
+describe('分页(B1 / B4)', () => {
   it('静态模式:默认每页 100、simple、带每页选择器(suffix)', () => {
     const wrapper = mount(SmartTable, {
       props: { columns: [{ key: 'name', title: 'Name' }], data: rows, rowKey: 'id' },
@@ -48,7 +48,7 @@ describe('3.0 分页(B1 / B4 已翻转)', () => {
   })
 })
 
-describe('3.0 密度(B2 已翻转)', () => {
+describe('密度(B2)', () => {
   it('默认紧凑(small)', () => {
     const plain = mount(SmartTable, {
       props: { columns: [{ key: 'name', title: 'Name' }], data: rows, rowKey: 'id' },
@@ -72,7 +72,7 @@ describe('3.0 密度(B2 已翻转)', () => {
   })
 })
 
-describe('3.0 工具栏(B3 已翻转)', () => {
+describe('工具栏(B3)', () => {
   it('默认只有「刷新」,没有「密度」', () => {
     const wrapper = mount(Toolbar, {
       props: { labels: defaultLabels, config: {}, density: 'compact' },
@@ -84,13 +84,13 @@ describe('3.0 工具栏(B3 已翻转)', () => {
   })
 })
 
-describe('2.1.1 特征:排序', () => {
+describe('特征:排序', () => {
   const sortCols = [
     { key: 'a', title: 'A', sorter: true },
     { key: 'b', title: 'B', sorter: true },
   ]
 
-  it('单列点击 → 远程参数 { sortField, sortOrder: asc|desc }(本行为在 3.0 保持不变)', async () => {
+  it('单列点击 → 远程参数 { sortField, sortOrder: asc|desc }', async () => {
     const fetcher = vi.fn(async () => ({ items: rows, total: 2 }))
     const wrapper = mount(SmartTable, { props: { columns: sortCols, fetcher, rowKey: 'id' } })
     await flushPromises()
@@ -105,7 +105,7 @@ describe('2.1.1 特征:排序', () => {
     wrapper.unmount()
   })
 
-  it('[C2 已修] defaultSortOrder 进入首次请求', async () => {
+  it('[C2] defaultSortOrder 进入首次请求', async () => {
     const fetcher = vi.fn(async () => ({ items: rows, total: 2 }))
     const wrapper = mount(SmartTable, {
       props: {
@@ -120,7 +120,7 @@ describe('2.1.1 特征:排序', () => {
     wrapper.unmount()
   })
 
-  it('[C1 已修] 多列排序:带 sortField(最高优先级)与 sorts', async () => {
+  it('[C1] 多列排序:带 sortField(最高优先级)与 sorts', async () => {
     const fetcher = vi.fn(async () => ({ items: rows, total: 2 }))
     const multiCols = [
       { key: 'a', title: 'A', sorter: { compare: () => 0, multiple: 2 } },

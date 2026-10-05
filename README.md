@@ -861,7 +861,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 - **P0 基础**：默认值与外观调整（默认每页 100、默认紧凑密度、官方 `simple` 分页等）、多列排序与 `sort()` / `clearSorter()`、15 个过滤操作符、已生效条件 chips、`toolbar.more`、`fill-height`、`zhCNLabels`、`cardProps`、全局 `defaultPageSize`。
 - **P1**：条件构造器（`search.container: 'table'`）、批量栏 `#batch`、页面内放大 `toolbar.maximize`。
 - **P2**：窄档卡片列表 `card-on-narrow` 与排序抽屉。
-- **在 P0–P2 之外**：可编辑表格 `editable`、`select-table` 编辑器与 `SmartSelectTable`。这一块的设计状态在设计稿里仍标「提议」（待拍板的问题见设计稿「可编辑表格」一节），库里已有实现。
+- **在 P0–P2 之外**：可编辑表格 `editable`、`select-table` 编辑器与 `SmartSelectTable`。设计见设计稿「可编辑表格」一节（其中「取舍与待定问题」里仍有 3 条待定），库里已有实现。
 - **组件预览**：14 个模块（`/prototype.html`）用真实库复刻设计稿，与设计稿用 `tools/parity` 逐项读数对照。
 
 **已知未完成 / 限制**（均可在仓库里核实）：

@@ -72,7 +72,7 @@ describe('语言开关', () => {
     )
     expect(w.find('.stage-head h2').text()).toBe('Query builder')
     expect(document.documentElement.lang).toBe('en')
-    expect(w.find('.smart-table-title').exists()).toBe(false) // 单表模块工具栏不再画表名(设计 §2.14:页顶已有页面标题)
+    expect(w.find('.smart-table-title').exists()).toBe(false) // 单表模块工具栏不画表名(设计 §2.14:页顶已有页面标题)
     expect(heads(w)).toEqual(
       expect.arrayContaining([
         'No.',
@@ -230,7 +230,7 @@ describe('侧栏 / 占位 / 档位', () => {
     }
   }, 30000)
 
-  it('natural 模块(仅 10;12 已改成恒为一屏)给 #stage 加 data-nat,rowClick 模块(11)加 data-rowclick;其它都没有', async () => {
+  it('natural 模块(仅 10;12 恒为一屏)给 #stage 加 data-nat,rowClick 模块(11)加 data-rowclick;其它都没有', async () => {
     const flags = async (m: number) => {
       const w = await mountApp(m)
       const st = w.find('#stage')
