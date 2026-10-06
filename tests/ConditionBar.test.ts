@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import ConditionBar from '../src/ConditionBar.vue'
+import conditionBarSource from '../src/ConditionBar.vue?raw'
 import ConditionPanel from '../src/ConditionPanel.vue'
 import ConditionRow from '../src/ConditionRow.vue'
 import { defaultLabels } from '../src/labels'
@@ -270,7 +271,7 @@ describe('ConditionBar', () => {
   })
 })
 
-describe('ConditionRow 新增的 size / valueOnly / placeholder(列头面板默认不变)', () => {
+describe('ConditionRow 的 size / valueOnly / placeholder(列头面板默认不变)', () => {
   const row = (extra: Record<string, unknown> = {}) =>
     mount(ConditionRow, {
       props: {
@@ -300,8 +301,8 @@ describe('ConditionRow 新增的 size / valueOnly / placeholder(列头面板默�
 })
 
 describe('ConditionBar 气泡阴影只有一份', () => {
-  // 同列头面板:外壳 .n-popover 的官方阴影关掉,面板的底色 / 圆角 / 阴影 / 文字色来自样式表里的官方 --n-* 变量,不再内联手抄。
-  // jsdom 不加载 SFC 样式,真实浏览器里的视觉值实测见任务汇报。
+  // 同列头面板:外壳 .n-popover 的官方阴影关掉,面板的底色 / 圆角 / 阴影 / 文字色来自样式表里的官方 --n-* 变量,不内联手抄。
+  // jsdom 不加载 SFC 样式,真实浏览器里的视觉值靠浏览器实测。
   it('外壳 .n-popover 的 box-shadow 为 none;面板不带内联的底色 / 圆角 / 阴影 / 文字色', async () => {
     const w = mount(ConditionBar, { props: { ...common, draft: base() }, attachTo: document.body })
     mounted.push(w)
@@ -318,5 +319,59 @@ describe('ConditionBar 气泡阴影只有一份', () => {
       'color',
     ] as const)
       expect(panel.style[prop]).toBe('')
+  })
+})
+
+describe('ConditionBar 「搜索」「重置」按钮:淡色底 + 左图标(设计 §2.13 / §2.15),loading 不改变按钮宽度(issue #5)', () => {
+  // 图标槽(.n-button__icon)一直在:空闲时放图标,loading 时官方把同一个槽里的图标换成转圈,按钮宽度不变,
+  // 转圈槽不脱离文档流。jsdom 不做布局,量不出像素:这里只锁结构事实,真实宽度由浏览器实测。
+  const btnOf = (text: string) =>
+    [...document.querySelectorAll<HTMLElement>('.smart-table-cond__main > .n-button')].find(
+      (b) => b.textContent!.trim() === text,
+    )!
+  const searchBtn = () => btnOf('Search')
+  function mountBar(extra: Record<string, unknown> = {}) {
+    const w = mount(ConditionBar, {
+      props: { ...common, draft: base(), ...extra },
+      attachTo: document.body,
+    })
+    mounted.push(w)
+    return w
+  }
+
+  it('图标槽(.n-button__icon)不设 position: absolute:转圈槽不脱离文档流', () => {
+    expect(conditionBarSource).not.toMatch(/\.n-button__icon\)\s*\{[^}]*position: absolute/)
+  })
+
+  it('「搜索」= secondary + primary(淡主色底),图标槽空闲与 loading 时都在', async () => {
+    const w = mountBar()
+    expect(searchBtn().classList.contains('n-button--primary-type')).toBe(true)
+    expect(searchBtn().classList.contains('n-button--secondary')).toBe(true)
+    expect(searchBtn().querySelector('.n-button__icon svg')).not.toBeNull()
+    expect(searchBtn().classList.contains('n-button--loading')).toBe(false)
+    await w.setProps({ loading: true })
+    expect(searchBtn().classList.contains('n-button--loading')).toBe(true)
+    expect(searchBtn().querySelector('.n-button__icon')).not.toBeNull()
+    await w.setProps({ loading: false })
+    expect(searchBtn().querySelector('.n-button__icon svg')).not.toBeNull()
+  })
+
+  it('「重置」= secondary 默认型(淡灰底,不是无底的 quaternary),带图标', () => {
+    mountBar()
+    const reset = btnOf('Reset')
+    expect(reset.classList.contains('n-button--default-type')).toBe(true)
+    expect(reset.classList.contains('n-button--secondary')).toBe(true)
+    expect(reset.querySelector('.n-button__icon svg')).not.toBeNull()
+  })
+
+  it('loading 期间点「搜索」不发 search(不可重复触发),结束后恢复', async () => {
+    const w = mountBar({ loading: true })
+    searchBtn().click()
+    await nextTick()
+    expect(w.emitted('search')).toBeUndefined()
+    await w.setProps({ loading: false })
+    searchBtn().click()
+    await nextTick()
+    expect(w.emitted('search')).toHaveLength(1)
   })
 })

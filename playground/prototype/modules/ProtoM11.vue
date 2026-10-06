@@ -23,10 +23,12 @@ import { useMaterialPage } from '../data/m7-materialPage'
 import { MS_EXPANDED, MS_TREE, msCount, msParams, type MsNode } from '../data/m11-tree'
 import { fetchRows } from '../fetcher'
 import { registerDict } from '../i18n'
+import { CheckIcon, TrashIcon } from './shared/btn'
 import CrudModal from './shared/CrudModal.vue'
 import { statusOptions } from './shared/options'
 import { ProtoAddButton, protoToolbar } from './shared/toolbar'
 import { useTier } from './shared/useTier'
+import { useButtonTint } from '../../../src/buttonTint'
 
 registerDict([
   ['全部部门', 'All departments'],
@@ -36,6 +38,7 @@ registerDict([
 
 const crudRef = ref<InstanceType<typeof CrudModal> | null>(null)
 const { el, width, tier } = useTier()
+const tint = useButtonTint()
 const themeVars = useThemeVars()
 const {
   t,
@@ -170,13 +173,25 @@ function onSaved(p: { mode: 'create' | 'edit'; orig: string | null; no: string }
             ><ProtoAddButton :label="t('新增')" @click="crudRef?.openCreate()"
           /></template>
           <template #batch="{ checkedRowKeys, clear }">
-            <n-button @click="onBatchApprove(checkedRowKeys, clear)">{{ t('批量审核') }}</n-button>
             <n-button
-              :text-color="themeVars.errorColor"
+              secondary
+              type="primary"
+              :theme-overrides="tint.primary"
+              @click="onBatchApprove(checkedRowKeys, clear)"
+            >
+              <template #icon><CheckIcon /></template>
+              {{ t('批量审核') }}
+            </n-button>
+            <n-button
+              secondary
+              type="error"
+              :theme-overrides="tint.error"
               aria-haspopup="dialog"
               @click="onBatchDelete(checkedRowKeys, clear)"
-              >{{ t('批量删除') }}</n-button
             >
+              <template #icon><TrashIcon /></template>
+              {{ t('批量删除') }}
+            </n-button>
           </template>
           <template #pagination-prefix="info">{{ t(`共 ${info.itemCount} 条`) }}</template>
         </SmartTable>
@@ -196,6 +211,7 @@ function onSaved(p: { mode: 'create' | 'edit'; orig: string | null; no: string }
         :title="t('物料详情')"
         closable
         :native-scrollbar="true"
+        footer-style="border-top: none"
       >
         <n-descriptions
           v-if="detail"
@@ -218,8 +234,12 @@ function onSaved(p: { mode: 'create' | 'edit'; orig: string | null; no: string }
         </n-descriptions>
         <template #footer>
           <div class="dw-foot">
-            <n-button @click="showDrawer = false">{{ t('关闭') }}</n-button>
-            <n-button type="primary" @click="editFromDrawer">{{ t('编辑') }}</n-button>
+            <n-button secondary style="min-width: 80px" @click="showDrawer = false">{{
+              t('关闭')
+            }}</n-button>
+            <n-button type="primary" style="min-width: 80px" @click="editFromDrawer">{{
+              t('编辑')
+            }}</n-button>
           </div>
         </template>
       </n-drawer-content>

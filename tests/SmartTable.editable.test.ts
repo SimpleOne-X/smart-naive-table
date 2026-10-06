@@ -409,19 +409,31 @@ describe('复选框', () => {
   })
 })
 
-describe('工具栏:一屏一个主色', () => {
-  it('平时「新增行」是主色;有修改时主色让给「保存修改(N)」,「新增行」降为默认,多出「放弃修改」', async () => {
+describe('工具栏:页面上没有实心按钮(设计 §2.15)', () => {
+  // 页面上(工具栏、搜索卡)一律是淡色底 + 图标,实心只留给表单 / 对话框里唯一的默认动作;
+  // 「新增行」与「保存修改(N)」不争实心主色。
+  it('「新增行」「保存修改(N)」都是淡主色底(secondary + primary)带图标;有修改时多出淡灰的「放弃修改」', async () => {
     const w = mountTable()
     const add = () => btnByText(w, 'Add row')!
-    expect(add().classes()).toContain('n-button--primary-type')
+    const tint = (b: { classes: () => string[] }) =>
+      b.classes().includes('n-button--primary-type') && b.classes().includes('n-button--secondary')
+    expect(tint(add())).toBe(true)
+    expect(add().find('.n-button__icon svg').exists()).toBe(true)
     expect(btnByText(w, 'Discard changes')).toBeUndefined()
     await td(w, 2, 'on').find('.n-checkbox').trigger('click')
     await flushPromises()
-    expect(add().classes()).not.toContain('n-button--primary-type')
-    expect(saveBtn(w)!.classes()).toContain('n-button--primary-type')
-    expect(btnByText(w, 'Discard changes')).toBeTruthy()
-    const primaries = w.findAll('.smart-table-toolbar-actions button.n-button--primary-type')
-    expect(primaries).toHaveLength(1)
+    expect(tint(add())).toBe(true)
+    expect(tint(saveBtn(w)!)).toBe(true)
+    expect(saveBtn(w)!.find('.n-button__icon svg').exists()).toBe(true)
+    const discard = btnByText(w, 'Discard changes')!
+    expect(discard.classes()).toContain('n-button--default-type')
+    expect(discard.classes()).toContain('n-button--secondary')
+    expect(discard.find('.n-button__icon svg').exists()).toBe(true)
+    // 工具栏里没有实心主色(primary-type 且不是 secondary)
+    const solid = w
+      .findAll('.smart-table-toolbar-actions button.n-button--primary-type')
+      .filter((b) => !b.classes().includes('n-button--secondary'))
+    expect(solid).toHaveLength(0)
   })
 })
 
@@ -567,7 +579,7 @@ describe('保存 / 放弃', () => {
     expect(w.find('td.smart-table-xerr').exists()).toBe(true)
   })
 
-  it('放弃修改:全部还原(改过的格回原值、新增行消失),发 @discard', async () => {
+  it('放弃修改(确认后):全部还原(改过的格回原值、新增行消失),发 @discard', async () => {
     const onDiscard = vi.fn()
     const w = mountTable({}, { onDiscard })
     await dirtyOne(w)
@@ -578,6 +590,12 @@ describe('保存 / 放弃', () => {
     await flushPromises()
     expect(w.findAll('.n-data-table-tbody tr')).toHaveLength(4)
     await btnByText(w, 'Discard changes')!.trigger('click')
+    await flushPromises()
+    // 点「放弃修改」只弹确认气泡,草稿还在;点气泡里的「放弃」才还原并发 @discard
+    expect(onDiscard).not.toHaveBeenCalled()
+    expect(w.findAll('.n-data-table-tbody tr')).toHaveLength(4)
+    const confirm = [...document.body.querySelectorAll<HTMLElement>('.n-popconfirm__panel button')]
+    confirm.find((b) => b.textContent?.trim() === 'Discard')!.click()
     await flushPromises()
     expect(onDiscard).toHaveBeenCalledTimes(1)
     expect(w.findAll('.n-data-table-tbody tr')).toHaveLength(3)

@@ -8,11 +8,13 @@ import { NButton, NTable } from 'naive-ui'
 import { SmartTable, type SmartTableColumn } from '../../../src/index'
 import { WIDE_DATA, receiptsOf, wideRowsToCsv, type WideRow } from '../data/m5-wide'
 import { fetchWide } from '../backends/m5-wide'
+import { fitTitles } from './shared/fitTitles'
 import { OPS_BY_TYPE as ACT } from './shared/ops'
 import { ACT_BTN, protoToolbar, downloadCsv } from './shared/toolbar'
+import { DownloadIcon } from './shared/btn'
 import { useProtoTable } from './shared/useProtoTable'
 
-const { t, tableProps, toast } = useProtoTable()
+const { shell, t, tableProps, toast } = useProtoTable()
 const checked = ref<Array<string | number>>([])
 const expanded = ref<Array<string | number>>([])
 
@@ -172,64 +174,74 @@ const dataCol = (u: U): SmartTableColumn<WideRow> => {
 }
 const grp = (k: string) => dataCol(U_COLS[k])
 
-const columns = computed<SmartTableColumn<WideRow>[]>(() => [
-  // 原型 colPlan:展开 · 勾选 · 序号 固定在左,操作固定在右
-  {
-    type: 'expand',
-    width: 40,
-    fixed: 'left',
-    renderExpand: (row: WideRow) => receipts(row),
-  } as SmartTableColumn<WideRow>,
-  { type: 'selection', width: 40, fixed: 'left' } as SmartTableColumn<WideRow>,
-  { type: 'index', title: () => t('序号'), width: 64, fixed: 'left' } as SmartTableColumn<WideRow>,
-  grp('no'),
-  grp('name'),
-  grp('spec'),
-  grp('category'),
-  grp('unit'),
-  grp('brand'),
-  grp('model'),
-  // 多级表头:「库存」下分可用 / 在途 / 锁定(列设置里整组为一项)
-  {
-    key: 'stock',
-    title: () => t('库存'),
-    children: [grp('stockAvail'), grp('stockTransit'), grp('stockLocked')],
-  } as SmartTableColumn<WideRow>,
-  grp('safe'),
-  grp('price'),
-  grp('amount'),
-  grp('supplier'),
-  grp('warehouse'),
-  grp('location'),
-  grp('batch'),
-  grp('mfgDate'),
-  grp('expDate'),
-  grp('weight'),
-  grp('volume'),
-  grp('leadTime'),
-  grp('owner'),
-  grp('status'),
-  grp('memo'),
-  {
-    key: 'actions',
-    title: () => t('操作'),
-    width: 120,
-    fixed: 'right',
-    resizable: false,
-    hideInSetting: true,
-    render: (row: WideRow) =>
-      h(
-        NButton,
-        {
-          text: true,
-          style: ACT_BTN,
-          'aria-expanded': expanded.value.includes(row.no),
-          onClick: () => toggleRow(row.no),
-        },
-        () => t(expanded.value.includes(row.no) ? '收起' : '详情'),
-      ),
-  } as SmartTableColumn<WideRow>,
-])
+const columns = computed<SmartTableColumn<WideRow>[]>(() =>
+  fitTitles(
+    [
+      // 原型 colPlan:展开 · 勾选 · 序号 固定在左,操作固定在右
+      {
+        type: 'expand',
+        width: 40,
+        fixed: 'left',
+        renderExpand: (row: WideRow) => receipts(row),
+      } as SmartTableColumn<WideRow>,
+      { type: 'selection', width: 40, fixed: 'left' } as SmartTableColumn<WideRow>,
+      {
+        type: 'index',
+        title: () => t('序号'),
+        width: 64,
+        fixed: 'left',
+      } as SmartTableColumn<WideRow>,
+      grp('no'),
+      grp('name'),
+      grp('spec'),
+      grp('category'),
+      grp('unit'),
+      grp('brand'),
+      grp('model'),
+      // 多级表头:「库存」下分可用 / 在途 / 锁定(列设置里整组为一项)
+      {
+        key: 'stock',
+        title: () => t('库存'),
+        children: [grp('stockAvail'), grp('stockTransit'), grp('stockLocked')],
+      } as SmartTableColumn<WideRow>,
+      grp('safe'),
+      grp('price'),
+      grp('amount'),
+      grp('supplier'),
+      grp('warehouse'),
+      grp('location'),
+      grp('batch'),
+      grp('mfgDate'),
+      grp('expDate'),
+      grp('weight'),
+      grp('volume'),
+      grp('leadTime'),
+      grp('owner'),
+      grp('status'),
+      grp('memo'),
+      {
+        key: 'actions',
+        title: () => t('操作'),
+        width: 120,
+        fixed: 'right',
+        resizable: false,
+        hideInSetting: true,
+        render: (row: WideRow) =>
+          h(
+            NButton,
+            {
+              text: true,
+              style: ACT_BTN,
+              'aria-expanded': expanded.value.includes(row.no),
+              onClick: () => toggleRow(row.no),
+            },
+            () => t(expanded.value.includes(row.no) ? '收起' : '详情'),
+          ),
+      } as SmartTableColumn<WideRow>,
+    ],
+    shell.lang === 'en',
+  ),
+)
 
 /* 合计行(summary,官方 NDataTable 的 summary):当前页求和;「合计」落在物料编码列 */
 const SUM_KEYS = ['stockAvail', 'stockTransit', 'stockLocked', 'amount'] as const
@@ -266,7 +278,6 @@ function onExportSel(keys: Array<string | number>) {
       :columns="columns"
       :fetcher="fetchWide"
       row-key="no"
-      title="物料清单"
       :search="{ container: 'table' }"
       :toolbar="protoToolbar()"
       :default-page-size="20"
@@ -279,7 +290,10 @@ function onExportSel(keys: Array<string | number>) {
       v-model:expanded-row-keys="expanded"
     >
       <template #batch="{ checkedRowKeys }">
-        <n-button @click="onExportSel(checkedRowKeys)">{{ t('导出所选') }}</n-button>
+        <n-button secondary @click="onExportSel(checkedRowKeys)">
+          <template #icon><DownloadIcon /></template>
+          {{ t('导出所选') }}
+        </n-button>
       </template>
       <template #pagination-prefix="info">{{ t(`共 ${info.itemCount} 条`) }}</template>
     </SmartTable>

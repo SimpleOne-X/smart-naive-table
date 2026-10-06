@@ -116,7 +116,6 @@ function onSort(e: { from: number; to: number; reordered: Proc[] }) {
       :columns="columns"
       :data="rows"
       row-key="code"
-      :title="t('工序')"
       :toolbar="false"
       :search="false"
       :pagination="false"

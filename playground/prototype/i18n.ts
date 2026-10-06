@@ -84,6 +84,17 @@ export function textW(s: string, weight = 500): number {
   return [...s].reduce((w, ch) => w + (/[一-鿿]/.test(ch) ? 14.5 : 8), 0)
 }
 
+/**
+ * 英文表头的默认列宽下限(原型 titleFit):标题真实文字宽度(canvas 量,向上取整)+ 30。
+ * 30 = th 左内边距 12 + 右内边距 16(库给除勾选 / 展开列外的所有 th 写 padding-right: 16,见 SmartTable.vue「表头右内边距」)
+ * + 右边框 1(th 的 width 含边框,内容盒少 1px)+ 1px 亚像素余量。
+ * 差这 2px 的后果:官方表头标题没有 nowrap,内容盒比文字窄 1px 整个标题就折成两行(甚至从单词中间断开),整行表头从 47 撑到 70px。
+ * 只管默认列宽,不是拖拽下限;中文不走这条(调用方只在 shell.lang === 'en' 时用)。
+ */
+export function titleFit(s: string): number {
+  return Math.ceil(textW(s)) + 12 + 16 + 1 + 1
+}
+
 /** 取翻译函数。读 shell.lang,所以在响应式上下文(render / computed / 列标题函数)里调用 t() 会随语言切换更新。 */
 export function useT() {
   const shell = useShell()

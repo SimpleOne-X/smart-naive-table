@@ -104,7 +104,7 @@ describe('Toolbar「更多」菜单(toolbar.more)', () => {
 describe('Toolbar 外观对齐原型(L0-1 / L0-2)', () => {
   const opts = [{ label: '导出', key: 'export' }]
 
-  it('[L0-1] 标题:字重 500(fontWeightStrong)、颜色 textColor1;不是 2.1.1 的 600 / textColor2', () => {
+  it('[L0-1] 标题:字重 500(fontWeightStrong)、颜色 textColor1(不是 600 / textColor2)', () => {
     const style =
       mountToolbar({}, { title: '物料单据' }).find('.smart-table-title').attributes('style') ?? ''
     expect(style).toContain('font-weight: 500')
@@ -122,7 +122,7 @@ describe('Toolbar 外观对齐原型(L0-1 / L0-2)', () => {
     expect(style).toContain('color: rgba(255, 255, 255, 0.9)')
   })
 
-  it('[L0-2]「更多」是 medium(34px,与宿主按钮同高),不再是 small;chevron 取 iconColor', () => {
+  it('[L0-2]「更多」是 medium(34px,与宿主按钮同高),不是 small;chevron 取 iconColor', () => {
     const wrapper = mountToolbar({ more: opts })
     const btn = wrapper.find('button[aria-label="More"]')
     expect(btn.attributes('style')).toContain('--n-height: 34px')
@@ -252,7 +252,7 @@ describe('Toolbar 放大按钮(toolbar.maximize,状态在 SmartTable)', () => {
   })
 })
 
-describe('Toolbar「更多」菜单的锚定对齐原型(Task 7b;原型 .more-pop / 设计文档 §7.3)', () => {
+describe('Toolbar「更多」菜单的锚定对齐原型(原型 .more-pop / 设计文档 §7.3)', () => {
   const opts = [
     { label: '导出', key: 'export' },
     { label: '导入', key: 'import' },
@@ -407,7 +407,7 @@ describe('Toolbar 窄档折叠(cardOnNarrow 的 fold,规格 §5.2)', () => {
 })
 
 describe('Toolbar 密度下拉的选中态', () => {
-  it('选中态走官方 NDropdown 的 value,选项文案里不再手拼「✓ 」', () => {
+  it('选中态走官方 NDropdown 的 value,选项文案里没有手拼的「✓ 」', () => {
     const w = mountToolbar({ density: true }, { density: 'comfortable' })
     const dd = w.findComponent(NDropdown)
     expect(dd.props('value')).toBe('comfortable')

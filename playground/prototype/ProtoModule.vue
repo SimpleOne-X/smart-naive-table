@@ -21,7 +21,6 @@ import {
   NSelect,
   NSpace,
   useDialog,
-  useThemeVars,
   type FormInst,
   type FormRules,
 } from 'naive-ui'
@@ -49,25 +48,35 @@ import {
   type RowForm,
 } from './data'
 import { MOCK_DELAY, fetchRows, queryRows } from './fetcher'
-import { textW } from './i18n'
+import { textW, titleFit } from './i18n'
 import {
   deptOptions as makeDeptOptions,
   statusOptions as makeStatusOptions,
 } from './modules/shared/options'
+import {
+  CheckIcon,
+  DELETE_DIALOG_BTNS,
+  DELETE_POPCONFIRM_BTNS,
+  TrashIcon,
+  UserIcon,
+  deleteTrigger,
+  editAction,
+} from './modules/shared/btn'
 import { OPS_BY_TYPE as ACT } from './modules/shared/ops'
 import {
-  ACT_BTN,
   ProtoAddButton,
   downloadCsv,
   moreOptions as makeMoreOptions,
 } from './modules/shared/toolbar'
 import { useProtoTable } from './modules/shared/useProtoTable'
+import { useButtonTint } from '../../src/buttonTint'
 
 type Mod = 'search' | 'toolbar' | 'filter' | 'sort'
 const props = defineProps<{ mod: Mod }>()
 
 const { shell, t, tableProps, toast, message } = useProtoTable()
 const dialog = useDialog()
+const tint = useButtonTint()
 const tableRef = ref<SmartTableInst<Row> | null>(null)
 const checked = ref<Array<string | number>>([])
 
@@ -106,9 +115,13 @@ const hdrColW = (c: (typeof COLS)[number]) =>
    下限 = 库的 headerIconFloor(useColumns.ts)同一套算法:左内边距 12 + 标题占位 44(两个字)+ 漏斗簇 30(模块 3 / 4 列头恒有过滤)
    + 箭头簇 21(可排序时)+ 右内边距 16;与库的 resizeMinWidth 下限(60)取大者——这两个数恒 ≥ 60,下面直接按 102 / 123 算。*/
 const colMin = (c: (typeof COLS)[number]) => (sorterOf(c.key) ? 123 : 102)
-// 英文表头宽度按 t(label) 的真实文字宽度重算,不让标题被截断(原型 titleFit:textW + 28)
+// 英文表头宽度按 t(label) 的真实文字宽度重算,不让标题折行 / 被截断(原型 titleFit:文字宽 + 12 + 16 + 1 + 1,见 i18n.ts titleFit)
 const colW = (c: (typeof COLS)[number]) =>
-  hdr ? Math.max(hdrColW(c), colMin(c)) : shell.lang === 'en' ? Math.max(c.w, labelW(c) + 28) : c.w
+  hdr
+    ? Math.max(hdrColW(c), colMin(c))
+    : shell.lang === 'en'
+      ? Math.max(c.w, titleFit(t(c.label)))
+      : c.w
 
 /* 比较符 ACT = 原型 OPS_BY_TYPE(modules/shared/ops.ts):库默认只给 8 个,宿主在列上写 search.actions / filter.actions 才出现新的 */
 
@@ -267,12 +280,17 @@ const fieldCol = (c: (typeof COLS)[number] & { flex?: boolean }): SmartTableColu
 /* 删除:行内「删除」先弹 NPopconfirm(与 playground/DemoCrud.vue 一致,文案「确认删除该行?」),点「确认」才真删 */
 const rowActions = (row: Row) =>
   h(NSpace, { size: 12, wrapItem: false }, () => [
-    h(NButton, { text: true, style: ACT_BTN, onClick: () => crud.openEdit(row) }, () => t('编辑')),
+    editAction(t('编辑'), () => crud.openEdit(row)),
     h(
       NPopconfirm,
-      { onPositiveClick: () => void onDel(row.no) },
       {
-        trigger: () => h(NButton, { text: true, type: 'error', style: ACT_BTN }, () => t('删除')),
+        onPositiveClick: () => void onDel(row.no),
+        positiveText: t('删除'),
+        negativeText: t('取消'),
+        ...DELETE_POPCONFIRM_BTNS,
+      },
+      {
+        trigger: () => deleteTrigger(t('删除')),
         default: () => t('确认删除该行?'),
       },
     ),
@@ -311,7 +329,7 @@ const columns = computed<SmartTableColumn<Row>[]>(() => [
   {
     key: 'actions',
     title: () => t('操作'),
-    width: 120, // 原型 ACTS_W:「编辑 / 删除」两个文字按钮放得下,112 会被省略号截断
+    width: 140, // 原型 ACTS_W:「编辑 / 删除」两个文字按钮 + 小图标放得下(设计 §2.15 D)
     fixed: 'right',
     resizable: false, // 原型:操作列没有拖拽把手、也不吸收余量
     hideInSetting: true,
@@ -373,8 +391,9 @@ function onBatchDelete(keys: Array<string | number>, clear: () => void) {
   dialog.warning({
     title: t('确认删除'),
     content: t(`确定删除所选 ${keys.length} 项吗?`),
-    positiveText: t('确认'),
+    positiveText: t('删除'),
     negativeText: t('取消'),
+    ...DELETE_DIALOG_BTNS,
     onPositiveClick: async () => {
       const n = delRows(keys.map(String))
       clear()
@@ -455,7 +474,6 @@ async function onSave() {
 }
 
 /* 模块 3 #toolbar 插槽:宿主的快捷过滤按钮「我负责的」(经 setFilter 写负责人列的过滤值;再点一次清除) */
-const themeVars = useThemeVars()
 const mineOn = computed(() => {
   const v = (tableRef.value?.filters as unknown as FilterState | undefined)?.owner
   return v?.conditions.length === 1 && v.conditions[0].action === 'equal'
@@ -479,7 +497,6 @@ const searchCfg =
       :columns="columns"
       :fetcher="fetcher"
       row-key="no"
-      :title="t('物料单据')"
       :search="searchCfg"
       :toolbar="{ more: moreOptions, maximize: true }"
       v-bind="tableProps"
@@ -489,37 +506,43 @@ const searchCfg =
       v-model:checked-row-keys="checked"
       @more-select="onMore"
     >
-      <!-- 原型模块 3:#toolbar 左侧插槽放宿主的快捷过滤按钮「我负责的」(NButton quaternary,内边距 0 8px;生效时底色 = quaternary hover) -->
+      <!-- 原型模块 3:#toolbar 左侧插槽放宿主的快捷过滤按钮「我负责的」(设计 §2.15:淡灰底 + 用户图标;开启时变淡主色底) -->
       <template v-if="mod === 'filter'" #toolbar>
         <n-button
-          quaternary
+          secondary
+          :type="mineOn ? 'primary' : 'default'"
           :aria-pressed="mineOn"
-          :theme-overrides="{
-            paddingMedium: '0 8px',
-            colorQuaternary: mineOn ? themeVars.buttonColor2Hover : undefined,
-          }"
           @click="toggleMine"
         >
+          <template #icon><UserIcon /></template>
           {{ t('我负责的') }}
         </n-button>
       </template>
       <template #toolbar-right>
-        <!-- 「新增」图标 13px:见 modules/shared/toolbar.ts ProtoAddButton -->
-        <proto-add-button
-          :type="mod === 'search' ? 'default' : 'primary'"
-          :label="t('新增')"
-          @click="crud.openCreate()"
-        />
+        <!-- 「新增」= 淡主色底 + 加号:见 modules/shared/toolbar.ts ProtoAddButton -->
+        <proto-add-button :label="t('新增')" @click="crud.openCreate()" />
       </template>
       <!-- 批量栏(原型 .tb-batch):批量审核 + 批量删除(原型是 NDialog warning 确认,这里 useDialog().warning) -->
       <template #batch="{ checkedRowKeys, clear }">
-        <n-button @click="onBatchApprove(checkedRowKeys, clear)">{{ t('批量审核') }}</n-button>
         <n-button
-          :text-color="themeVars.errorColor"
+          secondary
+          type="primary"
+          :theme-overrides="tint.primary"
+          @click="onBatchApprove(checkedRowKeys, clear)"
+        >
+          <template #icon><CheckIcon /></template>
+          {{ t('批量审核') }}
+        </n-button>
+        <n-button
+          secondary
+          type="error"
+          :theme-overrides="tint.error"
           aria-haspopup="dialog"
           @click="onBatchDelete(checkedRowKeys, clear)"
-          >{{ t('批量删除') }}</n-button
         >
+          <template #icon><TrashIcon /></template>
+          {{ t('批量删除') }}
+        </n-button>
       </template>
       <template #pagination-prefix="info">{{ t(`共 ${info.itemCount} 条`) }}</template>
     </SmartTable>
@@ -590,12 +613,20 @@ const searchCfg =
       </n-form>
       <template #footer>
         <n-space justify="end">
-          <n-button :disabled="crud.submitting.value" @click="crud.close()">{{
-            t('取消')
-          }}</n-button>
-          <n-button type="primary" :loading="crud.submitting.value" @click="onSave">{{
-            t('保存')
-          }}</n-button>
+          <n-button
+            secondary
+            style="min-width: 80px"
+            :disabled="crud.submitting.value"
+            @click="crud.close()"
+            >{{ t('取消') }}</n-button
+          >
+          <n-button
+            type="primary"
+            style="min-width: 80px"
+            :loading="crud.submitting.value"
+            @click="onSave"
+            >{{ t('保存') }}</n-button
+          >
         </n-space>
       </template>
     </n-modal>

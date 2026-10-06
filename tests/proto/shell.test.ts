@@ -65,14 +65,14 @@ describe('语言开关', () => {
       'Loading & errors',
       'CRUD dialogs',
       'Editable grid',
-      'Embedded tables',
+      'Stacked layout',
     ])
     expect(w.find('.crumb').text().replace(/\s+/g, ' ')).toBe(
       'SmartTable Design Spec / Query / Query builder',
     )
     expect(w.find('.stage-head h2').text()).toBe('Query builder')
     expect(document.documentElement.lang).toBe('en')
-    expect(w.find('.smart-table-title').text()).toBe('Material Documents')
+    expect(w.find('.smart-table-title').exists()).toBe(false) // 单表模块工具栏不画表名(设计 §2.14:页顶已有页面标题)
     expect(heads(w)).toEqual(
       expect.arrayContaining([
         'No.',
@@ -97,7 +97,7 @@ describe('语言开关', () => {
     expect(tableOf(w).vm.$.uid).toBe(inst) // 切语言不重挂表格
     expect(document.documentElement.lang).toBe('zh-CN')
     expect(w.find('.side h1').text()).toBe('SmartTable 设计方案')
-    expect(w.find('.smart-table-title').text()).toBe('物料单据')
+    expect(w.find('.smart-table-title').exists()).toBe(false)
     expect(heads(w)).toEqual(
       expect.arrayContaining([
         '序号',
@@ -230,7 +230,7 @@ describe('侧栏 / 占位 / 档位', () => {
     }
   }, 30000)
 
-  it('natural 模块(10 / 12)给 #stage 加 data-nat,rowClick 模块(11)加 data-rowclick;其它都没有', async () => {
+  it('natural 模块(仅 10;12 恒为一屏)给 #stage 加 data-nat,rowClick 模块(11)加 data-rowclick;其它都没有', async () => {
     const flags = async (m: number) => {
       const w = await mountApp(m)
       const st = w.find('#stage')
@@ -242,14 +242,14 @@ describe('侧栏 / 占位 / 档位', () => {
       return r
     }
     expect(await flags(10)).toEqual([true, false])
-    expect(await flags(12)).toEqual([true, false])
+    expect(await flags(12)).toEqual([false, false])
     expect(await flags(11)).toEqual([false, true])
     expect(await flags(2)).toEqual([false, false])
   }, 30000)
 
-  it('窄档分组条 + 子页签:i18n 没有分组条高亮;版本行 v3.0.0 · 2026-10-03 且没有「升级变更」', async () => {
+  it('窄档分组条 + 子页签:i18n 没有分组条高亮;版本行 v3.0.1 · 2026-10-04 且没有「升级变更」', async () => {
     const w = await mountApp(7)
-    expect(w.find('#verLine').text()).toBe('v3.0.0 · 2026-10-03')
+    expect(w.find('#verLine').text()).toBe('v3.0.1 · 2026-10-04')
     expect(w.text()).not.toContain('升级变更')
     expect(w.findAll('#grpBar .mod').map((b) => b.text())).toEqual([
       '查询',

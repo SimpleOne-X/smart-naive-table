@@ -1,6 +1,6 @@
 // 「物料单据」列的构建器:模块 2–4 之外的物料单据表(模块 7 / 8 / 9 / 11 / 12 / 13)共用。
 // 照原型 COLS:物料编码 112 / 物料名称 176(弹性,minWidth)/ 负责人 88 / 单据状态 96(options + tag)/ 部门 88(options)/
-//             金额 104(右对齐、format money)/ 单据日期 112;可选前置勾选(40,固定左)+ 序号(64,固定左)与后置「操作」列(120,固定右)。
+//             金额 104(右对齐、format money)/ 单据日期 112;可选前置勾选(40,固定左)+ 序号(64,固定左)与后置「操作」列(140,固定右)。
 // 标题 / options 的 label 都是函数(t),随外壳语言渲染期求值;placeholder 是静态串 → 在 computed 里调用本函数,切语言才会重算:
 //   const columns = computed(() => materialCols({ t, selection: true, actions: (row) => h(...) }))
 // 构造器字段:search !== false 时每个数据列写 search: { actions: OPS_BY_TYPE[type], … }(模块 2–13 除豁免者外必配),
@@ -34,7 +34,7 @@ export interface MaterialColsOpts {
   selection?: boolean
   /** 序号列(宽 64,固定左,标题「序号」)。 */
   index?: boolean
-  /** 后置「操作」列(宽 120、固定右、不可拖、不进列设置)的单元格渲染。不传 = 没有操作列。 */
+  /** 后置「操作」列(宽 140、固定右、不可拖、不进列设置)的单元格渲染。不传 = 没有操作列。 */
   actions?: (row: Row, index: number) => VNodeChild
   /** 构造器字段:每个数据列写 search.actions;false = 不进构造器(豁免)。默认 true。 */
   search?: boolean
@@ -112,7 +112,7 @@ export function materialCols(o: MaterialColsOpts): SmartTableColumn<Row>[] {
       fin('actions', {
         key: 'actions',
         title: () => t('操作'),
-        width: 120, // 原型 ACTS_W:「编辑 / 删除」两个文字按钮放得下,112 会被省略号截断
+        width: 140, // 原型 ACTS_W:「编辑 / 删除」两个文字按钮 + 小图标放得下(设计 §2.15 D)
         fixed: 'right',
         resizable: false, // 原型:操作列没有拖拽把手、也不吸收余量
         hideInSetting: true,

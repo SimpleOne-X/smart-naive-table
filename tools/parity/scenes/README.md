@@ -11,7 +11,7 @@
 export default [
   {
     name: 'm6 标签列 hover',           // 必填,全局唯一;--only <子串> 按它过滤;截图文件名由它派生(空白 → _)
-    mod: 6,                            // 必填,模块编号 1–13(决定进哪个模块、用 modules.mjs 里的就绪判据)
+    mod: 6,                            // 必填,模块编号 1–14(决定进哪个模块、用 modules.mjs 里的就绪判据)
     proto: `document.querySelector('[data-act="xxx"]').click()`,   // 必填,原型页里执行的 JS(点开弹层 / 抽屉等)
     prev:  `document.querySelector('.xxx').click()`,               // 必填,对照页里执行的 JS
     pp: '.hpop',                       // 必填,原型弹层根选择器(找第一个可见的)

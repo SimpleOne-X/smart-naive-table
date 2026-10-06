@@ -173,7 +173,7 @@ const setShell = (field: Seg['field'], v: string) => ((shell as any)[field] = v)
         <div class="app">
           <aside class="side">
             <h1>{{ t('SmartTable 设计方案') }}</h1>
-            <p class="sub" id="verLine">v3.0.0 · 2026-10-03</p>
+            <p class="sub" id="verLine">v3.0.1 · 2026-10-04</p>
             <div class="group-title">{{ t('设计模块') }}</div>
             <nav id="modList">
               <template v-for="g in groups" :key="g.meta.name">
@@ -558,7 +558,7 @@ body {
   overflow: hidden;
 }
 
-/* natural 模块(原型 MC.<key>.natural:模块 10 / 12):整页在主区里滚动、不铺满视口(原型 #stage[data-nat] …) */
+/* natural 模块(原型 MC.<key>.natural:只有模块 10;模块 12 是上下布局,恒为一屏):整页在主区里滚动、不铺满视口(原型 #stage[data-nat] …) */
 #stage[data-nat] {
   flex: none;
 }

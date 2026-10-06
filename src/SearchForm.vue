@@ -23,6 +23,8 @@ import type { SmartTableLabels, SmartTableOption, SearchFormConfig } from './typ
 import type { SearchDef } from './useColumns'
 import { optionLabel } from './useOptions'
 import { countTracks, effectiveCollapsedRows } from './searchCols'
+import { MagnifierIcon, ResetIcon } from './icons'
+import { useButtonTint } from './buttonTint'
 
 // 官方没有公开导出 SelectMixedOption(只在 select/src/interface 里,深导入会随版本改路径),用公开的两个选项类型拼出同一个联合。
 type SelectMixedOption = SelectOption | SelectGroupOption
@@ -45,6 +47,7 @@ const emit = defineEmits<{
 }>()
 
 const themeVars = useThemeVars()
+const tint = useButtonTint()
 const isInline = computed(() => props.config.layout === 'inline')
 
 // 折叠:仅 grid 布局;collapsed 初始跟随 config.collapsible。
@@ -182,10 +185,22 @@ function renderField(f: SearchDef): VNodeChild {
         <component :is="() => renderField(f)" />
       </n-form-item>
       <n-space :size="8">
-        <n-button type="primary" :loading="loading" @click="emit('search')">{{
-          labels.search
-        }}</n-button>
-        <n-button @click="emit('reset')">{{ labels.reset }}</n-button>
+        <!-- 搜索 = 淡主色底 + 放大镜,重置 = 淡灰底 + 逆时针箭头(设计 §2.13 / §2.15 A):官方 secondary,不是实心;
+             图标槽一直在,loading 时官方把同一个槽里的图标换成转圈,按钮宽度不变,不需要额外 CSS(issue #5) -->
+        <n-button
+          secondary
+          type="primary"
+          :loading="loading"
+          :theme-overrides="tint.primary"
+          @click="emit('search')"
+        >
+          <template #icon><MagnifierIcon /></template>
+          {{ labels.search }}
+        </n-button>
+        <n-button secondary @click="emit('reset')">
+          <template #icon><ResetIcon /></template>
+          {{ labels.reset }}
+        </n-button>
       </n-space>
     </div>
   </n-form>
@@ -216,16 +231,27 @@ function renderField(f: SearchDef): VNodeChild {
           </n-form-item-gi>
           <n-form-item-gi suffix>
             <n-space align="center">
-              <n-button type="primary" :loading="loading" @click="emit('search')">{{
-                labels.search
-              }}</n-button>
-              <n-button @click="emit('reset')">{{ labels.reset }}</n-button>
+              <n-button
+                secondary
+                type="primary"
+                :loading="loading"
+                :theme-overrides="tint.primary"
+                @click="emit('search')"
+              >
+                <template #icon><MagnifierIcon /></template>
+                {{ labels.search }}
+              </n-button>
+              <n-button secondary @click="emit('reset')">
+                <template #icon><ResetIcon /></template>
+                {{ labels.reset }}
+              </n-button>
               <n-button
                 v-if="collapsible"
                 class="smart-table-search-toggle"
                 :style="{ height: themeVars.heightMedium }"
                 text
                 type="primary"
+                :theme-overrides="tint.primaryText"
                 @click="collapsed = !collapsed"
               >
                 {{ collapsed ? labels.expand : labels.collapse }}

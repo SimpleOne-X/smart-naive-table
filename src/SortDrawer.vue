@@ -79,6 +79,7 @@ const segments = computed(() => [
       closable
       :native-scrollbar="true"
       body-content-style="padding: 0 24px 8px"
+      footer-style="border-top: none"
     >
       <div
         v-for="(row, i) in rows"
@@ -101,7 +102,7 @@ const segments = computed(() => [
       </div>
       <template #footer>
         <div class="smart-table-sort-foot">
-          <n-button size="large" quaternary @click="emit('reset')">{{
+          <n-button size="large" secondary @click="emit('reset')">{{
             labels.filterReset
           }}</n-button>
           <n-button size="large" type="primary" @click="emit('confirm', draft)">{{
@@ -141,6 +142,10 @@ const segments = computed(() => [
 /* 「重置」靠左,「确认」靠右(原型 .sheet-foot) */
 .smart-table-sort-foot > :first-child {
   margin-right: auto;
+}
+/* 抽屉页脚按钮最小宽 80px(设计 §2.15 B3) */
+.smart-table-sort-foot > .n-button {
+  min-width: 80px;
 }
 /* 抽屉高度随内容(最高 85vh):teleport 到 body,拿不到 scoped 属性,用 :global */
 :global(.smart-table-sort-drawer) {

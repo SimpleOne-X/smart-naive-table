@@ -79,7 +79,7 @@ describe('序号列的位置', () => {
     expect(w.findAll('tbody tr')[0].findAll('td')[1].text()).toBe('H')
   })
 
-  it('声明在最前(没有数据列在它前面)→ 仍在最前,和以前一样', async () => {
+  it('声明在最前(没有数据列在它前面)→ 在最前', async () => {
     const w = await mountAt(1200, { columns: cols('index-first') })
     const tds = w.findAll('tbody tr').map((tr) => tr.findAll('td')[1].text())
     expect(tds).toEqual(['1', '2', '3'])

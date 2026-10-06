@@ -469,7 +469,7 @@ export type ToolbarMoreOption = NonNullable<DropdownProps['options']>[number]
 
 export interface ToolbarConfig {
   refresh?: boolean // 默认 true;静态数据模式(没传 fetcher)一律不显示
-  /** 是否显示「密度」按钮;默认 false(3.0 起密度交给宿主的个人设置经 defaultDensity 传入)。传 true 时存储里的密度优先。 */
+  /** 是否显示「密度」按钮;默认 false(密度交给宿主的个人设置经 defaultDensity 传入)。传 true 时存储里的密度优先。 */
   density?: boolean
   columnSettings?: boolean // 默认 true
   /** 「更多」菜单(导出 / 导入 / …由宿主定义);不传、空数组或只有分隔线时不显示按钮。选中后发 moreSelect。 */
@@ -497,7 +497,7 @@ export interface SmartTableProps<T = any> {
   defaultPageSize?: number // 默认取宿主给的 pageSizes[0],再缺省 100(解析优先级见 pageSize.ts)
   /**
    * false 隐藏分页;对象与内置默认合并后透传 n-data-table 分页。
-   * 3.0 起默认官方 simple(输入框 / 总页数),每页条数选择器由库用官方嵌套 NPagination 画;传 { simple: false } 回到页码序列。
+   * 默认官方 simple(输入框 / 总页数),每页条数选择器由库用官方嵌套 NPagination 画;传 { simple: false } 回到页码序列。
    * pageSizes 没显式给(实例或全局)时按 fillHeight 区分:没开 [100, 500, 1000],开了 [100, 1000, 10000];显式给了照宿主的。
    */
   pagination?: false | Partial<PaginationProps>
@@ -597,7 +597,7 @@ export interface SmartTableInst<T = any> {
   getChanges: () => EditChanges<T>
   /** 可编辑表格:校验并触发 @save(等价于点「保存修改」)。 */
   save: () => void
-  /** 可编辑表格:放弃全部改动(新增行消失、待删行恢复、改过的格回原值)。 */
+  /** 可编辑表格:放弃全部改动(新增行消失、待删行恢复、改过的格回原值)。程序调用,不弹确认气泡(确认是工具栏按钮的交互)。 */
   discard: () => void
 }
 
@@ -753,6 +753,11 @@ export interface SmartTableLabels {
   /** 工具栏 / 批量栏按钮;editSave 含 {n} 占位(待保存的改动数)。 */
   editSave?: string
   editDiscard?: string
+  /** 点「放弃修改」弹出的确认气泡:正文含 {n} 占位(待保存的改动数,与 editSave 的 {n} 同一个数);确认按钮;取消沿用 editCancel。 */
+  editDiscardConfirm?: string
+  editDiscardOk?: string
+  /** 「保存修改」旁的提示:带草稿、但不在当前页(请求结果)里的行数 {n}。 */
+  editHiddenDirty?: string
   editAddRow?: string
   editDeleteSelected?: string
   /** 窄档抽屉表单:标题(新增 / 编辑)与底部按钮。 */

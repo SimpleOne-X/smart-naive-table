@@ -123,7 +123,7 @@ function toggleFixed(item: SettingItem, side: 'left' | 'right') {
         class="smart-table-colset-footer"
         :style="{ borderTop: `1px solid ${themeVars.dividerColor}` }"
       >
-        <n-button quaternary size="tiny" @click="emit('reset')">{{
+        <n-button secondary size="tiny" @click="emit('reset')">{{
           labels.columnSettingsReset
         }}</n-button>
       </div>

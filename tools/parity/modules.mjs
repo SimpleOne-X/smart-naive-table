@@ -45,7 +45,7 @@ export const MODS = {
         '.n-data-table-tbody .n-data-table-tr td.n-data-table-td--fixed-left, .n-data-table-tbody .n-data-table-tr td.n-data-table-td--fixed-right',
       ],
     ],
-    note: '固定列:lists 里 fixed th / fixed td 比较固定列的矩形(按类名选,不再用 sticky 判定);多级表头的 th 数组两侧同序。',
+    note: '固定列:lists 里 fixed th / fixed td 比较固定列的矩形(按类名选,不用 sticky 判定);多级表头的 th 数组两侧同序。',
   },
   // m6 异步字典:原型 enterModule 后 setTimeout 900ms 才 dictReady,对照页同口径(字典 0.9s 异步)。
   6: { settleMs: 1900, note: '字典 0.9s 异步,就绪后多等到 1900ms。' },
@@ -80,12 +80,13 @@ export const MODS = {
     lists: [['tree nodes', '.n-tree .tn', '.n-tree .n-tree-node']],
     note: '树 + 表:对照页的树侧栏请带 .md / .md-side / .md-main 类(与原型同名)。',
   },
-  // m12 嵌入式:原型是一个 .smart-table 里两张卡(.sub-card 子表 + 主表卡);对照页是两个 SmartTable 根,
-  // 各包一层 data-parity="sub" / "main"。主表的读数(th / 行 / 分页 / chips)用 scope 限定到主表。自然高度页。
+  // m12 上下布局:原型是一个 .smart-table 里两张卡(上 = 物料单据主表卡,下 = .sub-card 入库明细子表卡);对照页是两个 SmartTable 根,
+  // 各包一层 data-parity="main" / "sub"(外层 .m12 竖排两者,间距 16)。整页恒为一屏:主表 fillHeight + 虚拟滚动吃剩余高度,子表自然高度、封顶。
+  // 主表的读数(th / 行 / 分页 / chips / 按钮)用 scope 限定到主表;子表的几何与按钮在 els / lists 里单列。
   12: {
     ready: {
       proto: 'true',
-      prev: `document.querySelectorAll('[data-parity="main"] .n-data-table-tbody .n-data-table-tr').length > 3`,
+      prev: `document.querySelectorAll('[data-parity="main"] .n-data-table-tbody .n-data-table-tr').length > 3 && document.querySelectorAll('[data-parity="sub"] .n-data-table-tbody .n-data-table-tr').length > 1`,
     },
     readHints: {
       proto: { scope: '.smart-table > .n-card:not(.sub-card)' },
@@ -93,7 +94,10 @@ export const MODS = {
     },
     els: [
       ['stage', '#stage', '#stage'],
+      // 整页的竖排容器:原型的 .smart-table(两张卡的父级)↔ 对照页的 .m12(包住两个 SmartTable 根)
+      ['root', '.smart-table', '.m12'],
       ['sub card', '.sub-card', '[data-parity="sub"] .smart-table-card'],
+      ['sub title', '.sub-card .card-title', '[data-parity="sub"] .smart-table-title'],
       ['sub table', '.sub-card .dt', '[data-parity="sub"] .n-data-table'],
       ['sub thead', '.sub-card thead', '[data-parity="sub"] .n-data-table-thead'],
       [
@@ -112,6 +116,22 @@ export const MODS = {
         'toolbar',
         '.smart-table > .n-card:not(.sub-card) .tb',
         '[data-parity="main"] .smart-table-toolbar',
+      ],
+      // 工具栏里的几块也限定到主表(窄档主表卡片态没有 tb-actions,不限定会落到子表工具栏的「添加物料」上)
+      [
+        'title',
+        '.smart-table > .n-card:not(.sub-card) .st-title',
+        '[data-parity="main"] .smart-table-title',
+      ],
+      [
+        'tb-actions',
+        '.smart-table > .n-card:not(.sub-card) .tb-actions',
+        '[data-parity="main"] .smart-table-toolbar-actions',
+      ],
+      [
+        'tb-icons',
+        '.smart-table > .n-card:not(.sub-card) .tb-icons',
+        '[data-parity="main"] .smart-table-toolbar-icons',
       ],
       [
         'data table',
@@ -134,7 +154,17 @@ export const MODS = {
         '[data-parity="main"] .n-data-table__pagination, [data-parity="main"] .smart-table-chips-foot',
       ],
     ],
-    note: '两张表:sub = 入库明细子表,main = 物料单据主表;对照页用 data-parity="sub|main" 区分(见 README)。',
+    lists: [
+      // 子表的按钮(parity-all 的 btns 已用 scope 限定到主表;子表右上的「添加物料」和每行「移除」在这里比)
+      [
+        'sub btns',
+        '.sub-card .card-hd button, .sub-card tbody button',
+        '[data-parity="sub"] .smart-table-toolbar button, [data-parity="sub"] .n-data-table-tbody button',
+      ],
+      // 子表表头各格
+      ['sub th', '.sub-card thead th', '[data-parity="sub"] .n-data-table-thead th'],
+    ],
+    note: '上下布局:main = 上方物料单据大表,sub = 下方入库明细子表;对照页用 data-parity="main|sub" 区分(见 README),root = 整页竖排容器(原型 .smart-table ↔ 对照页 .m12)。主表读数(th / 行 / btns / 分页)限定在主表;子表见 sub * 与 list:sub btns / sub th。',
   },
   13: {},
   // m14 可编辑表格(提议):工艺路线 12 行(静态直出),默认判据(行 > 3)即可;可编辑格 / 手柄格(只读的 render 列)/ 复选框格的几何用 els 比(原型 td.xc / td.rd-h / td.xk-ck,对照页 td.smart-table-xc / -xro / -xk-ck)。

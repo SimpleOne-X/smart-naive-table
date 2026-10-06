@@ -15,6 +15,8 @@ import {
 import { SmartTable, useTableCrud, type SmartTableColumn, type SmartTableInst } from '../src/index'
 import { mockCreate, mockPage, mockRemove, mockUpdate, type DemoForm, type DemoRow } from './mock'
 import { labels, tt } from './locale'
+import { DELETE_POPCONFIRM_BTNS, deleteTrigger, editAction } from './prototype/modules/shared/btn'
+import { ProtoAddButton } from './prototype/modules/shared/toolbar'
 
 const message = useMessage()
 const tableRef = ref<SmartTableInst<DemoRow>>()
@@ -45,19 +47,12 @@ const columns: SmartTableColumn<DemoRow>[] = [
     hideInSetting: true,
     render: (row) =>
       h(NSpace, { size: 4 }, () => [
-        h(
-          NButton,
-          { size: 'small', quaternary: true, type: 'primary', onClick: () => crud.openEdit(row) },
-          () => tt('编辑', 'Edit')(),
-        ),
+        editAction(tt('编辑', 'Edit')(), () => crud.openEdit(row)),
         h(
           NPopconfirm,
-          { onPositiveClick: () => void crud.removeRow(row) },
+          { ...DELETE_POPCONFIRM_BTNS, onPositiveClick: () => void crud.removeRow(row) },
           {
-            trigger: () =>
-              h(NButton, { size: 'small', quaternary: true, type: 'error' }, () =>
-                tt('删除', 'Delete')(),
-              ),
+            trigger: () => deleteTrigger(tt('删除', 'Delete')()),
             default: () => tt('确认删除该行?', 'Delete this row?')(),
           },
         ),
@@ -76,9 +71,7 @@ const columns: SmartTableColumn<DemoRow>[] = [
     @error="(e) => message.error(String(e))"
   >
     <template #toolbar>
-      <n-button type="primary" size="small" @click="crud.openCreate()">{{
-        tt('新增', 'Create')()
-      }}</n-button>
+      <proto-add-button :label="tt('新增', 'Create')()" @click="crud.openCreate()" />
     </template>
     <template #cell-email="{ row }">
       <a :href="`mailto:${row.email}`">{{ row.email }}</a>
@@ -111,8 +104,15 @@ const columns: SmartTableColumn<DemoRow>[] = [
     </n-form>
     <template #footer>
       <n-space justify="end">
-        <n-button @click="crud.close()">{{ tt('取消', 'Cancel')() }}</n-button>
-        <n-button type="primary" :loading="crud.submitting.value" @click="crud.submit()">
+        <n-button secondary style="min-width: 80px" @click="crud.close()">{{
+          tt('取消', 'Cancel')()
+        }}</n-button>
+        <n-button
+          type="primary"
+          style="min-width: 80px"
+          :loading="crud.submitting.value"
+          @click="crud.submit()"
+        >
           {{ tt('保存', 'Save')() }}
         </n-button>
       </n-space>

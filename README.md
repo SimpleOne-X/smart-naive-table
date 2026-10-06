@@ -48,7 +48,7 @@
   <a href="#文档索引">文档</a>
 </p>
 
-> **版本状态**：当前是 `3.0.1`（npm `latest`）。3.0 是 major 升级，不改任何代码也会有行为变化，升级步骤见 [MIGRATION.md](./MIGRATION.md)；本页描述的是 3.0 的当前实现，进度与未完成项见[里程碑](#里程碑)。
+> **版本状态**：当前是 `3.1.0`（npm `latest`）。3.0 是 major 升级，不改任何代码也会有行为变化，升级步骤见 [MIGRATION.md](./MIGRATION.md)；本页描述的是 3.0 的当前实现，进度与未完成项见[里程碑](#里程碑)。
 >
 > **从 2.x 升级？** 3.0.0 相对 2.x 有破坏性变更（涉及默认值与外观，如默认每页条数、分页形态），请先看 [升级指南 MIGRATION.md](./MIGRATION.md)。
 
@@ -80,7 +80,7 @@
 | 分组 | 功能 | 怎么开 | 预览 |
 |---|---|---|---|
 | **表格基础** | 远程 `fetcher` / 静态 `data` 两种数据源：请求防竞态、空参数剔除、失败时页码还原、`@error`、空状态、`immediate: false` 首屏不请求 | `fetcher` / `data` | m8 |
-| | 分页：官方 `simple` 分页，默认每页 100，可选项随 `fill-height` 区分；不开 `fill-height` 时翻页自动回卡片顶部 | 默认 | m2–m14（翻页回顶看 m12） |
+| | 分页：官方 `simple` 分页，默认每页 100，可选项随 `fill-height` 区分；不开 `fill-height` 时翻页自动回卡片顶部 | 默认 | m2–m14 |
 | | 勾选、展开行、序号列、合计行（`summary`）、多级表头、固定列 | `type: 'selection' / 'expand' / 'index'`、`children`、`fixed` | m5 |
 | **查询与过滤** | 搜索表单：列上 `search`，自动选控件（输入 / 数字 / 下拉 / 日期 / 日期范围 / 开关 / 自定义），可折叠 / 单行 | `search: true` | m1 |
 | | ★ 条件搜索：「字段 + 比较符 + 值」条件构造器，并入表格卡片，点「更多条件」展开多条件面板 | `:search="{ container: 'table' }"` | m2 |
@@ -95,7 +95,7 @@
 | | ★ 可编辑表格：Excel 式单元格编辑，按数据类型推断控件，Excel 粘贴、撤销、行级只读、异步校验、批量保存 + 脏标记 + 放弃，可选即时保存；窄档点卡片开底部抽屉 | `editable` + `@save` | m14 |
 | | 下拉表格选择：独立组件 `SmartSelectTable`，也是可编辑表格 `select-table` 编辑器的内核（选一行同时填其它列） | `SmartSelectTable` / `editorProps` | m14（编辑器）；独立用法见 `/playground.html` |
 | **布局与大数据** | 铺满父容器 + 虚拟滚动、页面内放大、批量栏、「更多」菜单、工具栏图标 | `fill-height`、`toolbar.maximize`、`#batch`、`toolbar.more` | m2–m9 |
-| | 嵌入式表格：精简子表（无搜索 / 工具栏 / 分页、`striped`、合计行）、弹窗里的选择表、主表翻页回顶 | `search: false`、`toolbar: false`、`pagination: false` | m12 |
+| | 上下布局：上方主表铺满剩余高度（虚拟滚动），下方精简子表（无搜索 / 工具栏 / 分页、`striped`、合计行），再加弹窗里的选择表 | `fill-height`、`search: false`、`toolbar: false`、`pagination: false` | m12 |
 | **主题与 i18n** | 明暗主题、`labels` 渲染期求值、`zhCNLabels`、函数式列标题 / 选项、密度（紧凑 / 舒适）、页面底色 | `<n-config-provider>`、`labels`、`default-density` | m13 |
 
 另外：完整 TypeScript 类型；`useSmartTable`（脱离 UI 的数据核心）、过滤内核函数等工具可单独使用（见 [其它导出](#其它导出)）。
@@ -168,7 +168,7 @@
 ## 安装
 
 ```bash
-npm i smart-naive-table   # 3.0.1；仍要用 2.x 时装 smart-naive-table@2
+npm i smart-naive-table   # 3.1.0；仍要用 2.x 时装 smart-naive-table@2
 ```
 
 项目中需已安装 `vue >= 3.3` 和 `naive-ui >= 2.44`（`peerDependencies` 是 `vue ^3.3.0`、`naive-ui ^2.44.0`；验证过的版本是 naive-ui 2.45.3）。ESM 输出，自带 TypeScript 类型。
@@ -436,7 +436,7 @@ const columns: SmartTableColumn<Row>[] = [
 | 已生效条件 chips | `filter-chips`（表格下方、与分页同一行，点击重开面板、× 删一条） |
 | 批量栏 | 有 `{ type: 'selection' }` 列、绑了 `v-model:checked-row-keys`、写了 `#batch="{ checkedRowKeys, clear }"` 插槽，勾选后工具栏换成「本页全选 + 已选 N 项 + 你的按钮 + 取消选择」 |
 | 放大 | `:toolbar="{ maximize: true }"`：表格在页面内铺满视口（不调用浏览器全屏 API，默认层级 1999，宿主顶栏更高时 `maximize: { zIndex }`；Esc 先收浮层、再还原；挂载后不要运行时切换这个开关） |
-| 可编辑表格 | `editable` + `@save="({ changes, done, fail }) => ..."`。**一个布尔值就够用**：选中格再点 / Enter / F2 / 直接打字进入编辑，Enter / Tab / Shift+Enter 移动，Esc 放弃；改动留在草稿里（改过的格左上角小三角），工具栏出现「放弃修改」和「保存修改(N)」；新增行、删除所选（可恢复）也是待保存。控件按「列上写的 `editor` → `editorProps` 里有 `columns` + `data` / `fetcher`（外部 / 主数据）→ 下拉表格 → `options` / `format` → 数据值 → 输入框」自动推断（含数组值 + `options` → 多选；选项 > 8 个自动可搜索）；写了 `render` / `#cell-*` 的列不可编辑；`rules.required` 的列表头自动带红 `*`。Excel 粘贴 / 复制（Ctrl+V 多格块、Ctrl+C）、Ctrl+Z 撤销最近一次提交。保存前统一校验（含异步 `rules.validator`），第一个不合法的格被选中并滚进视口。行级只读：`editable: { rowReadonly: (row) => boolean }` 或列的 `readonly: (row, index) => boolean`。拖拽重排：序号列 `{ type: 'index' }` 自己跟着位置变、不产生脏标记（`@row-drag-sort` 里即时保存顺序，草稿按行主键跟着行走）；真要把排序号写进数据字段，用实例的 `setCell(rowKey, field, value)` 逐行改（走草稿，有脏标记、进 `@save`）。`editable: { save: 'cell' }` = 每提交一个格就立刻 `@save`（失败回滚该格）。翻页 / 搜索 / 排序不拦截，草稿跨页保留；有未保存修改时离开页面有浏览器提示，宿主路由守卫用实例的 `isDirty`。窄档（`card-on-narrow`）点卡片开底部抽屉表单、整行即时保存。**默认关，不开时行为完全不变**；必须监听 `@save`（宿主提交后调 `done()`，失败 `fail()` 保留草稿） |
+| 可编辑表格 | `editable` + `@save="({ changes, done, fail }) => ..."`。**一个布尔值就够用**：选中格再点 / Enter / F2 / 直接打字进入编辑，Enter / Tab / Shift+Enter 移动，Esc 放弃；改动留在草稿里（改过的格左上角小三角），工具栏出现「放弃修改」和「保存修改(N)」；新增行、删除所选（可恢复）也是待保存。控件按「列上写的 `editor` → `editorProps` 里有 `columns` + `data` / `fetcher`（外部 / 主数据）→ 下拉表格 → `options` / `format` → 数据值 → 输入框」自动推断（含数组值 + `options` → 多选；选项 > 8 个自动可搜索）；写了 `render` / `#cell-*` 的列不可编辑；`rules.required` 的列表头自动带红 `*`。Excel 粘贴 / 复制（Ctrl+V 多格块、Ctrl+C）、Ctrl+Z 撤销最近一次提交。保存前统一校验（含异步 `rules.validator`），第一个不合法的格被选中并滚进视口。行级只读：`editable: { rowReadonly: (row) => boolean }` 或列的 `readonly: (row, index) => boolean`。拖拽重排：序号列 `{ type: 'index' }` 自己跟着位置变、不产生脏标记（`@row-drag-sort` 里即时保存顺序，草稿按行主键跟着行走）；真要把排序号写进数据字段，用实例的 `setCell(rowKey, field, value)` 逐行改（走草稿，有脏标记、进 `@save`）。`editable: { save: 'cell' }` = 每提交一个格就立刻 `@save`（失败回滚该格）。点「放弃修改」先弹确认气泡（点「放弃」才还原）；翻页 / 搜索 / 排序不拦截，草稿跨页保留（被挡住的已改行在「保存修改(N)」旁标出「含 M 条当前不可见」）；有未保存修改时离开页面有浏览器提示，宿主路由守卫用实例的 `isDirty`。窄档（`card-on-narrow`）点卡片开底部抽屉表单、整行即时保存。**默认关，不开时行为完全不变**；必须监听 `@save`（宿主提交后调 `done()`，失败 `fail()` 保留草稿） |
 | 工具栏「更多」菜单 | `:toolbar="{ more: [{ label: '导出', key: 'export' }] }"` + `@more-select="(key) => ..."`（选项即官方 `NDropdown` 的 `options`；库不内置导出 / 导入） |
 | 单元格竖线 | 默认开启(内部 `single-line: false`);想回单线样式写 `:single-line="true"` |
 | 虚拟滚动 | `virtual-scroll` + `max-height` |
@@ -511,7 +511,7 @@ async function onSave({ changes, done, fail }: EditSavePayload<Row>) {
 - **推断**：`editor`（显式）→ `readonly` / `editor: false` → 有 `render` / `#cell-*` → 不可编辑 → `editorProps` 里有 `columns` 且有 `data` 或 `fetcher` → **`select-table`**（外部 / 主数据：下拉里是一张带搜索 + 分页的表，见下面的 `SmartSelectTable`）→ `options`（下拉；值是数组 = 多选）→ `format: 'date' | 'datetime' | 'money'` → 数据值（前 20 行第一个非空值：boolean / number / 日期串 / 含换行或超过 30 字 → 多行 / 其余 → 输入框）→ 输入框。`inferEditor(column, rows)` 是公开的纯函数。
 - **键盘与剪贴板**：↑ ↓ ← → / Tab / Shift+Tab 移动（只读列跳过；锁定的格可选中、可复制，只是不能编辑）；Enter / F2 进入编辑；直接打字替换原值；Space 切复选框；Delete 清空（必填列拒绝）；编辑中 Enter 提交下移、Shift+Enter 提交上移、Esc 放弃；Ctrl+C 复制选中格；Ctrl+V 粘贴 Excel 的单格或多格块（制表符分列、换行分行），从选中格起向右向下依次填充，按各列类型转换（数字去千分位、布尔认 TRUE / 是、选项按标签或值、日期补零）并校验，**任何一格不合法则整块不应用**；只读 / 锁定 / 待删的格跳过，超出当前列表的行忽略（不自动追加新行）；Ctrl+Z 撤销最近一次提交（栈 50，一次粘贴 = 一步，保存 / 放弃后清空，`save: 'cell'` 下不可用）。
 - **保存**：保存前统一校验（草稿格的同步规则 + 新增行全部格 + 异步校验的结果），不通过就不发 `@save`、选中第一个不合法的格并发 `@invalid`。异步 `rules.validator`：提交后单元格显示加载态、结果落定为不通过则标红（悬停看原因）、过期结果丢弃，「保存」会等它。
-- **翻页 / 搜索 / 排序**：不拦截；草稿叠在数据上，翻页 / 重新请求都保留（被筛选条件挡住的已改行看不见，但仍计入 N、仍会被保存）。**离开页面**：有未保存修改时注册 `beforeunload` 提示（`editable: { beforeunload: false }` 可关）；宿主的路由守卫用实例的 `isDirty` / `dirtyCount`，再配合 `save()` / `discard()`。
+- **翻页 / 搜索 / 排序**：不拦截；草稿叠在数据上，翻页 / 重新请求都保留（被筛选条件或翻页挡住的已改行看不见，但仍计入 N、仍会被保存，工具栏在「保存修改(N)」旁标出「含 M 条当前不可见」）。**离开页面**：有未保存修改时注册 `beforeunload` 提示（`editable: { beforeunload: false }` 可关）；宿主的路由守卫用实例的 `isDirty` / `dirtyCount`，再配合 `save()` / `discard()`。
 - **fillHeight / 虚拟滚动**：可用。草稿在仓库里不在 DOM 里，编辑中的格滚出窗口再滚回来内容还在；方向键 / Tab 走到还没渲染的行会自动滚进视口。
 - **下拉表格（`select-table`）**：外部 / 主数据（几十行以上、或来自接口）用它，小的静态枚举仍用 `options`（> 8 项自动可搜索）。`editorProps: { columns, data | fetcher, valueKey?, labelKey?, searchKeys?, fill? }`，单元格的值 = 选中行的 `labelKey` 字段（缺省 = 本列 key）；`fill(picked, row)` 返回 `{ 其它列 key: 值 }`，随选中一并写入（普通草稿编辑：各自脏标记、一次 Ctrl+Z 全部撤销、同样校验，任何一格不合法则整次不应用并标红）。粘贴的文本在有本地 `data` 时必须是已有的名称或 `valueKey` 编码（命中同样 `fill`），只给 `fetcher` 时照收文本。单元格内只支持单选（小枚举的多选用 `multiselect`）；窄档抽屉里它是一个触发框，点开贴底选择面板。
 - **新增行**：默认放第 1 行；`editable: { add: { position: 'bottom' } }` 追加到列表末尾（有顺序的数据，如工艺路线）。新增后自动进入编辑的是第一个「必填且为空」的格。`add: false` 隐藏工具栏按钮。
@@ -734,7 +734,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | `row-drag-sort` | `{ from, to, reordered }` | 行拖拽结束 |
 | `cell-change` | `{ row, key, value, oldValue }` | 可编辑表格：草稿变化（改了一个格），`row` 已带上这次改动 |
 | `save` | `{ changes: { updated, added, removed, rows }, done, fail }` | 可编辑表格：点「保存修改」（或 `save()`）。`changes.rows` 把三类拍平成每项带 `type`（`created` / `updated` / `deleted`）；宿主提交后调 `done()` 清草稿（远程自动刷新）/ `fail(e?)` 保留草稿（`save: 'cell'` 下失败回滚该格）；窄档抽屉的整行保存同样走它 |
-| `discard` | — | 可编辑表格：点「放弃修改」 |
+| `discard` | — | 可编辑表格：放弃全部改动。点「放弃修改」后在确认气泡里点「放弃」才触发（收到时就是已确认）；实例的 `discard()` 不弹气泡、同样触发 |
 | `invalid` | `{ row, key, message }` | 可编辑表格：保存时发现某格不合法（已选中并标红），可据此弹提示 |
 | `filter-change` | `key, value, state` | 表头过滤变化（`clearFilters`、模式 2 的批量提交时 `key` 为空串，且一次批量只触发一次） |
 | `column-resize` | `key, width` | 拖拽列宽（拖动过程中持续触发） |
@@ -824,7 +824,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | 条件构造器 | `searchBy`、`searchMoreConditions`、`searchConditionN` |
 | 批量栏 | `selectedCount`（含 `{n}`）、`clearSelection` |
 | 窄档 | `operations`、`sort`、`sortNone`、`sortAscend`、`sortDescend` |
-| 可编辑表格 | `editSave`（含 `{n}`）、`editDiscard`、`editAddRow`、`editDeleteSelected`、`editNewTitle`、`editEditTitle` 等（完整列表见 `SmartTableLabels`） |
+| 可编辑表格 | `editSave`（含 `{n}`）、`editDiscard`、`editDiscardConfirm`（含 `{n}`，放弃确认气泡的正文）、`editDiscardOk`、`editHiddenDirty`（含 `{n}`，「含 M 条当前不可见」）、`editAddRow`、`editDeleteSelected`、`editNewTitle`、`editEditTitle` 等（完整列表见 `SmartTableLabels`） |
 | 下拉表格选择 | `pickTotal`、`pickSelected`、`pickClearSel`、`pickOk` |
 
 ## 行为说明
@@ -854,14 +854,14 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 
 这一节是**版本路线图与当前进度**，不是变更日志；逐项变更见 [CHANGELOG.md](./CHANGELOG.md)，升级步骤见 [MIGRATION.md](./MIGRATION.md)。
 
-**当前阶段：`3.0.1`（npm `latest`）。** 3.0 是 major 升级，升级步骤见 [MIGRATION.md](./MIGRATION.md)。下面「已知未完成 / 限制」是 3.0.0 里仍没做的部分，之后的版本再补。
+**当前阶段：`3.1.0`（npm `latest`）。** 3.0 是 major 升级，升级步骤见 [MIGRATION.md](./MIGRATION.md)。下面「已知未完成 / 限制」是 3.0.0 里仍没做的部分，之后的版本再补。
 
 **3.0 已具备的能力范围**（对应 [规格](./docs/smart-naive-table-spec.md) 的 P0 / P1 / P2）：
 
 - **P0 基础**：默认值与外观调整（默认每页 100、默认紧凑密度、官方 `simple` 分页等）、多列排序与 `sort()` / `clearSorter()`、15 个过滤操作符、已生效条件 chips、`toolbar.more`、`fill-height`、`zhCNLabels`、`cardProps`、全局 `defaultPageSize`。
 - **P1**：条件构造器（`search.container: 'table'`）、批量栏 `#batch`、页面内放大 `toolbar.maximize`。
 - **P2**：窄档卡片列表 `card-on-narrow` 与排序抽屉。
-- **在 P0–P2 之外**：可编辑表格 `editable`、`select-table` 编辑器与 `SmartSelectTable`。这一块的设计状态在设计稿里仍标「提议」（待拍板的问题见设计稿「可编辑表格」一节），库里已有实现。
+- **在 P0–P2 之外**：可编辑表格 `editable`、`select-table` 编辑器与 `SmartSelectTable`。设计见设计稿「可编辑表格」一节（其中「取舍与待定问题」里仍有 3 条待定），库里已有实现。
 - **组件预览**：14 个模块（`/prototype.html`）用真实库复刻设计稿，与设计稿用 `tools/parity` 逐项读数对照。
 
 **已知未完成 / 限制**（均可在仓库里核实）：

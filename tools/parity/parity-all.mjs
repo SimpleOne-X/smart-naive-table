@@ -84,11 +84,13 @@ const READ = (side, cfg) => `(() => {
   const vis = (e) => e && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden';
   const q1 = (s) => [...document.querySelectorAll(s)].find(vis) ?? null;
   const qa = (s) => [...document.querySelectorAll(s)].filter(vis);
+  // 颜色归一:Chromium 对 color-mix 等算出的颜色会序列化成 color(srgb r g b / a),与 rgb()/rgba() 同值不同写法;统一成 rgb()/rgba()
+  const col = (v) => String(v).replace(/color\\(srgb ([\\d.]+) ([\\d.]+) ([\\d.]+)(?: \\/ ([\\d.]+))?\\)/g, (_, r, g, b, a) => { const c = [r, g, b].map(x => Math.round(x * 255)).join(', '); return a === undefined || +a === 1 ? 'rgb(' + c + ')' : 'rgba(' + c + ', ' + +a + ')' });
   const R = (e) => { const b = e.getBoundingClientRect(); return [b.x, b.y, b.width, b.height].map(v => Math.round(v * 10) / 10).join(',') };
   const T = (e) => (e.innerText ?? e.textContent).replace(/\\s+/g, ' ').trim();
   const out = { pgItems: [], acts: [], thd: [], cell0: [], els: {}, lists: {}, styles: {}, btns: [], form: [], th: [], rows: [], chips: [], pager: '', rowH: null, docOverflow: null, htmlLang: document.documentElement.lang, errors: window.__errs ?? [] };
   for (const [n, p, q] of ${JSON.stringify(elsFor(cfg))}) { const e = q1(P ? p : q); out.els[n] = e ? R(e) : '-'; }
-  const st = (n, sel, props) => { const e = q1(sel); if (!e) { out.styles[n] = '-'; return } const cs = getComputedStyle(e); out.styles[n] = props.map(p => cs[p]).join(' | ') };
+  const st = (n, sel, props) => { const e = q1(sel); if (!e) { out.styles[n] = '-'; return } const cs = getComputedStyle(e); out.styles[n] = props.map(p => col(cs[p])).join(' | ') };
   st('title font', P ? '.st-title' : '.smart-table-title', ['fontSize', 'fontWeight', 'color']);
   st('card bg/radius', P ? '.smart-table > .n-card:not(.search-card)' : '.smart-table-card', ['backgroundColor', 'borderRadius', 'borderTopColor']);
   st('viewport bg', '.viewport', ['backgroundColor']);
@@ -105,7 +107,7 @@ const READ = (side, cfg) => `(() => {
   out.cell0 = tr0 ? [...tr0.cells].map(td => { const r = td.getBoundingClientRect(); const k = td.querySelector('button, .n-tag, .pill, .n-checkbox, [role=checkbox]'); if (!k) return T(td) + '·' + getComputedStyle(td).textAlign; const b = k.getBoundingClientRect(); return (T(td) || '☐') + ' +' + Math.round(b.x - r.x) + ',' + Math.round(b.y - r.y) + ' ' + Math.round(b.width) + 'x' + Math.round(b.height) }) : [];
   // 搜索卡 / 工具栏 / chips 里的按钮(按 DOM 顺序)
   const bsel = P ? '.search-card button, .tb button, .chips button' : '.smart-table-search button, .smart-table-toolbar button, .smart-table-chips button';
-  out.btns = qa(bsel).map(b => (T(b) || b.getAttribute('aria-label') || '?') + ' @' + R(b));
+  out.btns = qa(sc(bsel)).map(b => (T(b) || b.getAttribute('aria-label') || b.getAttribute('title') || '?') + ' @' + R(b));
   out.form = qa(P ? '.search-card .n-form-item' : '.smart-table-search .n-form-item').map(e => T(e).slice(0, 24) + ' @' + R(e));
   out.th = qa(TH).map(e => (T(e) || '·') + ' @' + R(e));
   const trs = qa(ROW).filter(tr => tr.cells.length > 2 && T(tr));
@@ -117,7 +119,7 @@ const READ = (side, cfg) => `(() => {
   out.pgItems = pg ? [...pg.children].filter(vis).map(c => (T(c) || c.className.split(' ')[0]).slice(0, 18) + ' @' + R(c)) : [];
   out.acts = (() => { const tr = qa(ROW).find(tr => tr.cells.length > 2 && T(tr)); if (!tr) return []; const ac = H.actsCol ?? -1; const td = tr.cells[ac < 0 ? tr.cells.length + ac : ac]; if (!td) return []; const r = td.getBoundingClientRect();
     const rg = document.createRange(); return [...td.querySelectorAll('button')].map(b => { rg.selectNodeContents(b); const t = [...rg.getClientRects()].pop(); return T(b) + ' text@+' + Math.round(t.x - r.x) + ' btn ' + Math.round(b.getBoundingClientRect().width) + 'x' + Math.round(b.getBoundingClientRect().height) + ' ' + getComputedStyle(b).color }) })();
-  for (const [n, p, q] of ${JSON.stringify(cfg.lists)}) { const raw = P ? p : q; const stk = raw.startsWith('sticky:'); const s = stk ? raw.slice(7) : raw; out.lists[n] = qa(s).filter(e => !stk || getComputedStyle(e).position === 'sticky').slice(0, 12).map(e => (T(e).slice(0, 18) || e.className.toString().split(' ')[0] || e.tagName.toLowerCase()) + ' @' + R(e)) }
+  for (const [n, p, q] of ${JSON.stringify(cfg.lists)}) { const raw = P ? p : q; const stk = raw.startsWith('sticky:'); const s = stk ? raw.slice(7) : raw; out.lists[n] = qa(s).filter(e => !stk || getComputedStyle(e).position === 'sticky').slice(0, 12).map(e => (T(e).slice(0, 18) || '·') + ' @' + R(e)) }
   const de = document.documentElement; out.docOverflow = [de.scrollWidth, de.clientWidth, de.scrollHeight, de.clientHeight].join(',');
   return out;
 })()`

@@ -169,7 +169,7 @@ const emit = defineEmits<{
   cellChange: [payload: CellChange<T>]
   /** 可编辑表格:点「保存修改」(或 save());宿主提交后调 payload.done() / fail()。窄档抽屉的整行保存同样走它(changes 里只有那一行)。 */
   save: [payload: EditSavePayload<T>]
-  /** 可编辑表格:点「放弃修改」。 */
+  /** 可编辑表格:放弃全部改动 —— 用户在「放弃修改」的确认气泡里点了「放弃」(收到时就是已确认),或宿主调用实例的 discard()。 */
   discard: []
   /** 可编辑表格:保存时发现某格不合法(已选中并标红),宿主可据此弹提示。 */
   invalid: [payload: EditInvalid<T>]
@@ -880,6 +880,7 @@ function editToolbarState() {
     add: editCfg.value.add !== false,
     remove: editCfg.value.remove !== false && c.live,
     restore: c.deleted,
+    hidden: editor.hiddenDirty.value,
   }
 }
 
@@ -1070,7 +1071,7 @@ function notifyPageSizeListeners(user: Partial<PaginationProps>, n: number) {
 const mergedPagination = computed<false | PaginationProps>(() => {
   if (props.pagination === false) return false
   const user = props.pagination ?? {}
-  // 3.0 起默认官方 simple;传 { simple: false } 回到页码序列(此时走官方 showSizePicker / pageSizes)
+  // 默认官方 simple;传 { simple: false } 回到页码序列(此时走官方 showSizePicker / pageSizes)
   const simple = user.simple ?? true
   const showSizePicker = user.showSizePicker ?? defaults.showSizePicker // 单表的 false 也要认
   const current = user.pageSize ?? (isRemote.value ? pagination.pageSize : localPageSize.value)
@@ -1564,7 +1565,11 @@ let observedBody: HTMLElement | null = null
 function measureHost() {
   // 放大态:根元素在原位只剩一个占位,宽度取放大层的内容宽(减去两侧各 16px 内边距);否则取根元素
   const el = maxActive.value ? layerRef.value : rootRef.value
-  rootWidth.value = el ? Math.max(0, el.clientWidth - (maxActive.value ? 32 : 0)) : 0
+  // 量到 0 = 被 keep-alive 摘下(或 display: none),不是真的 0 宽:沿用上一次的宽度,
+  // 否则档位会掉回「还没量到」的宽档,容器实际更窄时挂回页面要多渲染一帧宽档布局才回到真实档位。从没量到过(rootWidth 仍是 0)照旧。
+  const measured = el?.clientWidth ?? 0
+  if (measured > 0 || rootWidth.value === 0)
+    rootWidth.value = Math.max(0, measured - (maxActive.value ? 32 : 0))
   const body = scopeEl()?.querySelector<HTMLElement>('.n-data-table-base-table-body') ?? null
   if (resizeObserver && body !== observedBody) {
     if (observedBody) resizeObserver.unobserve(observedBody)

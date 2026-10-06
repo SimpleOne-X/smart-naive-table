@@ -11,7 +11,7 @@
 ## 0 总则
 
 1. **官方优先**:naive-ui 有的就用官方(组件、属性名、主题变量),以本地 `node_modules/naive-ui` 的类型与源码为准(本仓库实装 2.45.3),不凭记忆。官方没有的才自有扩展,并在文档里交代理由。本库的单测与浏览器验证在 naive-ui **2.45.3** 上跑(peer 范围 `^2.44.0`),其它版本未测。
-2. **macOS 简洁**:克制留白、轻分隔、次级操作降级(悬停显现)、一屏一个主色按钮、动效只用 opacity / 背景 / 边框、明暗两套(走主题变量,不硬编码颜色)。
+2. **macOS 简洁**:克制留白、轻分隔、次级操作降级(悬停显现)、页面按钮淡色底 + 左图标、实心主色只留给表单 / 弹窗里唯一的默认动作(设计 2.15)、动效只用 opacity / 背景 / 边框、明暗两套(走主题变量,不硬编码颜色)。
 3. **兼容规则**:新能力 = 新增可选属性;**默认行为变更必须进 CHANGELOG 并带回退方式**(B 级登记 12 条,见 §1);不改现有导出。
 4. **零新依赖**;图标是库内联 SVG(`icons.ts`,零图标库依赖)。
 5. **列驱动**:搜索项、过滤器、字典渲染都从 `columns` 派生,不另开并行配置。
@@ -102,7 +102,7 @@
 - 多条件:同字段多条可「且 / 或」(`FilterValue.logic`,**每字段一个值**,改任一条联动全部);**跨字段固定「且」**。
 - 比较符按字段类型(text / number / date / select)分发,换字段后不再适用要自动重置;无值算子(`isNull` / `isNotNull`)集中导出常量,`activeConditions`、面板、构造器、chips 都读它。
 - 模式 2 宽档严格 1:1(左半搜索、右半按钮 + 图标);值输入框最小 100px。
-- 模式 2(P1):「搜索」是次级(描边)按钮,回车也触发;主色实心留给宿主的「新增」。**模式 1 不变**:搜索卡片里的「查询」仍是 2.1.1 的主色按钮(`type="primary"`),输入框回车同样触发。
+- 模式 2(P1):「搜索」= 淡主色底(`secondary` + `type="primary"`)+ 放大镜,「重置」= 淡灰底(`secondary`)+ 逆时针箭头(设计 §2.13 / §2.15),回车也触发;页面上没有实心按钮。模式 1 搜索卡片里的「搜索」「重置」与模式 2 同一写法,图标槽一直在,loading 时官方在同一个槽里把放大镜换成转圈、按钮宽度不变(issue #5);输入框回车同样触发。
 - **操作区对齐**:卡片内「搜索 / 重置 / 展开 · 收起」同排垂直居中、同高(`n-space align="center"`);官方文字按钮的 `--n-height` 是 `initial`(没有固定高度和内边距,实测 28 × 14,会比同排 34px 的按钮上移 6px),所以「展开」按钮自己取主题 `heightMedium`、左右内边距 4px(实测三者 top / 高 / 中线一致:119 / 34 / 136)。
 - 模式 2 窄档(P1,2.6a):无「搜索」按钮(回车,`enterkeyhint: 'search'`);枚举字段选完即生效。模式 1 窄档与宽档同一套(只有 C5 的折叠修正)。
 - **模式 2 的数据通路**:
@@ -120,7 +120,7 @@
 - **刷新**:`toolbar.refresh !== false && isRemote`;静态模式不显示。
 - **列设置「至少保留一列」**:只剩一个已勾选的列时,那一列的勾选框**禁用**(没有 toast / 提示文字);纯函数 `canHideColumn(items, key)`(只看设置里能管的列,`hideInSetting` 的列不算;已隐藏 / 不存在的键不受限)被 `ColumnSettings.vue`(禁用)与 `useColumns.toggleShow`(兜底拒绝,返回 `false`、状态不变;显示永远允许)共用。(与 2.1.1 的差异见 §1.1。)
 - **密度按钮**:默认不显示(B3)。`defaultDensity` **响应式**;没有密度按钮时**忽略存储里的 density**(格式与 `VERSION` 不动),宿主的个人设置才生效。
-- **「更多」**(P0):文字按钮 + 下箭头(默认 medium 34px,与宿主业务按钮同高;chevron 12px、`iconColor`、右内边距 12px;实测 72 × 34),默认描边、永不主色;**不用「…」图标**(模式 2 条件行已有「»」叫「更多条件」)。菜单是官方 `NDropdown`(`trigger="click"`、**`placement="bottom-start"`、最小宽 148、离按钮 8px**;最小宽走官方 `menu-props`、间距走 `peers.Popover.space` 主题覆盖,只作用于这一个下拉;默认 medium 档选项高 34px)、选中后收起、点外部收起(官方行为)、**Esc 由库接管**(官方 `NDropdown` 只有焦点在菜单里才响应 Esc,库用受控 `show` + `useEscClose`,焦点还在按钮上按 Esc 也能关);与放大(P1)/ 列设置气泡互斥靠官方的点外部收起;批量栏(P1)出现时随工具栏一起被替换。窄档 44px 选项高归 P2。**库不内置导出 / 导入**(官方 `downloadCsv` 只导当前页,`keepOriginalData` 反而忽略过滤;官方 `getFilteredAndSortedData()`(`DataTable.mjs:281`)返回已过滤已排序的**全部行**,但远程模式库手里只有当前页,同样不等于「当前查询的全部结果」),只出菜单外壳。
+- **「更多」**(P0):文字按钮 + 下箭头(默认 medium 34px,与宿主业务按钮同高;chevron 12px、`iconColor`、右内边距 12px;实测 72 × 34),淡灰底(`secondary`,设计 §2.15)、永不主色;**不用「…」图标**(模式 2 条件行已有「»」叫「更多条件」)。菜单是官方 `NDropdown`(`trigger="click"`、**`placement="bottom-start"`、最小宽 148、离按钮 8px**;最小宽走官方 `menu-props`、间距走 `peers.Popover.space` 主题覆盖,只作用于这一个下拉;默认 medium 档选项高 34px)、选中后收起、点外部收起(官方行为)、**Esc 由库接管**(官方 `NDropdown` 只有焦点在菜单里才响应 Esc,库用受控 `show` + `useEscClose`,焦点还在按钮上按 Esc 也能关);与放大(P1)/ 列设置气泡互斥靠官方的点外部收起;批量栏(P1)出现时随工具栏一起被替换。窄档 44px 选项高归 P2。**库不内置导出 / 导入**(官方 `downloadCsv` 只导当前页,`keepOriginalData` 反而忽略过滤;官方 `getFilteredAndSortedData()`(`DataTable.mjs:281`)返回已过滤已排序的**全部行**,但远程模式库手里只有当前页,同样不等于「当前查询的全部结果」),只出菜单外壳。
 - **放大**(P1 已落地,`toolbar.maximize?: boolean | { zIndex?: number }`):图标「四角括号」(放大 = 括号向外,还原 = 向内);放大层 `position: fixed; inset: 0` 铺满视口,**不调用浏览器全屏 API**。**落地做法**:`Teleport` 的对象是 `div.smart-table-layer`(只在开了 `toolbar.maximize` 时才多出这一层,未放大时 `display: contents`、对布局透明;不开放大时 DOM 与不带该能力时逐节点一致),放大时整层搬到 `body`,根元素原位留一个同高占位;层级默认 **1999**(低于 naive 浮层的 2000,放大后列头气泡 / 抽屉 / 下拉仍显示在它上面),`{ zIndex }` 可配,≥ 2000 会盖住表格自己的气泡、开发期 `console.warn` 一次;底色 = 官方 `NLayout` embedded 的底色(亮 `actionColor` / 暗 `bodyColor`);放大层是 `role="dialog" aria-modal`,Tab 在层内循环。Esc 分层:在捕获阶段读浮层,有浮层打开时先收浮层,再按一次 Esc 才还原;还原后**只在键盘操作后**把焦点放回放大按钮(`keydown` / `pointerdown` 追踪,鼠标点还原不画焦点环);放大期间锁住页面滚动(`html { overflow: hidden }`,多个放大层引用计数,放大中卸载 / 宿主关开关都解锁);切换前后保留表体 `scrollTop`;工具栏三档在放大态按放大层宽度重新判定。**不支持挂载后在运行时切换 `toolbar.maximize` 的开关**(会重建表格,列宽 / 过滤态的内部状态丢失)。**库自己的气泡(更多 / 密度 / 列设置 / chips「+N」)都支持 Esc 关闭,不开放大也一样**(官方 `NPopover` 不管键盘)。
 - **批量栏**(P1 已落地):原地替换工具栏那一行(标题 / 业务按钮 / 「更多」/ 构造器让位,内置图标组留在右侧),与工具栏行**共用同一 `min-height`**(勾选不让表格跳动);勾选态读宿主绑的 `checked-row-keys`(库不持有);内容 =「本页全选」复选框 + 「已选 N 项」+ `#batch` 插槽 + 「取消选择」(细节见 §3);窄档(< 600)排成「已选 N 项 | 取消选择」一行 + 宿主按钮整行。
 - **对外图标**:只写文档、不加 API;宿主的自定义按钮放插槽里自己选图标。
@@ -201,7 +201,7 @@
   - **「排序」入口位置(以原型窄档实际渲染为准)**:不在行 1 的图标里、也不在行 2 的「输入框 + 筛选」里;原型只有**列头模块(m3 / m4)**在行 2 之下多一行(行 3)等分的「筛选 | 排序」两个文字按钮(角标 = 生效条数),其它模块只有 2 行。库照此:有可排序列时,工具栏最下面多一行整行宽的「排序」按钮(`smart-table-toolbar-sort`,角标 = 生效排序条数);没有可排序列就不画。→ 没有可排序列时窄档工具栏是 2 行,有排序列时是 3 行。
   - **结构**:卡片列表是 `CardList.vue`(`src/cardColumns.ts` 做列映射、`src/cardRows.ts` 做本地排序 + 分页切片);`NDataTable` **仍然挂着**,只用 CSS 藏掉表头与表体,留下官方 `simple` 分页(加载转圈也藏,卡片列表自己淡出)——分页 / chips 所在的 `pagination.prefix` / 本地页码 / 远程页码通知都不用重写。分页项放大到 40px 走 `pagination.size: 'large'` + `themeOverrides.itemSizeLarge`,输入框 / 下拉走 `NConfigProvider` 的 `componentOptions.Pagination`。卡片列表**不做虚拟滚动**(窄档不能改每页条数,默认每页 100),`fillHeight` / 放大态下撑满的是卡片列表自己的滚动。
   - **勾选 / 展开 / 拖拽**:卡片右上角勾选框读写宿主的 `checked-row-keys`(没绑则内部兜底);展开列的内容显示在卡片底部,显示哪些行读宿主的 `expanded-row-keys`(没绑就没有展开入口);拖拽:`card: 'handle'` 的列渲染在标题行最左,sortablejs 绑在卡片列表上。行号:可拖拽的卡片(`row-draggable`)在标题行末尾、勾选框之前显示行号(同原型 m10 的 `.rc-no`),序号列本身在卡片里仍不作为字段;不可拖拽的卡片不显示行号。
-  - **工具栏折叠**:`Toolbar` 的 `fold`(= `cardOnNarrow` 且窄档,批量栏出现时不折叠):「操作 ▾」是官方 large 档 quaternary 按钮,展开原位多一行(不是浮层、不加动画)、等分业务按钮与「更多」;控件放大到 large 靠官方 `NConfigProvider` 的 `componentOptions.Button.size`(宿主自己写了 `size` 的按钮不受影响);图标按钮 40×40、间距 0(列设置按钮经 `ColumnSettings` 的 `size` 同步);「更多」菜单选项高 44px = Dropdown 主题变量 `optionHeightMedium`。
+  - **工具栏折叠**:`Toolbar` 的 `fold`(= `cardOnNarrow` 且窄档,批量栏出现时不折叠):「操作 ▾」是官方 large 档 secondary(淡灰底)按钮,展开原位多一行(不是浮层、不加动画)、等分业务按钮与「更多」;控件放大到 large 靠官方 `NConfigProvider` 的 `componentOptions.Button.size`(宿主自己写了 `size` 的按钮不受影响);图标按钮 40×40、间距 0(列设置按钮经 `ColumnSettings` 的 `size` 同步);「更多」菜单选项高 44px = Dropdown 主题变量 `optionHeightMedium`。
   - **未做**:列头**筛选**的底部抽屉(§3 末行「列头面板在窄容器换底部 `NDrawer`」):`ColumnFilter` 的面板与 `NPopover` 触发器耦合,拆成可放进抽屉的面板需要单独重构;窄档下只有模式 2 条件构造器(「输入框 + 筛选」)能筛选。
 
 ### 5.9 条件模型:15 个操作符

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 模块 14「可编辑表格」(key excel,提议):用真实库的 `editable` 复刻原型 docs/smart-naive-table-design.html 的 MC.excel(设计文档「可编辑表格」一节)。
+// 模块 14「可编辑表格」(key excel):用真实库的 `editable` 复刻原型 docs/smart-naive-table-design.html 的 MC.excel(设计文档「可编辑表格」一节)。
 // 场景「工艺路线设计」:产品「变速箱壳体 GB-2201」的 12 道工序,数组顺序 = 加工顺序。一页里用到:
 //   单元格编辑 · 批量保存 · 行拖拽排序(松手即保存顺序)· select-table(工序名称从工序库里选,自动带出其余列)· 行级只读(状态 = 停用)· 合计行 · 条件搜索。
 // 列上只声明业务信息,控件靠推断:
@@ -26,7 +26,8 @@ import {
   type OpRow,
   type RouteRow,
 } from '../data/m14-routing'
-import { registerDict, textW } from '../i18n'
+import { registerDict } from '../i18n'
+import { fitTitles } from './shared/fitTitles'
 import { OPS_BY_TYPE } from './shared/ops'
 import { useProtoTable } from './shared/useProtoTable'
 import { useTier } from './shared/useTier'
@@ -302,17 +303,9 @@ const baseColumns = computed<SmartTableColumn<RouteRow>[]>(() => [
   },
 ])
 
-/* 英文表头宽度按 t(标题) 的真实文字宽度重算,不让标题被截断(原型 titleFit:textW + 28);中文不动 */
+/* 英文表头宽度按 t(标题) 的真实文字宽度重算,不让标题折行 / 被截断(原型 titleFit:文字宽 + 12 + 16 + 1 + 1,见 i18n.ts titleFit);中文不动 */
 const columns = computed<SmartTableColumn<RouteRow>[]>(() =>
-  shell.lang !== 'en'
-    ? baseColumns.value
-    : baseColumns.value.map((c) => {
-        if (!('key' in c) || typeof c.title !== 'function') return c
-        const w = Math.ceil(textW(String(c.title()))) + 28
-        return c.width !== undefined
-          ? { ...c, width: Math.max(Number(c.width), w) }
-          : { ...c, minWidth: Math.max(Number(c.minWidth ?? 0), w) }
-      }),
+  fitTitles(baseColumns.value, shell.lang === 'en'),
 )
 
 /* 新增行追加在末尾并立刻打开工序库(工艺路线是有序的);停用的工序行级只读 */

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-// 模块 12「嵌入式表格」:用真实库复刻原型 embedPageHtml。整页 = 两张表 + 一个弹窗(natural:整页在主区里滚动,不铺满):
-//   ① 「入库明细」子表:静态 data · search:false · toolbar:false(只剩标题 + 右侧「添加物料」)· pagination:false · striped + 合计行(summary)
-//   ② 「选择物料」弹窗:search.container:'none'(无卡片、单行自动换行的内联搜索)+ 勾选 + toolbar:false + 每页 8 行(simple 分页);窄档改底部抽屉
-//   ③ 下方「物料单据」主表:不开 fillHeight(整页滚动),翻页后卡片顶部滚出就滚回(库内置);每页 20 / 50
+// 模块 12「上下布局」:用真实库复刻原型 embedPageHtml(设计 §12.3)。整页恒为一屏 = 上方「物料单据」大表 + 下方「入库明细」子表 + 一个弹窗:
+//   ① 上方「物料单据」主表:fillHeight + 虚拟滚动,吃掉除子表外的全部剩余高度,默认分页(每页 100 行,多出的行靠虚拟滚动看)
+//   ② 下方「入库明细」子表:静态 data · search:false · toolbar:false(只剩标题 + 右侧「添加物料」)· pagination:false · striped + 合计行(summary);
+//      自然高度、封顶(视口高 28%,夹在 140–280px),行数再多也只在子表里滚
+//   ③ 「选择物料」弹窗:search.container:'none'(无卡片、单行自动换行的内联搜索)+ 勾选 + toolbar:false + 每页 8 行(simple 分页);窄档改底部抽屉
 // 对照脚本靠 data-parity 区分两张表:子表外层 data-parity="sub"、主表外层 data-parity="main"。
 // 库做不到的原型效果不造假。
 import { computed, h, ref } from 'vue'
@@ -47,17 +48,28 @@ import {
 } from '../data'
 import { PICK_PS, detRow, initialDet, pickCandidates, sumDet, type DetRow } from '../data/m12-det'
 import { MOCK_DELAY, fetchRows, queryRows } from '../fetcher'
-import { registerDict, textW } from '../i18n'
+import { registerDict } from '../i18n'
+import {
+  CheckIcon,
+  DELETE_DIALOG_BTNS,
+  DELETE_POPCONFIRM_BTNS,
+  TrashIcon,
+  deleteTrigger,
+  editAction,
+} from './shared/btn'
+import { fitTitles } from './shared/fitTitles'
 import { materialCols } from './shared/materialCols'
 import { STATUS_VALUES, statusOptions } from './shared/options'
 import {
-  ACT_BTN,
+  ProtoAddButton,
   downloadCsv,
   moreOptions as makeMoreOptions,
   protoToolbar,
 } from './shared/toolbar'
 import { useProtoTable } from './shared/useProtoTable'
+import { PlusIcon, removeAction } from './shared/btn'
 import { useTier } from './shared/useTier'
+import { useButtonTint } from '../../../src/buttonTint'
 
 registerDict(
   [
@@ -74,6 +86,7 @@ const { shell, t, tableProps, toast, message } = useProtoTable()
 const dialog = useDialog()
 const themeVars = useThemeVars()
 const { el: hostEl, tier } = useTier()
+const tint = useButtonTint()
 const isNarrow = computed(() => tier.value === 'narrow')
 
 /* ================= ① 入库明细子表 ================= */
@@ -81,29 +94,30 @@ const det = ref<DetRow[]>(initialDet())
 const fmtMoney = (n: number) =>
   n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const num = { align: 'right', titleAlign: 'right' } as const
-const subColumns = computed<SmartTableColumn<DetRow>[]>(() => [
-  { type: 'index', title: () => t('序号'), width: 64 },
-  { key: 'no', title: () => t('物料编码'), width: 120 },
-  { key: 'name', title: () => t('物料名称'), minWidth: 120 },
-  { key: 'qty', title: () => t('数量'), width: 96, ...num },
-  { key: 'price', title: () => t('单价'), width: 112, format: 'money', ...num },
-  { key: 'amt', title: () => t('金额'), width: 128, format: 'money', ...num },
-  {
-    key: 'ops',
-    title: '',
-    width: 72,
-    render: (row: DetRow) =>
-      h(
-        NButton,
-        {
-          text: true,
-          type: 'error',
-          onClick: () => (det.value = det.value.filter((d) => d.no !== row.no)),
-        },
-        () => t('移除'),
-      ),
-  },
-])
+/* 子表的英文表头也按 titleFit 加宽(原型 embedPageHtml 的 sw()):「Material Code」放不进 120px */
+const subColumns = computed<SmartTableColumn<DetRow>[]>(() =>
+  fitTitles(
+    [
+      { type: 'index', title: () => t('序号'), width: 64 },
+      { key: 'no', title: () => t('物料编码'), width: 120 },
+      { key: 'name', title: () => t('物料名称'), minWidth: 120 },
+      { key: 'qty', title: () => t('数量'), width: 96, ...num },
+      { key: 'price', title: () => t('单价'), width: 112, format: 'money', ...num },
+      { key: 'amt', title: () => t('金额'), width: 128, format: 'money', ...num },
+      {
+        key: 'ops',
+        title: '',
+        width: 72,
+        // 套一层 NSpace(flex):按钮直接放进 td 会落在行内基线上,把行撑高 2px(41.4),与大表行(39.4)对不齐
+        render: (row: DetRow) =>
+          h(NSpace, { size: 12, wrapItem: false }, () => [
+            removeAction(t('移除'), () => (det.value = det.value.filter((d) => d.no !== row.no))),
+          ]),
+      },
+    ],
+    shell.lang === 'en',
+  ),
+)
 /** 合计行(原型 .sum-row):合计 / 数量合计 / 金额合计;没有行时不出合计。 */
 const summary = (): Record<string, { value: string | number }> | [] => {
   if (!det.value.length) return []
@@ -204,29 +218,26 @@ function onMore(key: string | number) {
 
 const rowActions = (row: Row) =>
   h(NSpace, { size: 12, wrapItem: false }, () => [
-    h(NButton, { text: true, style: ACT_BTN, onClick: () => crud.openEdit(row) }, () => t('编辑')),
+    editAction(t('编辑'), () => crud.openEdit(row)),
     h(
       NPopconfirm,
-      { onPositiveClick: () => void onDel(row.no) },
       {
-        trigger: () => h(NButton, { text: true, type: 'error', style: ACT_BTN }, () => t('删除')),
+        onPositiveClick: () => void onDel(row.no),
+        positiveText: t('删除'),
+        negativeText: t('取消'),
+        ...DELETE_POPCONFIRM_BTNS,
+      },
+      {
+        trigger: () => deleteTrigger(t('删除')),
         default: () => t('确认删除该行?'),
       },
     ),
   ])
-/* 英文表头宽度按 t(标题) 的真实文字宽度重算,不让标题被截断(原型 titleFit:textW + 28);中文不动 */
-const fitTitles = (cols: SmartTableColumn<Row>[]): SmartTableColumn<Row>[] =>
-  shell.lang !== 'en'
-    ? cols
-    : cols.map((c) => {
-        if ('type' in c || typeof c.title !== 'function' || c.key === 'actions') return c
-        const w = Math.ceil(textW(String(c.title()))) + 28
-        if (c.width != null) return w > Number(c.width) ? { ...c, width: w } : c
-        return w > Number(c.minWidth ?? 0) ? { ...c, minWidth: w } : c
-      })
-
 const columns = computed<SmartTableColumn<Row>[]>(() =>
-  fitTitles(materialCols({ t, selection: true, index: true, memo: true, actions: rowActions })),
+  fitTitles(
+    materialCols({ t, selection: true, index: true, memo: true, actions: rowActions }),
+    shell.lang === 'en',
+  ),
 )
 
 async function onDel(no: string) {
@@ -246,8 +257,9 @@ function onBatchDelete(keys: Array<string | number>, clear: () => void) {
   dialog.warning({
     title: t('确认删除'),
     content: t(`确定删除所选 ${keys.length} 项吗?`),
-    positiveText: t('确认'),
+    positiveText: t('删除'),
     negativeText: t('取消'),
+    ...DELETE_DIALOG_BTNS,
     onPositiveClick: async () => {
       const n = delRows(keys.map(String))
       clear()
@@ -320,8 +332,52 @@ async function onSave() {
 
 <template>
   <div ref="hostEl" class="m12">
-    <!-- ① 入库明细 -->
-    <div data-parity="sub">
+    <!-- ① 物料单据(上):铺满剩余高度 + 虚拟滚动 -->
+    <div data-parity="main" class="m12-main">
+      <SmartTable
+        ref="tableRef"
+        v-model:checked-row-keys="checked"
+        v-bind="tableProps"
+        card-on-narrow
+        :columns="columns"
+        :fetcher="fetcher"
+        row-key="no"
+        :title="t('物料单据')"
+        :search="{ container: 'table' }"
+        :toolbar="toolbar"
+        fill-height
+        @more-select="onMore"
+      >
+        <template #toolbar-right>
+          <proto-add-button :label="t('新增')" @click="crud.openCreate()" />
+        </template>
+        <template #batch="{ checkedRowKeys, clear }">
+          <n-button
+            secondary
+            type="primary"
+            :theme-overrides="tint.primary"
+            @click="onBatchApprove(checkedRowKeys, clear)"
+          >
+            <template #icon><CheckIcon /></template>
+            {{ t('批量审核') }}
+          </n-button>
+          <n-button
+            secondary
+            type="error"
+            :theme-overrides="tint.error"
+            aria-haspopup="dialog"
+            @click="onBatchDelete(checkedRowKeys, clear)"
+          >
+            <template #icon><TrashIcon /></template>
+            {{ t('批量删除') }}
+          </n-button>
+        </template>
+        <template #pagination-prefix="info">{{ t(`共 ${info.itemCount} 条`) }}</template>
+      </SmartTable>
+    </div>
+
+    <!-- ② 入库明细(下) -->
+    <div data-parity="sub" class="m12-sub">
       <SmartTable
         :columns="subColumns"
         :data="det"
@@ -335,80 +391,14 @@ async function onSave() {
         striped
         :summary="summary"
         :scroll-x="isNarrow ? 760 : undefined"
+        max-height="clamp(140px, 28vh, 280px)"
       >
         <template #toolbar-right>
-          <n-button
-            :type="det.length ? 'default' : 'primary'"
-            :theme-overrides="{ iconSizeMedium: '13px' }"
-            @click="openPick"
-          >
-            <template #icon>
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-              >
-                <path d="M8 3v10M3 8h10" />
-              </svg>
-            </template>
+          <n-button secondary type="primary" :theme-overrides="tint.primary" @click="openPick">
+            <template #icon><PlusIcon /></template>
             {{ t('添加物料') }}
           </n-button>
         </template>
-      </SmartTable>
-    </div>
-
-    <!-- ③ 物料单据 -->
-    <div data-parity="main">
-      <SmartTable
-        ref="tableRef"
-        v-model:checked-row-keys="checked"
-        v-bind="tableProps"
-        card-on-narrow
-        :columns="columns"
-        :fetcher="fetcher"
-        row-key="no"
-        :title="t('物料单据')"
-        :search="{ container: 'table' }"
-        :toolbar="toolbar"
-        :pagination="{ pageSizes: [20, 50] }"
-        @more-select="onMore"
-      >
-        <template #toolbar-right>
-          <n-button
-            type="primary"
-            :theme-overrides="{ iconSizeMedium: '13px' }"
-            @click="crud.openCreate()"
-          >
-            <template #icon>
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-              >
-                <path d="M8 3v10M3 8h10" />
-              </svg>
-            </template>
-            {{ t('新增') }}
-          </n-button>
-        </template>
-        <template #batch="{ checkedRowKeys, clear }">
-          <n-button @click="onBatchApprove(checkedRowKeys, clear)">{{ t('批量审核') }}</n-button>
-          <n-button
-            :text-color="themeVars.errorColor"
-            aria-haspopup="dialog"
-            @click="onBatchDelete(checkedRowKeys, clear)"
-            >{{ t('批量删除') }}</n-button
-          >
-        </template>
-        <template #pagination-prefix="info">{{ t(`共 ${info.itemCount} 条`) }}</template>
       </SmartTable>
     </div>
 
@@ -441,10 +431,16 @@ async function onSave() {
         <template #footer>
           <div class="pk-foot">
             <span class="pk-sel">{{ t(`已选 ${pickChecked.length} 项`) }}</span>
-            <n-button @click="closePick">{{ t('取消') }}</n-button>
-            <n-button type="primary" :disabled="!pickChecked.length" @click="okPick">{{
-              t('确定')
+            <n-button secondary style="min-width: 80px" @click="closePick">{{
+              t('取消')
             }}</n-button>
+            <n-button
+              type="primary"
+              style="min-width: 80px"
+              :disabled="!pickChecked.length"
+              @click="okPick"
+              >{{ t('确定') }}</n-button
+            >
           </div>
         </template>
       </n-modal>
@@ -454,6 +450,7 @@ async function onSave() {
         :title="t('选择物料')"
         closable
         :body-content-style="{ padding: '12px 16px' }"
+        footer-style="border-top: none"
       >
         <SmartTable
           v-model:checked-row-keys="pickChecked"
@@ -470,10 +467,16 @@ async function onSave() {
         <template #footer>
           <div class="pk-foot">
             <span class="pk-sel">{{ t(`已选 ${pickChecked.length} 项`) }}</span>
-            <n-button @click="closePick">{{ t('取消') }}</n-button>
-            <n-button type="primary" :disabled="!pickChecked.length" @click="okPick">{{
-              t('确定')
+            <n-button secondary style="min-width: 80px" @click="closePick">{{
+              t('取消')
             }}</n-button>
+            <n-button
+              type="primary"
+              style="min-width: 80px"
+              :disabled="!pickChecked.length"
+              @click="okPick"
+              >{{ t('确定') }}</n-button
+            >
           </div>
         </template>
       </n-drawer-content>
@@ -544,12 +547,20 @@ async function onSave() {
       </n-form>
       <template #footer>
         <n-space justify="end">
-          <n-button :disabled="crud.submitting.value" @click="crud.close()">{{
-            t('取消')
-          }}</n-button>
-          <n-button type="primary" :loading="crud.submitting.value" @click="onSave">{{
-            t('保存')
-          }}</n-button>
+          <n-button
+            secondary
+            style="min-width: 80px"
+            :disabled="crud.submitting.value"
+            @click="crud.close()"
+            >{{ t('取消') }}</n-button
+          >
+          <n-button
+            type="primary"
+            style="min-width: 80px"
+            :loading="crud.submitting.value"
+            @click="onSave"
+            >{{ t('保存') }}</n-button
+          >
         </n-space>
       </template>
     </n-modal>
@@ -557,11 +568,31 @@ async function onSave() {
 </template>
 
 <style scoped>
-/* natural 页:整页在主区里滚动。两张表之间 16px(原型 .smart-table 里两张 n-card 的间距) */
+/* 恒为一屏(设计 §12.3):根撑满主区剩余高度,上方主表吃掉子表之外的全部高度(fillHeight + 虚拟滚动),子表自然高度、封顶;两张表之间 16px */
 .m12 {
+  flex: 1 1 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+.m12-main {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.m12-main > :deep(.smart-table) {
+  flex: 1 1 0;
+}
+.m12-sub {
+  flex: none;
+}
+/* 合计行吸底(设计 §12.3):官方 summary 行不是 sticky,会随表体滚走(首屏就看不见);宿主给它补 sticky bottom:0(底色沿用官方 --summary 的 thColor,不透明) */
+.m12-sub :deep(.n-data-table-tr--summary > .n-data-table-td) {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
 }
 .pk-foot {
   display: flex;

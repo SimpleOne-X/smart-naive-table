@@ -102,7 +102,7 @@ describe('SmartTable 列宽拖拽事件透传', () => {
     wrapper.unmount()
   })
 })
-describe('SmartTable 列宽钉住后由吸收列吸收余量(B8,取代占位列;E1)', () => {
+describe('SmartTable 列宽钉住后由吸收列吸收余量(B8;E1)', () => {
   /** jsdom 没有 ResizeObserver,这里替一个能手动触发的桩,用来驱动组件里的容器测量。 */
   class ResizeObserverStub {
     static instances: ResizeObserverStub[] = []
@@ -640,7 +640,7 @@ describe('SmartTable 排序(多列 / 默认排序 / 编程式)', () => {
     wrapper.unmount()
   })
 
-  it('[C6] 点表头排序:宿主的 onUpdate:sorter 恰好被调用 1 次(2.1.1 是 2 次)', async () => {
+  it('[C6] 点表头排序:宿主的 onUpdate:sorter 恰好被调用 1 次', async () => {
     const onSorter = vi.fn()
     const { wrapper } = mountRemote(multiCols, { 'onUpdate:sorter': onSorter })
     await flushPromises()
@@ -920,7 +920,7 @@ describe('SmartTable 分页(B1 / B4 / B9 / D3 / D4)', () => {
     wrapper.unmount()
   })
 
-  describe('[D4 / B1 修订 2026-10-03] 每页条数可选项按 fillHeight 区分', () => {
+  describe('[D4 / B1] 每页条数可选项按 fillHeight 区分', () => {
     // fillHeight 映射官方 virtual-scroll:vueuc 的 VirtualList 在 setup 里读 window.matchMedia,jsdom 没有
     // 选每页条数时 onPageChanged() 会让虚拟滚动表体 scrollTo({ top: 0 }),jsdom 的 Element 没有 scrollTo
     const hadScrollTo = 'scrollTo' in Element.prototype
@@ -1683,7 +1683,7 @@ describe('SmartTable 已生效条件 chips(filterChips)', () => {
   })
 })
 
-describe('SmartTable chips 的位置:表格下方、与分页同一行(规格变更 2026-10-02)', () => {
+describe('SmartTable chips 的位置:表格下方、与分页同一行', () => {
   // chips 不放在「工具栏下方、表格上方」的独立一行(放上面时 chips 出现 / 消失会把表格整体顶下去再弹回来),而是在表格下方、与分页同一行。
   // 几何(y 坐标、同一水平线)jsdom 算不了,只能在真实浏览器里验;这里锁 DOM 结构与归属。
   const cols = [
@@ -1740,7 +1740,7 @@ describe('SmartTable chips 的位置:表格下方、与分页同一行(规格变
     w.unmount()
   })
 
-  it('chips 不再出现在工具栏与表格之间(旧位置)', async () => {
+  it('chips 不出现在工具栏与表格之间', async () => {
     const w = await mountWith()
     const el = w.element as HTMLElement
     const card = el.querySelector('.smart-table-card .n-card-content')!
@@ -1825,7 +1825,7 @@ describe('SmartTable chips 的位置:表格下方、与分页同一行(规格变
     w.unmount()
   })
 
-  it('没开 chips / 没有条件:没有 chips、没有自画行;没开 chips 时分页 prefix 与旧版一致(不额外包一层)', async () => {
+  it('没开 chips / 没有条件:没有 chips、没有自画行;没开 chips 时分页 prefix 原样输出(不额外包一层)', async () => {
     const off = mount(SmartTable, {
       props: { columns: cols, data: rows, rowKey: 'id' },
       slots: { 'pagination-prefix': () => 'TOTAL' },

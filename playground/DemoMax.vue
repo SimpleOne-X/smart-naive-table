@@ -7,8 +7,12 @@ import { NButton, NRadioButton, NRadioGroup, NSpace, NSwitch, useMessage } from 
 import { SmartTable, type SmartTableColumn } from '../src/index'
 import { allRows, mockPage, type DemoRow } from './mock'
 import { labels } from './locale'
+import { DownloadIcon, TrashIcon } from './prototype/modules/shared/btn'
+import { ProtoAddButton } from './prototype/modules/shared/toolbar'
+import { useButtonTint } from '../src/buttonTint'
 
 const message = useMessage()
+const tint = useButtonTint()
 const checked = ref<Array<string | number>>([])
 const fill = ref(false)
 const transformHost = ref(false)
@@ -96,18 +100,20 @@ const toolbar = computed(() => ({
         resizable
         @more-select="(k) => message.info(`more: ${String(k)}`)"
       >
-        <template #toolbar-right><NButton size="small" type="primary">新增</NButton></template>
+        <template #toolbar-right><ProtoAddButton label="新增" /></template>
         <template #batch="{ checkedRowKeys, clear }">
           <NButton
-            size="small"
+            secondary
             data-testid="batch-export"
             @click="message.info(`导出 ${checkedRowKeys.length} 项`)"
-            >批量导出</NButton
           >
+            <template #icon><DownloadIcon /></template>
+            批量导出
+          </NButton>
           <NButton
-            size="small"
+            secondary
             type="error"
-            ghost
+            :theme-overrides="tint.error"
             data-testid="batch-del"
             @click="
               () => {
@@ -115,8 +121,10 @@ const toolbar = computed(() => ({
                 clear()
               }
             "
-            >批量删除</NButton
           >
+            <template #icon><TrashIcon /></template>
+            批量删除
+          </NButton>
         </template>
       </SmartTable>
     </div>

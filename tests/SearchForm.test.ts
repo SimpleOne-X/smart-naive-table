@@ -4,6 +4,7 @@ import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import { NGrid } from 'naive-ui'
 import SearchForm from '../src/SearchForm.vue'
+import searchFormSource from '../src/SearchForm.vue?raw'
 import { defaultLabels } from '../src/labels'
 import { deriveSearchDefs } from '../src/useColumns'
 
@@ -59,7 +60,7 @@ describe('SearchForm 折叠态的 collapsed-rows(C5,按 n-grid 实际轨道数�
     w.unmount()
   })
 
-  it('宿主自己配了 collapsedRows: 2 时,1 个轨道也不再抬', async () => {
+  it('宿主自己配了 collapsedRows: 2 时,1 个轨道也不自动抬高', async () => {
     const w = mountForm('300px', { collapsible: true, collapsedRows: 2 })
     await nextTick()
     expect(w.findComponent(NGrid).props('collapsedRows')).toBe(2)
@@ -68,7 +69,7 @@ describe('SearchForm 折叠态的 collapsed-rows(C5,按 n-grid 实际轨道数�
 })
 
 describe('SearchForm 操作区对齐(L0-7)', () => {
-  it('搜索 / 重置 / 展开 同排垂直居中(n-space align=center),不再默认顶对齐', () => {
+  it('搜索 / 重置 / 展开 同排垂直居中(n-space align=center),不是顶对齐', () => {
     const w = mountForm('150px 150px')
     const space = w.find('.smart-table-search .n-space')
     expect(space.attributes('style')).toContain('align-items: center')
@@ -83,4 +84,75 @@ describe('SearchForm 操作区对齐(L0-7)', () => {
     expect(toggle.attributes('style')).toContain('height: 34px')
     w.unmount()
   })
+})
+
+describe('SearchForm 「搜索」「重置」按钮:淡色底 + 左图标(设计 §2.13 / §2.15),loading 不改变按钮宽度(issue #5)', () => {
+  // 图标槽(.n-button__icon)一直在:空闲时放图标,loading 时官方把同一个槽里的图标换成转圈,按钮宽度不变。
+  // 转圈槽不脱离文档流。jsdom 不做布局,这里只锁结构事实;真实宽度由浏览器实测。
+  function mountLoading(layout: 'grid' | 'inline', loading: boolean) {
+    return mount(SearchForm, {
+      props: {
+        fields,
+        params: {},
+        config: { layout },
+        labels: defaultLabels,
+        loading,
+        getOptions: () => [],
+        isLoadingOptions: () => false,
+      },
+      attachTo: document.body,
+    })
+  }
+  const btnOf = (w: ReturnType<typeof mountLoading>, text: string) =>
+    w.findAll('button').find((b) => b.text() === text)!
+
+  it('图标槽(.n-button__icon)不设 position: absolute:转圈槽不脱离文档流', () => {
+    expect(searchFormSource).not.toMatch(/\.n-button__icon\)\s*\{[^}]*position: absolute/)
+  })
+
+  it.each(['grid', 'inline'] as const)(
+    '%s 布局:「搜索」= secondary + primary(淡主色底),图标槽空闲与 loading 时都在',
+    async (layout) => {
+      const w = mountLoading(layout, false)
+      const btn = btnOf(w, 'Search')
+      expect(btn.classes()).toContain('n-button--primary-type')
+      expect(btn.classes()).toContain('n-button--secondary')
+      expect(btn.find('.n-button__icon svg').exists()).toBe(true)
+      await w.setProps({ loading: true })
+      expect(btnOf(w, 'Search').classes()).toContain('n-button--loading')
+      expect(btnOf(w, 'Search').find('.n-button__icon').exists()).toBe(true)
+      w.unmount()
+    },
+  )
+
+  it.each(['grid', 'inline'] as const)(
+    '%s 布局:「重置」= secondary 默认型(淡灰底),带图标',
+    (layout) => {
+      const w = mountLoading(layout, false)
+      const btn = btnOf(w, 'Reset')
+      expect(btn.classes()).toContain('n-button--default-type')
+      expect(btn.classes()).toContain('n-button--secondary')
+      expect(btn.find('.n-button__icon svg').exists()).toBe(true)
+      w.unmount()
+    },
+  )
+
+  it.each(['grid', 'inline'] as const)(
+    '%s 布局:loading 期间点「搜索」不发 search',
+    async (layout) => {
+      const w = mountLoading(layout, true)
+      await w
+        .findAll('button')
+        .find((b) => b.text() === 'Search')!
+        .trigger('click')
+      expect(w.emitted('search')).toBeUndefined()
+      await w.setProps({ loading: false })
+      await w
+        .findAll('button')
+        .find((b) => b.text() === 'Search')!
+        .trigger('click')
+      expect(w.emitted('search')).toHaveLength(1)
+      w.unmount()
+    },
+  )
 })

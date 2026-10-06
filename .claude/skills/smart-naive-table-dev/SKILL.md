@@ -34,7 +34,7 @@ description: smart-naive-table 仓库的开发与设计铁律。在这个仓库�
 
 ### naive-ui 关键事实（NCard / DataTable）
 
-- **当前仓库本地安装的 naive-ui 版本是 2.44.1**（`node_modules/naive-ui/package.json`）；引用数值与行号时以本地源码为准（行号会漂移，落笔前重新 grep）。
+- **当前仓库本地安装的 naive-ui 版本是 2.45.3**（`node_modules/naive-ui/package.json`）；引用数值与行号时以本地源码为准（行号会漂移，落笔前重新 grep）。
 - **NCard 插槽**：`cover` / `header` / `header-extra` / `default` / `footer` / `action`。
   `header` 内部分 `header__main`（`flex:1; min-width:0`）、`header__extra`
   （`display:flex; align-items:center; font-weight:400`，被 main 挤到右侧）、`header__close`。
@@ -64,8 +64,11 @@ description: smart-naive-table 仓库的开发与设计铁律。在这个仓库�
   这条同时也是省垂直空间的解法，两者方向一致。
 - **克制留白**：宁可靠间距和字重分层，也不要靠加边框、加底色、加卡片分层。
 - **轻分隔**：分隔线用 `1px` 且低对比（naive 的 `dividerColor`），能不画就不画。
-- **控件收敛**：次级操作用 `quaternary`/`text` 按钮和圆形图标按钮，不堆实心按钮。
-  一屏之内只保留一个主色实心按钮（主操作）。
+- **控件收敛（按钮统一，见设计 §2.15）**：页面上的操作按钮一律是淡色底 + 左图标
+  （`NButton` 的 `secondary`，颜色对应用途：创建 / 搜索 = 淡主色，删除 = 淡红，中性 = 淡灰），
+  **页面上不用实心按钮**；实心主色只留给表单 / 弹窗 / 抽屉里**唯一的默认动作**（一个操作区只有一个，
+  其余取消 / 重置用淡灰，底栏按钮不带图标）。表格行内的编辑 / 删除用无底文字按钮 + 颜色 + 小图标；
+  只有图标的工具（刷新、列设置等）用圆形图标按钮。
 - **克制的动效**：过渡 0.15–0.2s，只做 opacity / background-color / border-color，不做位移弹跳。
 - **明暗两套**：任何新样式都要同时给亮色和暗色，走 naive 的主题变量
   （`var(--n-border-color)` 这类），不要硬编码颜色值。

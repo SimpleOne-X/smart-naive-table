@@ -46,7 +46,7 @@ vi.mock('sortablejs', () => ({
   },
 }))
 
-// 模块 14「可编辑表格」(提议)的示例:工艺路线设计(变速箱壳体 GB-2201,12 道工序;工序库 36 行)。
+// 模块 14「可编辑表格」的示例:工艺路线设计(变速箱壳体 GB-2201,12 道工序;工序库 36 行)。
 // 编辑交互本身的细粒度断言在 tests/SmartTable.editable*.test.ts / SmartSelectTable.test.ts;这里锁:数据 / 后端 / 对照页接线 / 行级只读 / 合计 / 工序库选择 / 序号列与拖拽 / 保存。
 useAppStubs()
 beforeEach(() => {
@@ -174,12 +174,12 @@ describe('后端', () => {
 })
 
 describe('对照页 ?m=14', () => {
-  it('侧栏「数据」组第 3 项「可编辑表格」带「提议」徽标;面包屑 / 页头;12 行;表头;合计行', async () => {
+  it('侧栏「数据」组第 3 项「可编辑表格」不带状态徽标(已定);面包屑 / 页头;12 行;表头;合计行', async () => {
     const w = await mountApp(14)
     await settle()
     const me = w.findAll('#modList .mod').find((m) => m.find('.nm').text() === '可编辑表格')!
     expect(me.classes('on')).toBe(true)
-    expect(me.find('.st').text()).toBe('提议')
+    expect(me.find('.st').exists()).toBe(false) // 状态是「已定」:没有「提议」徽标
     expect(w.find('.crumb').text().replace(/\s+/g, ' ')).toBe(
       'SmartTable 设计方案 / 数据 / 可编辑表格',
     )
@@ -346,6 +346,12 @@ describe('对照页 ?m=14', () => {
       .find((b) => b.text() === '放弃修改')!
       .trigger('click')
     await settle()
+    // 先弹确认气泡,点「放弃」才还原
+    ;[...document.body.querySelectorAll<HTMLElement>('.n-popconfirm__panel button')]
+      .find((b) => b.textContent?.trim() === '放弃')!
+      .click()
+    await settle()
+    expect(w.findAll('td.smart-table-xd')).toHaveLength(0) // 草稿确已放弃
     expect(
       w
         .findAll('.n-data-table-tbody .n-data-table-tr:not(.n-data-table-tr--summary)')

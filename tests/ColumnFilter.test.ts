@@ -214,7 +214,7 @@ describe('ColumnFilter 漏斗触发器(B6 / 键盘可达)', () => {
     })
   }
 
-  it('漏斗按钮可被键盘聚焦(不再是 tabindex=-1)', () => {
+  it('漏斗按钮可被键盘聚焦(tabindex 不是 -1)', () => {
     const wrapper = mountFilter(null)
     const btn = wrapper.find('.smart-table-filter-trigger button')
     expect(btn.exists()).toBe(true)
@@ -314,7 +314,7 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
     return e[e.length - 1][0] as FilterValue | null
   }
 
-  it('condition 列:面板里能看到全部已有条件(不再只取第一条)', async () => {
+  it('condition 列:面板里能看到全部已有条件(不止第一条)', async () => {
     const w = await openPanel(conditionDef(), v('or', ['contains', 'a'], ['equal', 'b']))
     expect(document.body.querySelectorAll('.smart-table-filter-row')).toHaveLength(2)
     w.unmount()
@@ -604,7 +604,7 @@ describe('ColumnFilter 多条件面板(B7 / C3)', () => {
     })
   })
 
-  describe('[Step 13 实测] 被点的控件随更新卸载 / 禁用:焦点收回面板,不掉到 body(Esc / Tab 仍有人接)', () => {
+  describe('被点的控件随更新卸载 / 禁用:焦点收回面板,不掉到 body(Esc / Tab 仍有人接)', () => {
     const panelEl = () => document.body.querySelector('.smart-table-filter') as HTMLElement
     // 真实键盘事件的目标是当前焦点元素(不是面板容器):焦点掉到 body 时,面板上的监听根本收不到
     const pressOnFocused = (k: string) =>
@@ -805,7 +805,7 @@ describe('ColumnFilter 面板排布(L0-5,对齐原型 .hpop)', () => {
     w.unmount()
   })
 
-  it('只有 1 行时没有且 / 或下拉;下方也不再有分段按钮', async () => {
+  it('只有 1 行时没有且 / 或下拉;下方也没有分段按钮', async () => {
     const w = await openPanel(conditionDef(), null)
     expect(qa('.smart-table-filter-logic')).toHaveLength(0)
     expect(qa('.n-radio-group')).toHaveLength(0)
@@ -825,17 +825,59 @@ describe('ColumnFilter 面板排布(L0-5,对齐原型 .hpop)', () => {
     w.unmount()
   })
 
-  it('「添加条件」:官方 small 档的文字按钮,带加号图标,文字不再自带「+ 」前缀,也不再是主色', async () => {
+  it('「添加条件」:淡灰 secondary 的 small 档按钮,带加号图标,文字不带「+ 」前缀,也不是主色', async () => {
     const w = await openPanel(conditionDef(), null)
     const add = q('.smart-table-filter-add')!
     expect(add.querySelector('svg')).not.toBeNull()
     expect(add.textContent!.trim()).toBe('添加条件')
     expect(add.classList.contains('n-button--primary-type')).toBe(false)
-    // 官方 small 档(与同一面板里 small 的值控件一致):字 14 / 图标 18 / 高取主题 heightSmall 28
+    expect(add.classList.contains('n-button--secondary')).toBe(true)
+    expect(add.classList.contains('n-button--text')).toBe(false)
+    // 官方 small 档(与同一面板里 small 的值控件一致):字 14 / 图标 18 / 高 heightSmall 28 / 内边距 0 10px
     expect(add.getAttribute('style')).toContain('--n-font-size: 14px')
     expect(add.getAttribute('style')).toContain('--n-icon-size: 18px')
-    expect(add.getAttribute('style')).toContain('height: 28px')
+    expect(add.getAttribute('style')).toContain('--n-height: 28px')
+    expect(add.getAttribute('style')).toContain('--n-padding: 0 10px')
     w.unmount()
+  })
+
+  it('按钮里的加号:24 视口、笔画 2、1em(与其它按钮图标同一套几何),图标槽 18px', async () => {
+    const w = await openPanel(conditionDef(), null)
+    const svg = q('.smart-table-filter-add')!.querySelector('svg')!
+    expect(svg.getAttribute('viewBox')).toBe('0 0 24 24')
+    expect(svg.getAttribute('stroke-width')).toBe('2')
+    expect(svg.getAttribute('width')).toBe('1em')
+    w.unmount()
+  })
+
+  describe('面板按钮统一(设计 §2.15 D)', () => {
+    const style = (el: Element | null) => el!.getAttribute('style') ?? ''
+    const isNeutralSecondary = (el: Element | null) =>
+      el!.classList.contains('n-button--secondary') &&
+      el!.classList.contains('n-button--default-type') &&
+      !el!.classList.contains('n-button--text')
+
+    it('底部「重置」= 淡灰 secondary tiny、不带图标;「确认」= 实心主色 tiny、不带图标', async () => {
+      const w = await openPanel(conditionDef(), null)
+      const [reset, ok] = qa('.smart-table-filter-footer button')
+      expect(isNeutralSecondary(reset)).toBe(true)
+      expect(style(reset)).toContain('--n-height: 22px')
+      expect(style(reset)).toContain('--n-font-size: 12px')
+      expect(reset.querySelector('svg')).toBeNull()
+      expect(ok.classList.contains('n-button--primary-type')).toBe(true)
+      expect(ok.classList.contains('n-button--secondary')).toBe(false)
+      expect(style(ok)).toContain('--n-height: 22px')
+      expect(ok.querySelector('svg')).toBeNull()
+      w.unmount()
+    })
+
+    it('condition 面板的工具行:「添加条件」= 淡灰 secondary small', async () => {
+      const w = await openPanel(conditionDef(), null)
+      const add = q('.smart-table-filter-add')
+      expect(isNeutralSecondary(add)).toBe(true)
+      expect(style(add)).toContain('--n-height: 28px')
+      w.unmount()
+    })
   })
 
   it('底部「重置 / 确认」在 footer 里,footer 在面板最底部、带分隔线', async () => {
@@ -887,6 +929,23 @@ describe('ColumnFilter 面板排布(L0-5,对齐原型 .hpop)', () => {
       click(q('.smart-table-filter-advanced-open'))
       await nextTick()
       expect(q('.smart-table-filter-advanced-close')!.textContent!.trim()).toBe('返回列表 ▴')
+      w.unmount()
+    })
+
+    it('「高级条件 ▾」「返回列表 ▴」= 淡灰 secondary small(28px),不是文字按钮', async () => {
+      const w = await open(null)
+      const adv = (el: Element | null) => {
+        expect(el!.classList.contains('n-button--secondary')).toBe(true)
+        expect(el!.classList.contains('n-button--default-type')).toBe(true)
+        expect(el!.classList.contains('n-button--text')).toBe(false)
+        expect(el!.getAttribute('style')).toContain('--n-height: 28px')
+        expect(el!.getAttribute('style')).toContain('--n-font-size: 14px')
+      }
+      adv(q('.smart-table-filter-advanced-open'))
+      click(q('.smart-table-filter-advanced-open'))
+      await nextTick()
+      adv(q('.smart-table-filter-advanced-close'))
+      adv(q('.smart-table-filter-add'))
       w.unmount()
     })
 
@@ -960,7 +1019,7 @@ describe('ColumnFilter 面板排布(L0-5,对齐原型 .hpop)', () => {
       // 从「高级条件 ▾」Shift+Tab 回到单选组时焦点落在「选中的那个」(或方向键移过去的那个),不一定是第 1 个 radio。
       // 所以焦点在任一 radio 上 Shift+Tab 时 trapTab 都要绕回;否则焦点会逃出面板落到页面上,之后 Esc 也关不掉面板。
       // jsdom 不模拟原生 Tab 移动焦点,所以这里断言的是 trapTab 自己的绕回。
-      it('[批准的偏离 · Task 10 trapTab] 焦点在非首个 radio(同名单选组)上 Shift+Tab:绕回面板最后一个控件,不逃出面板', async () => {
+      it('[trapTab] 焦点在非首个 radio(同名单选组)上 Shift+Tab:绕回面板最后一个控件,不逃出面板', async () => {
         const w = await openSingle({ logic: 'and', conditions: [{ action: 'equal', value: 2 }] })
         const inputs = qa('.smart-table-filter-options input[type="radio"]')
         expect(inputs).toHaveLength(2)
@@ -1053,7 +1112,7 @@ describe('ColumnFilter 面板不出屏(L0-9)', () => {
   // onScroll → beforeNextFrameOnce 排一个 rAF,在 rAF 里 Follower.syncPosition 改写 .v-binder-follower-content 的 transform。
   // 我们挂在 window 捕获阶段的 scroll 监听总是先于它触发,我们的 rAF 排在它前面 → 若只在自己的 rAF 里夹取,量到的是挪之前的位置,夹取会落后一拍。
   // 这里按真实顺序模拟:先派发 scroll(我们排 rAF),再排「vueuc 的」rAF 去挪 follower。
-  it('[Step 5 实测偏离] 滚动时 follower 在 vueuc 自己的 rAF 里(排在我们的 rAF 之后)才挪:挪完要重新夹取,不能落后一拍', async () => {
+  it('滚动时 follower 在 vueuc 自己的 rAF 里(排在我们的 rAF 之后)才挪:挪完要重新夹取,不能落后一拍', async () => {
     let rect = new DOMRect(100, 100, 400, 200)
     Object.defineProperty(window, 'innerWidth', { value: 1440, configurable: true })
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
@@ -1133,7 +1192,7 @@ describe('ColumnFilter closeRequest(拖动列宽开始时收起面板:气泡锚�
 describe('ColumnFilter 弹层阴影只有一份', () => {
   // 官方 raw 气泡只去掉底色 / 圆角 / 内边距,box-shadow 仍在外壳 .n-popover 上。面板自己画同一份阴影(会单独平移出屏),
   // 所以外壳的阴影必须关掉,面板上也不能再有手抄的内联底色 / 圆角 / 阴影(它们取自外壳的官方 --n-* 变量,由样式表给)。
-  // jsdom 不加载 SFC 样式,算不出最终的视觉值:真实浏览器里的 box-shadow / 圆角实测见任务汇报。
+  // jsdom 不加载 SFC 样式,算不出最终的视觉值:真实浏览器里的 box-shadow / 圆角靠浏览器实测。
   it('外壳 .n-popover 的 box-shadow 为 none;面板不带内联的底色 / 圆角 / 阴影 / 文字色', async () => {
     const wrapper = mount(ColumnFilter, {
       props: {

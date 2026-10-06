@@ -69,7 +69,7 @@ const columns = computed<SmartTableColumn<DemoRow>[]>(() => {
         <n-radio-button :value="700">700</n-radio-button>
         <n-radio-button :value="1000">1000</n-radio-button>
       </n-radio-group>
-      <n-button size="small" data-testid="hide-last" @click="hideLast = !hideLast"
+      <n-button size="small" secondary data-testid="hide-last" @click="hideLast = !hideLast"
         >隐藏 / 显示最后一列</n-button
       >
     </n-space>

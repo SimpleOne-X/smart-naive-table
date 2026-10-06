@@ -5,6 +5,7 @@ import { NButton, NRadioButton, NRadioGroup, NSpace, NSwitch, useMessage } from 
 import { SmartTable, type SmartTableColumn, type SmartTableInst } from '../src/index'
 import { allRows, fetchDeptOptions, mockPage, type DemoRow } from './mock'
 import { labels, tt } from './locale'
+import { ProtoAddButton } from './prototype/modules/shared/toolbar'
 
 const message = useMessage()
 const container = ref<'card' | 'table' | 'none'>('table')
@@ -93,6 +94,7 @@ function onSearch(p: Record<string, unknown>) {
       <label><n-switch v-model:value="remote" size="small" data-testid="remote" /> 远程</label>
       <n-button
         size="small"
+        secondary
         data-testid="set-filter"
         @click="
           tableRef?.setFilter('account', {
@@ -123,7 +125,7 @@ function onSearch(p: Record<string, unknown>) {
             message.info(`filterChange ${k || '(batch)'} → ${Object.keys(s).length} active`)
         "
       >
-        <template #toolbar-right><NButton size="small" type="primary">新增</NButton></template>
+        <template #toolbar-right><ProtoAddButton label="新增" /></template>
       </SmartTable>
     </div>
     <pre style="font-size: 12px; margin-top: 12px" data-testid="last-params">{{ lastParams }}</pre>
