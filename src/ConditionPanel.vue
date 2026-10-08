@@ -11,6 +11,7 @@ import { filterDefTitle, type FilterDef } from './useColumns'
 import { fmt } from './labels'
 import { CloseIcon, PlusIcon } from './icons'
 import ConditionRow from './ConditionRow.vue'
+import { useControlFontSize } from './useControlFontSize'
 import {
   MAX_BUILDER_ROWS,
   addRow,
@@ -44,6 +45,8 @@ const emit = defineEmits<{
 }>()
 
 const themeVars = useThemeVars()
+// 抽屉块头「条件 N」与块内的字段 / 比较符 / 值控件同档,不写死 px
+const headFontSize = useControlFontSize(() => props.size)
 const update = (d: BuilderDraft) => emit('update:draft', d)
 
 const fieldOptions = computed(() =>
@@ -118,7 +121,10 @@ function onRemove(i: number) {
           class="smart-table-cond-panel__block"
           :style="{ borderTopColor: themeVars.dividerColor }"
         >
-          <div class="smart-table-cond-panel__block-head" :style="{ color: themeVars.textColor2 }">
+          <div
+            class="smart-table-cond-panel__block-head"
+            :style="{ color: themeVars.textColor2, fontSize: headFontSize }"
+          >
             <span>{{ fmt(labels.searchConditionN, { n: i + 1 }) }}</span>
             <n-select
               v-if="rowLead(draft, i) === 'logic'"
@@ -240,7 +246,6 @@ function onRemove(i: number) {
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
-  font-size: 14px;
 }
 .smart-table-cond-panel__block-head > span {
   flex: 1 1 auto;
