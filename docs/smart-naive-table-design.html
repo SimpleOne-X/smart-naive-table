@@ -1190,7 +1190,7 @@ table.n-table th.h-th { user-select: none; transition: background-color .15s; }
 .hp-opt { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; cursor: pointer; white-space: nowrap; }
 .hp-row { display: grid; align-items: center; gap: 8px; margin-bottom: 12px; grid-template-columns: 56px 112px minmax(0, 1fr) 28px; }
 .hp-row .f-op, .hp-row .f-val, .hp-row .logic { position: relative; min-width: 0; }
-.hp-lead { font-size: 12px; color: var(--n-text-2); text-align: center; min-width: 0; }
+.hp-lead { font-size: 14px; color: var(--n-text); text-align: center; min-width: 0; }   /* 引导标签与同行控件同档:size=small → fontSizeSmall 14px(同 .n-select.sm,_styles/common/_common.mjs:15、22),不再是写死的 12px;字色 textColor2(CL:93),与窄档抽屉块头「条件 N」、同列里「且」下拉的文字同色。库里字号随 size 取主题 fontSizeSmall / Medium / Large,不写死 px(issue #7) */
 .hp-row .n-input, .hp-row .n-select { width: 100%; }
 .hp-tools { display: flex; align-items: center; margin: -4px 0 8px; }
 /* 面板里的「添加条件 / 高级条件 ▾ / 收起高级条件 ▴」= 淡灰 secondary + small 档(28px、0 10px、14px,与同面板的值控件同高;设计 2.15 D) */
@@ -1243,7 +1243,7 @@ html[data-theme="dark"] .seg button.on { background: var(--n-primary); color: va
 .sheet .hp-opt { height: 40px; margin-bottom: 0; font-size: 15px; }
 .sheet .hp-group { max-height: none; }
 .sheet .hp-row { grid-template-columns: minmax(0, 1fr) auto; gap: 12px 8px; margin-bottom: 16px; }
-.sheet .hp-row .hp-lead { grid-column: 1; grid-row: 1; text-align: left; font-size: 14px; }
+.sheet .hp-row .hp-lead { grid-column: 1; grid-row: 1; text-align: left; font-size: 15px; }   /* 抽屉 size=large → fontSizeLarge 15px,与块头下面的字段 / 比较符 / 值控件同档(原 14px 比它们小一号;issue #7) */
 .sheet .hp-row .hp-lead.logic { width: 88px; }
 .sheet .hp-row .f-op { grid-column: 1 / -1; grid-row: 2; }
 .sheet .hp-row .f-val { grid-column: 1 / -1; grid-row: 3; }
