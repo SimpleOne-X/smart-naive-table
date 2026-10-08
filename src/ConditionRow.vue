@@ -17,6 +17,7 @@ import { actionValueKind } from './filter'
 import { ACTION_LABEL_KEY } from './labels'
 import { optionLabel } from './useOptions'
 import { CloseIcon, SearchIcon } from './icons'
+import { useControlFontSize } from './useControlFontSize'
 
 /** NSelect 的选项类型:官方没有公开导出 SelectMixedOption,从公开的 SelectProps 推导。 */
 type SelectOpt = NonNullable<SelectProps['options']>[number]
@@ -57,6 +58,12 @@ const emit = defineEmits<{
 }>()
 
 const themeVars = useThemeVars()
+// 引导标签与本行控件同档(随 size 取主题 fontSize{Size}),字色 textColor2 —— 与同列的「且」下拉文字、窄档块头「条件 N」一致
+const leadFontSize = useControlFontSize(() => props.size)
+const leadStyle = computed(() => ({
+  color: themeVars.value.textColor2,
+  fontSize: leadFontSize.value,
+}))
 const kind = computed(() => actionValueKind(props.condition.action))
 // 值控件的透传 props:def.props 在前;给了 placeholder 才覆盖(直接写 :placeholder 会在 undefined 时把 def.props 里的占位也顶掉)
 const controlProps = computed(() =>
@@ -110,12 +117,12 @@ function onKeyup(e: KeyboardEvent) {
 
 <template>
   <div class="smart-table-filter-row" :class="{ 'smart-table-filter-row--value-only': valueOnly }">
-    <!-- 首列:第 1 行「条件」引导标签(12px、textColor3);第 2 行起是且 / 或下拉,选哪个都是改整组的连接方式。
+    <!-- 首列:第 1 行「条件」引导标签(字号随 size、textColor2);第 2 行起是且 / 或下拉,选哪个都是改整组的连接方式。
          lead 给了字符串 = 固定文字,给了 null = 不画(模式 2);valueOnly 时整个前半段都不画 -->
     <span
       v-if="!valueOnly && (typeof lead === 'string' || (lead === undefined && index === 0))"
       class="smart-table-filter-lead"
-      :style="{ color: themeVars.textColor3 }"
+      :style="leadStyle"
       >{{ lead ?? labels.filterConditionLead }}</span
     >
     <n-select
@@ -230,14 +237,16 @@ function onKeyup(e: KeyboardEvent) {
 }
 .smart-table-filter-lead {
   min-width: 0;
-  font-size: 12px;
   text-align: center;
 }
 .smart-table-filter-logic,
 .smart-table-filter-action {
   min-width: 0;
 }
+/* flex 而不是块级:里面的 .n-input 是 inline-flex、vertical-align: baseline,块级容器会按基线对齐,
+   控件高度和行高凑巧相等时(紧凑主题的 24px 档)在控件下面多出 1px,整行被撑高、值框比同行下拉低半像素 */
 .smart-table-filter-value {
+  display: flex;
   min-width: 0;
 }
 /* 只画值控件(模式 2 窄档的输入框):单列,不要被 4 列网格(56 / 112 / 1fr / 28)压进第一格 */

@@ -12,7 +12,7 @@ import SearchForm from '../src/SearchForm.vue'
 import ConditionBar from '../src/ConditionBar.vue'
 import ConditionPanel from '../src/ConditionPanel.vue'
 import { defaultLabels } from '../src/labels'
-import { useButtonTint } from '../src/buttonTint'
+import { contrastRatio, pickReadableColor, useButtonTint } from '../src/buttonTint'
 import {
   deleteTrigger,
   detailAction,
@@ -256,5 +256,113 @@ describe('useButtonTint:四组覆盖只含官方按钮变量', () => {
       primaryText: { textColorTextPrimary: LIGHT.primaryPressed },
       errorText: { textColorTextError: LIGHT.errorPressed },
     })
+  })
+})
+
+// 设计 §2.15 E「暗色下按对比度选字色」(issue #8):宿主常把暗色 pressed 定成更深的蓝,字色和淡底一起变暗(实测约 2.7 : 1)。
+// 候选依次 pressed → primary → hover,取第一个让字对「自己 α 0.16 叠在 cardColor 上的淡底」≥ 4.5 : 1 的;都不到取最高;解析不了退回 pressed。
+describe('contrastRatio:与设计 §2.15 E 记录的实测对得上', () => {
+  const WHITE = '#fff'
+  const DARK_CARD = 'rgb(24, 24, 28)'
+  it('WCAG 基准:黑对白 21 : 1', () => {
+    expect(contrastRatio('#000', WHITE, false)).toBeCloseTo(21, 5)
+  })
+  it('浅色淡色按钮(字对叠在白卡片上的淡底):淡绿 4.32、淡红 5.33', () => {
+    expect(contrastRatio(LIGHT.primaryPressed, WHITE, true)).toBeCloseTo(4.32, 2)
+    expect(contrastRatio(LIGHT.errorPressed, WHITE, true)).toBeCloseTo(5.33, 2)
+  })
+  it('暗色淡色按钮:淡绿 6.65、淡红 4.69', () => {
+    expect(contrastRatio(DARK.primaryPressed, DARK_CARD, true)).toBeCloseTo(6.65, 2)
+    expect(contrastRatio(DARK.errorPressed, DARK_CARD, true)).toBeCloseTo(4.69, 2)
+  })
+  it('行内文字按钮没有淡底,直接对卡片:浅色「编辑」5.41、暗色 9.12', () => {
+    expect(contrastRatio(LIGHT.primaryPressed, WHITE, false)).toBeCloseTo(5.41, 2)
+    expect(contrastRatio(DARK.primaryPressed, DARK_CARD, false)).toBeCloseTo(9.12, 2)
+  })
+  it('颜色串不是 hex / rgb(a)(命名色、hsl)→ null', () => {
+    expect(contrastRatio('red', WHITE, true)).toBeNull()
+    expect(contrastRatio('#000', 'hsl(0, 0%, 100%)', true)).toBeNull()
+  })
+})
+
+describe('pickReadableColor:第一个 ≥ 4.5 : 1 的候选,都不到取最高,解析不了退回第一个', () => {
+  const DARK_CARD = 'rgb(24, 24, 28)'
+  // SmartAdmin 内核类的暗色主题:pressed 是「更深的蓝」
+  const HOST_PRESSED = '#0866c5'
+  it('官方默认浅色:没有候选到 4.5,取最高的 pressed(淡绿 4.32 不变)', () => {
+    expect(pickReadableColor([LIGHT.primaryPressed, LIGHT.primary, '#36ad6a'], '#fff', true)).toBe(
+      LIGHT.primaryPressed,
+    )
+  })
+  it('官方默认暗色:pressed 已 ≥ 4.5,不换', () => {
+    expect(pickReadableColor([DARK.primaryPressed, DARK.primary, '#7fe7c4'], DARK_CARD, true)).toBe(
+      DARK.primaryPressed,
+    )
+  })
+  it('宿主暗色 pressed 太暗(2.76)、primary 够亮(5.35)→ 取 primary', () => {
+    expect(pickReadableColor([HOST_PRESSED, '#5aa5ff', '#70c0e8'], DARK_CARD, true)).toBe('#5aa5ff')
+  })
+  it('pressed、primary 都不够(2.76 / 3.80)→ 取够的 hover(4.75)', () => {
+    expect(pickReadableColor([HOST_PRESSED, '#2080f0', '#4098fc'], DARK_CARD, true)).toBe('#4098fc')
+  })
+  it('三个都不够 → 取对比度最高的(hover 4.34),不是死守 pressed', () => {
+    expect(pickReadableColor([HOST_PRESSED, '#2080f0', '#3b8ff0'], DARK_CARD, true)).toBe('#3b8ff0')
+  })
+  it('卡片底色解析不了 → 退回第一个候选(旧行为)', () => {
+    expect(pickReadableColor([HOST_PRESSED, '#5aa5ff'], 'hsl(0, 0%, 9%)', true)).toBe(HOST_PRESSED)
+  })
+})
+
+describe('宿主暗色主题 pressed 比 primary 更深:库内淡色按钮与宿主行内按钮都不再取它', () => {
+  const host = (extra: Record<string, unknown> = {}): GlobalThemeOverrides => ({
+    common: {
+      primaryColor: '#2080f0',
+      primaryColorHover: '#4098fc',
+      primaryColorPressed: '#0866c5',
+      errorColor: '#d03050',
+      errorColorHover: '#ff8a9c',
+      errorColorPressed: '#7a1228',
+      ...extra,
+    },
+  })
+  it('淡绿(新增行 / 保存修改):取 hover #4098fc,底随之同色相', () => {
+    const b = byText(toolbar({ dark: true, overrides: host() }), 'Add row')
+    expect(textColor(b)).toBe('#4098fc')
+    expect(bgColor(b)).toBe(rgba('#4098fc', 0.16))
+  })
+  it('淡红(删除所选):取 hover,不是更深的 pressed', () => {
+    const del = byText(
+      batchBar({ dark: true, overrides: host() }),
+      defaultLabels.editDeleteSelected,
+    )
+    expect(textColor(del)).toBe('#ff8a9c')
+  })
+  it('搜索卡「搜索」、条件构造器折叠态「查询」同样换', () => {
+    const o = host()
+    expect(
+      textColor(byText(searchForm({}, { dark: true, overrides: o }), defaultLabels.search)),
+    ).toBe('#4098fc')
+    const defs = [conditionDef]
+    const bar = mountIn(
+      ConditionBar,
+      {
+        fields: defs,
+        draft: { rows: [blankRow(defs[0])], logic: {} },
+        labels: defaultLabels,
+        getOptions: () => [],
+        isLoadingOptions: () => false,
+        tier: 'wide',
+      },
+      { dark: true, overrides: o },
+    )
+    expect(textColor(byText(bar, defaultLabels.search))).toBe('#4098fc')
+  })
+  it('宿主行内文字按钮没有淡底,直接对卡片算:编辑取够亮的 primary(4.56),移除取 hover(pressed 1.64、primary 3.56 都不够)', () => {
+    const Actions = defineComponent(
+      () => () => h('div', [editAction('编辑', () => {}), removeAction('移除', () => {})]),
+    )
+    const root = mountIn(Actions, {}, { dark: true, overrides: host() })
+    expect(textColor(byText(root, '编辑'))).toBe('#2080f0')
+    expect(textColor(byText(root, '移除'))).toBe('#ff8a9c')
   })
 })
