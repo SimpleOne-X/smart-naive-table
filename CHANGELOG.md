@@ -1,5 +1,11 @@
 # Changelog
 
+## 未发布
+
+### 修复
+
+- **树列(`tree: true`)配 `ellipsis` 时,列窄到放不下「缩进 + 箭头 + 文字」,「…」画出单元格右边界(issue #10)**:树单元格里省略号盒子排在 `[缩进 div × 层数][展开箭头 / 叶子占位]` 后面,它的 `max-width: 100%` 是整个内容区宽、不扣这段前缀。单元格不换行(宿主给 `td` 设了 `white-space: nowrap`)时,「…」越出右边界、盖在隔壁列上(实测第 3 层越界 63px);会换行时箭头和文字被拆成上下两行(行高 39 → 62)。官方在 data-table 样式里本来有 `calc(100% - var(--indent-offset) * 16px - 24px)` 的补偿,但它只挂在 `ellipsis: true`(布尔)的 `.n-data-table-td__ellipsis` 上,而且 naive-ui 2.45.x 里 `--indent-offset` 写不进 DOM(`Body.mjs` 的子节点惰性求值,晚于 `style` 规范化),两种写法都失效。现在库在 `.smart-table` 内按缩进 div 的个数得到层数(`:has()`,写到 10 层,更深的按 10 层扣),对对象形式(`ellipsis: { tooltip: true }`,即 `NEllipsis`)与布尔形式一并扣宽:`max-width: calc(100% - 24px - 层数 × 缩进)`。宿主给了 `indent`(数字)时,缩进取它,不再默认 16px。`:has()` 要 Chrome 105 / Safari 15.4 / Firefox 121 以上,更旧的浏览器保持原来的外观。非树单元格、不带省略号的树单元格不受影响。宿主已经自己写过同样兜底规则的(如 `.n-data-table-td:has(> .n-data-table-indent:nth-child(N)) > .n-ellipsis`),可以删掉。
+
 ## 3.1.1 - 2026-10-08
 
 ### 修复
