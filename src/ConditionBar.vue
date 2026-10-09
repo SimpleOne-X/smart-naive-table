@@ -52,6 +52,10 @@ const emit = defineEmits<{
   reset: []
 }>()
 
+// 宽 / 中档的控件尺寸:工具栏主行与展开面板共用这一个值。气泡里的第 1 行就是主行的同一条条件,
+// 两处各写一个字面量会走偏(面板曾写死 small,和主行差一档:24 对 30px,issue #11)。
+const ROW_SIZE = 'medium' as const
+
 const themeVars = useThemeVars()
 const tint = useButtonTint()
 const update = (d: BuilderDraft) => emit('update:draft', d)
@@ -245,7 +249,7 @@ function onNarrowValue(v: unknown) {
           <ConditionRow
             v-if="mainDef"
             class="smart-table-cond__row"
-            size="medium"
+            :size="ROW_SIZE"
             search-icon
             :lead="null"
             :def="mainDef"
@@ -261,7 +265,7 @@ function onNarrowValue(v: unknown) {
             <template #field>
               <n-select
                 class="smart-table-cond__field"
-                size="medium"
+                :size="ROW_SIZE"
                 :value="main?.field"
                 :options="fieldOptions"
                 :consistent-menu-width="false"
@@ -324,7 +328,7 @@ function onNarrowValue(v: unknown) {
         @keydown.capture="onPanelKeydown"
       >
         <ConditionPanel
-          size="small"
+          :size="ROW_SIZE"
           :fields="fields"
           :draft="draft"
           :labels="labels"

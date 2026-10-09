@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { NButton, NInput, NSelect } from 'naive-ui'
 import ConditionBar from '../src/ConditionBar.vue'
 import conditionBarSource from '../src/ConditionBar.vue?raw'
 import ConditionPanel from '../src/ConditionPanel.vue'
@@ -373,5 +374,77 @@ describe('ConditionBar 「搜索」「重置」按钮:淡色底 + 左图标(设�
     searchBtn().click()
     await nextTick()
     expect(w.emitted('search')).toHaveLength(1)
+  })
+})
+
+describe('条件面板与工具栏主行同档(issue #11)', () => {
+  // 气泡里的第 1 行就是工具栏主行的同一条条件,两处并排时必须同高(设计 §3.6)。
+  // jsdom 量不出像素:这里锁「传给每个控件的 size 与主行一致」,真实高度由浏览器实测。
+  async function openPanel(draft: BuilderDraft) {
+    const w = mount(ConditionBar, { props: { ...common, draft }, attachTo: document.body })
+    mounted.push(w)
+    await w.setProps({ openRequest: 1 })
+    await flushPromises()
+    return w
+  }
+  const twoSameField = base([
+    { field: 'name', action: 'contains', value: 'a' },
+    { field: 'name', action: 'contains', value: 'b' },
+  ])
+
+  it('面板的 size 与工具栏主行的 size 相同,都是 medium', async () => {
+    const w = await openPanel(base())
+    const panelComp = w.findComponent(ConditionPanel)
+    const mainRow = w
+      .findAllComponents(ConditionRow)
+      .find((r) => !panelComp.element.contains(r.element))!
+    expect(mainRow.props('size')).toBe('medium')
+    expect(panelComp.props('size')).toBe(mainRow.props('size'))
+  })
+
+  it('面板里的下拉 / 输入框 / 按钮(含第 2 行起的「且 / 或」下拉)全是 medium;圆形删除图标按钮不随档', async () => {
+    const w = await openPanel(twoSameField)
+    const panelComp = w.findComponent(ConditionPanel)
+    const selects = panelComp.findAllComponents(NSelect)
+    // 每行:字段 + 比较符,第 2 行再加「且 / 或」
+    expect(selects.length).toBeGreaterThanOrEqual(5)
+    for (const s of selects) expect(s.props('size')).toBe('medium')
+    const inputs = panelComp.findAllComponents(NInput)
+    expect(inputs.length).toBe(2)
+    for (const i of inputs) expect(i.props('size')).toBe('medium')
+    const buttons = panelComp.findAllComponents(NButton)
+    const round = buttons.filter((b) => b.props('circle'))
+    expect(round.length).toBe(2) // 多于一行时每行一个删除按钮
+    for (const b of round) expect(b.props('size')).toBe('small')
+    const text = buttons.filter((b) => !b.props('circle'))
+    expect(text.length).toBe(3) // 添加条件 · 重置 · 确认
+    for (const b of text) expect(b.props('size')).toBe('medium')
+  })
+})
+
+describe('ConditionRow:第 2 行起的「且 / 或」下拉随本行 size(issue #11)', () => {
+  const logicSelect = (size?: 'small' | 'medium' | 'large') => {
+    const w = mount(ConditionRow, {
+      props: {
+        def: defs[0],
+        condition: { action: 'contains', value: '' },
+        index: 1,
+        labels: defaultLabels,
+        getOptions: () => [],
+        isLoadingOptions: () => false,
+        ...(size ? { size } : {}),
+      },
+    })
+    mounted.push(w)
+    return w
+      .findAllComponents(NSelect)
+      .find((s) => s.classes().includes('smart-table-filter-logic'))!
+  }
+  it('size="medium" / "large" → 且 / 或下拉同档', () => {
+    expect(logicSelect('medium').props('size')).toBe('medium')
+    expect(logicSelect('large').props('size')).toBe('large')
+  })
+  it('不传 size(列头面板)仍是 small', () => {
+    expect(logicSelect().props('size')).toBe('small')
   })
 })
