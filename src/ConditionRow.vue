@@ -35,7 +35,7 @@ const props = defineProps({
   dateValueFormat: { type: String, default: 'yyyy-MM-dd' },
   /** 至少留一行:只有一行时不给删除按钮。 */
   removable: { type: Boolean, default: false },
-  /** 控件尺寸:列头面板 small(默认);模式 2 的工具栏行 medium、窄档 large。 */
+  /** 控件尺寸:列头面板 small(默认);模式 2 的工具栏行与展开面板 medium、窄档 large。 */
   size: { type: String as PropType<'small' | 'medium' | 'large'>, default: 'small' },
   /** 只画值控件(不画引导列 / 比较符 / 删除):模式 2 窄档的「输入框 + 筛选」。 */
   valueOnly: { type: Boolean, default: false },
@@ -128,7 +128,7 @@ function onKeyup(e: KeyboardEvent) {
     <n-select
       v-else-if="!valueOnly && lead === undefined"
       class="smart-table-filter-logic"
-      size="small"
+      :size="size"
       :value="logic"
       :options="logicOptions"
       @update:value="(l: FilterLogic) => emit('update:logic', l)"

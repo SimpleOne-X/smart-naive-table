@@ -1349,6 +1349,13 @@ const rootStyle = computed(() => ({
   ...editor.styleVars.value,
 }))
 
+// 树列省略号按「层数 × 缩进 + 箭头」扣宽(见下面样式里 --smart-table-tree-level 那段),缩进要和 NDataTable 的 indent 一致。
+// attrs 不是响应式的,放进 computed(rootStyle)会停在第一次的值,所以做成普通函数,模板每次渲染都调用。
+function treeIndentStyle(): Record<string, string> | undefined {
+  const v = attrs.indent
+  return typeof v === 'number' ? { '--smart-table-indent': `${v}px` } : undefined
+}
+
 // 消费者显式传 scroll-x 时让位(v-bind 顺序也保证其覆盖)。
 // 用 colsWidth 而非 scrollX:拖拽期间外层滚动容器的 min-width 要和表格总宽同步,否则表格溢出容器。
 const autoScrollX = computed(() =>
@@ -1662,7 +1669,7 @@ defineExpose({
     ref="rootRef"
     class="smart-table"
     :class="stateClass"
-    :style="[rootStyle, holderStyle]"
+    :style="[rootStyle, treeIndentStyle(), holderStyle]"
     @click.capture="onLayerClickCapture"
     @touchstart="onLayerTouchstart"
   >
@@ -1673,7 +1680,7 @@ defineExpose({
       :set-el="(el) => (layerRef = el)"
       class="smart-table smart-table-layer"
       :class="[stateClass, { 'smart-table-layer--maximized': maxActive }]"
-      :style="[rootStyle, layerStyle]"
+      :style="[rootStyle, treeIndentStyle(), layerStyle]"
       :role="maxActive ? 'dialog' : undefined"
       :aria-modal="maxActive ? 'true' : undefined"
       :aria-label="maxActive ? (props.title ?? mergedLabels.maximize) : undefined"
@@ -2028,6 +2035,52 @@ defineExpose({
    优先级:官方 (0,4,0),这里 (0,5,0)。 */
 .smart-table :deep(.n-data-table-th.n-data-table-th--sortable .n-data-table-th__ellipsis) {
   max-width: 100%;
+}
+/* 树列(tree: true)配 ellipsis 时,省略号盒子(对象形式的 NEllipsis 是 .n-ellipsis,布尔形式是 .n-data-table-td__ellipsis)和它前面的
+   「缩进 div × 层数 + 展开箭头 / 叶子占位」排在同一行,而它的 max-width: 100% 是整个内容区宽、不扣这段前缀:
+   单元格不换行时「…」画出右边界,会换行时箭头与文字被拆成上下两行(issue #10)。
+   官方本来有 calc(100% - var(--indent-offset) * 16px - 24px) 的补偿,但它只挂在布尔形式上,而且 2.45.x 里 --indent-offset 写不进 DOM
+   (Body.mjs 的子节点惰性求值,晚于 style 规范化),所以这里自己补:缩进 div 是单元格最前面的子节点,数它的个数得到层数
+   (:has(),Chrome 105 / Safari 15.4 / Firefox 121 以上,更旧的浏览器保持原样)。写到 10 层,更深的按 10 层扣。
+   前缀 = 层数 × 缩进 + 箭头 16px + 间距 8px;缩进取 --smart-table-indent(宿主传了 indent 才由 treeIndentStyle 写入,默认 16px)。
+   层数规则按升序写:3 层的单元格同时匹配 nth-child(1)(2)(3),优先级相同,后写的(层数大的)生效。 */
+.smart-table :deep(.n-data-table-td:has(> .n-data-table-indent:nth-child(1))) {
+  --smart-table-tree-level: 1;
+}
+.smart-table :deep(.n-data-table-td:has(> .n-data-table-indent:nth-child(2))) {
+  --smart-table-tree-level: 2;
+}
+.smart-table :deep(.n-data-table-td:has(> .n-data-table-indent:nth-child(3))) {
+  --smart-table-tree-level: 3;
+}
+.smart-table :deep(.n-data-table-td:has(> .n-data-table-indent:nth-child(4))) {
+  --smart-table-tree-level: 4;
+}
+.smart-table :deep(.n-data-table-td:has(> .n-data-table-indent:nth-child(5))) {
+  --smart-table-tree-level: 5;
+}
+.smart-table :deep(.n-data-table-td:has(> .n-data-table-indent:nth-child(6))) {
+  --smart-table-tree-level: 6;
+}
+.smart-table :deep(.n-data-table-td:has(> .n-data-table-indent:nth-child(7))) {
+  --smart-table-tree-level: 7;
+}
+.smart-table :deep(.n-data-table-td:has(> .n-data-table-indent:nth-child(8))) {
+  --smart-table-tree-level: 8;
+}
+.smart-table :deep(.n-data-table-td:has(> .n-data-table-indent:nth-child(9))) {
+  --smart-table-tree-level: 9;
+}
+.smart-table :deep(.n-data-table-td:has(> .n-data-table-indent:nth-child(10))) {
+  --smart-table-tree-level: 10;
+}
+/* 优先级:官方的 .n-data-table-td__ellipsis 规则 (0,3,0),这里 (0,5,0)。第 0 层(根节点)没有缩进 div,层数取 var 的兜底 0,只扣箭头。 */
+.smart-table
+  :deep(
+    .n-data-table-td:has(> .n-data-table-expand-trigger, > .n-data-table-expand-placeholder)
+      > :is(.n-ellipsis, .n-data-table-td__ellipsis)
+  ) {
+  max-width: calc(100% - 24px - var(--smart-table-tree-level, 0) * var(--smart-table-indent, 16px));
 }
 /* activeRowKey 命中行高亮:色走 --smart-table-active-row-bg(宿主 / 全局 activeRowBg 覆盖),没给时取 -auto(主题主色 9%,rootStyle 按亮 / 暗主题写入)。
    叠在 background-image 上、不碰 background-color:官方固定列的 td 是 position: sticky + 不透明的 --n-merged-td-color,靠这层不透明底遮住横向滚过的内容;

@@ -514,8 +514,8 @@ table.n-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .cond-panel .logic { position: relative; min-width: 0; }
 .cond-panel .logic-ghost {
-  height: 28px; display: flex; align-items: center; justify-content: center;
-  font-size: 12px; color: var(--n-text-2);
+  height: 34px; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: var(--n-text-2);
 }
 .cond-panel .panel-foot { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--n-border); padding-top: 12px; margin-top: 2px; }
 
@@ -3568,13 +3568,13 @@ function fValHtml(c, id, sm, ph) {
 }
 
 /* 同字段多条的「且/或」;不同字段固定为「且」(ghost=false 时不画占位) */
-function logicCtrl(c, id, ghost = true) {
+function logicCtrl(c, id, ghost = true, sm = true) {
   const i = Number(id.slice(1));
   const same = state.more.slice(0, i).some(x => x.field === c.field) || state.main.field === c.field;
   if (!same) return ghost ? `<span class="logic-ghost">且</span>` : '';
   const key = `logic:${id}`;
   return `<div class="logic">
-    <div class="n-select sm ${state.open === key ? 'open' : ''}" data-open="${key}">
+    <div class="n-select${sm ? ' sm' : ''} ${state.open === key ? 'open' : ''}" data-open="${key}">
       <span class="val">${c.logic === 'or' ? '或' : '且'}</span><span class="caret">${I_CHEVD}</span>
     </div>
     ${state.open === key ? `<div class="dd">
@@ -3609,26 +3609,27 @@ function condRowHtml(c, id, opts = {}) {
     ${fValHtml(c, id, opts.sm, opts.ph)}`;
 }
 
-/* 多条件面板(宽/中档的气泡内容) */
+/* 多条件面板(宽/中档的气泡内容):第 1 行就是工具栏主行的同一条条件,所以字段 / 比较符 / 值 / 引导占位 / 底部三个按钮都与主行同档(medium,不加 sm),
+   两种高度并排会错位(issue #11);删除条件是圆形小图标按钮,不随档 */
 function condPanelHtml() {
   const rows = state.more.map((c, i) => {
     const id = `m${i}`;
-    return `<div class="row">${logicCtrl(c, id)}${condRowHtml(c, id, { sm: true })}
+    return `<div class="row">${logicCtrl(c, id, true, false)}${condRowHtml(c, id)}
       <button class="n-btn icon" data-act="delCond" data-v="${i}" title="删除这条">${I_X}</button></div>`;
   }).join('');
 
   return `<div class="cond-panel" data-stop>
     <div class="row">
       <span class="logic-ghost">条件</span>
-      ${condRowHtml(state.main, 'pmain', { sm: true })}
+      ${condRowHtml(state.main, 'pmain')}
       <span></span>
     </div>
     ${rows}
     <div class="panel-foot">
-      <button class="n-btn sec sm add-cond" data-act="addCond">${I_BTN_PLUS} 添加条件</button>
+      <button class="n-btn sec add-cond" data-act="addCond">${I_BTN_PLUS} 添加条件</button>
       <div style="display:flex;gap:8px">
-        <button class="n-btn sec sm" data-act="reset">重置</button>
-        <button class="n-btn sm primary" data-act="search">确认</button>
+        <button class="n-btn sec" data-act="reset">重置</button>
+        <button class="n-btn primary" data-act="search">确认</button>
       </div>
     </div>
   </div>`;
