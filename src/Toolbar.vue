@@ -189,6 +189,16 @@ const iconThemeOverrides = { Button: { iconSizeSmall: '16px', iconSizeLarge: '16
 
 // 内置图标组:刷新 / 密度 / 列设置(#settings)。一个都没有时整组不画,免得空容器多出一个组间距。
 const showRefresh = computed(() => cfg.value.refresh !== false && props.remote)
+const hasIconGroup = computed<boolean>(
+  () => showRefresh.value || cfg.value.density === true || props.maximizable || !!slots.settings,
+)
+
+// 窄档折叠 + 宿主传了 #toolbar(= #left):头部(标题 + #toolbar)独占第一行,「操作 ▾」靠左、图标靠右落到第二行(设计 2.16)。
+// 默认的单行排法里「操作 ▾」与图标是 auto 列,先拿走宽度,头部只剩 100 出头 px,宿主放进来的范围类控件会被挤坏。
+// 只看「传没传」(同 hasBizActions),不渲染子节点探测;第二行没东西可放时不换排法,免得白占一行。
+const headRow = computed<boolean>(
+  () => foldActive.value && !!slots.left && (hasBizActions.value || hasIconGroup.value),
+)
 
 function onMoreSelect(key: string | number, option: DropdownOption) {
   emit('moreSelect', key, option)
@@ -217,6 +227,7 @@ const moreThemeOverrides = computed(() => ({
         'smart-table-toolbar--batch': !!batch,
         'smart-table-toolbar--batch-narrow': !!batch && tier === 'narrow',
         'smart-table-toolbar--fold': foldActive,
+        'smart-table-toolbar--head-row': headRow,
         'smart-table-toolbar--ops-open': foldActive && opsOpen,
       },
       $slots.cond && !batch ? ['smart-table-toolbar--cond', `smart-table-toolbar--${tier}`] : '',
@@ -434,10 +445,7 @@ const moreThemeOverrides = computed(() => ({
           </n-dropdown>
         </div>
         <!-- 内置图标组:刷新 / 密度 / 列设置,间距 4px(原型 .tb-icons);与业务组之间 12px(原型 .tb-right) -->
-        <div
-          v-if="showRefresh || cfg.density === true || maximizable || $slots.settings"
-          class="smart-table-toolbar-icons"
-        >
+        <div v-if="hasIconGroup" class="smart-table-toolbar-icons">
           <!-- 图标按钮的图标 16px(原型;官方 small 圆形按钮默认 18px)。abstract = 不多包一层 DOM;包住 #settings 插槽,列设置按钮同样生效 -->
           <n-config-provider abstract :theme-overrides="iconThemeOverrides">
             <n-tooltip v-if="maximizable" trigger="hover">
@@ -726,6 +734,38 @@ const moreThemeOverrides = computed(() => ({
     'head ops icons'
     'actions actions actions'
     'cond cond cond';
+}
+/* 宿主传了 #toolbar(设计 2.16):头部(标题 + #toolbar)通栏占第 1 行,放不下就换行;第 2 行「操作 ▾」靠左、图标靠右,中间一列 1fr 把它们推开。
+   模式 2 的 cond 规则(上面,优先级更高)会把列模板盖回 1fr auto auto,所以 cond 的四条都要重声明列。 */
+.smart-table-toolbar--fold.smart-table-toolbar--head-row {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'head head head'
+    'ops . icons';
+}
+.smart-table-toolbar--fold.smart-table-toolbar--head-row.smart-table-toolbar--ops-open {
+  grid-template-areas:
+    'head head head'
+    'ops . icons'
+    'actions actions actions';
+}
+.smart-table-toolbar--cond.smart-table-toolbar--narrow.smart-table-toolbar--fold.smart-table-toolbar--head-row {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'head head head'
+    'ops . icons'
+    'cond cond cond';
+}
+.smart-table-toolbar--cond.smart-table-toolbar--narrow.smart-table-toolbar--fold.smart-table-toolbar--head-row.smart-table-toolbar--ops-open {
+  grid-template-areas:
+    'head head head'
+    'ops . icons'
+    'actions actions actions'
+    'cond cond cond';
+}
+.smart-table-toolbar--head-row > .smart-table-toolbar-main,
+.smart-table-toolbar--head-row .smart-table-toolbar-head {
+  flex-wrap: wrap;
 }
 .smart-table-toolbar--fold > .smart-table-toolbar-main {
   grid-area: head;
