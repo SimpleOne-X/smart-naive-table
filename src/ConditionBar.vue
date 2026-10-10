@@ -368,9 +368,13 @@ function onNarrowValue(v: unknown) {
   flex: 0 0 112px;
   width: 112px;
 }
+/* 值输入框封顶:条件栏随表格卡片变宽时,值输入框不跟着无限变长(几百像素已够放账号、手机号、日期和多值标签,再长只是把「搜索」「重置」推远)。
+   宿主用 --smart-table-cond-value-max-width 改上限(任何 CSS 长度,放在表格或其祖先上)。选择器限定在 .smart-table-cond__main 内:
+   窄档的输入框(.smart-table-cond__narrow-input,铺满整行)、「更多条件」气泡和抽屉里的值控件都不在它里面,不受影响 */
 .smart-table-cond__main :deep(.smart-table-filter-value) {
   flex: 1 1 100px;
   min-width: 100px;
+  max-width: var(--smart-table-cond-value-max-width, 320px);
 }
 .smart-table-cond__main > :deep(.n-button),
 .smart-table-cond__more {
