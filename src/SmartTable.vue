@@ -794,6 +794,17 @@ function onPageChanged() {
   if (card) keepCardTopVisible(card)
 }
 
+/**
+ * 本地模式程序切页(实例的 goPage)。官方实例方法 page(n) 只走 doUpdatePage:改表格自己的页码、转发表格级回调,
+ * 不经过分页组件的 onUpdatePage;而库自己记的 localPage 只在那里更新 —— 不同步的话表格翻了页、localPage 还停在旧页,
+ * 读它的两处就拿到旧页:窄档卡片列表(cardRows 自己切页)不翻页,批量栏「本页全选」(pageRows)勾到旧页的行。
+ * 越界页码不用夹:读 localPage 的地方都会夹(sliceRows / pageRows),NDataTable 自己也夹。
+ */
+function goLocalPage(n: number): void {
+  localPage.value = n
+  tableRef.value?.page(n)
+}
+
 // NDataTable 的 data 形参是 RowData[](Record 索引),泛型 T 无索引签名,此处收窄。
 // 静态模式的过滤在这里落地(远程模式走 fetcher 参数,由后端过滤)。
 const baseData = computed(() => {
@@ -1652,8 +1663,7 @@ defineExpose({
   tableRef,
   revealRow,
   /** 跳到第 n 页(远程 = 重查;本地 = 切页)。 */
-  goPage: (n: number) =>
-    isRemote.value ? table.onPage(n) : Promise.resolve(tableRef.value?.page(n)),
+  goPage: (n: number) => (isRemote.value ? table.onPage(n) : Promise.resolve(goLocalPage(n))),
   // 可编辑表格(editable)
   dirtyCount: editor.count,
   isDirty: editor.isDirty,
