@@ -360,7 +360,8 @@ function onNarrowValue(v: unknown) {
   width: 136px;
 }
 /* 主行:ConditionRow 的根节点退场(display: contents),它的格子(字段插槽 / 比较符 / 值)直接是这一行 flex 的子项:
-   字段 136 · 比较符 112 · 值弹性(最小 100px:宽档 1:1 的最窄点,整行 1280,左半区 609px,值框只剩约 114px)(设计原型 .cond) */
+   字段 136 · 比较符 112 · 值弹性(设计原型 .cond)。值的下限 100px 是极窄时的兜底(条件栏独占整行、整行只比「值以外的部分」宽一点);
+   并排时 Toolbar 给条件栏的基准宽保证值输入框至少 200px,所以平时用不到这个下限 */
 .smart-table-cond__main > .smart-table-cond__row {
   display: contents;
 }
