@@ -447,7 +447,7 @@ table.n-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .cond { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .cond .f-field { width: 136px; flex: none; }
 .cond .f-op    { width: 112px; flex: none; }
-.cond .f-val   { flex: 1 1 100px; min-width: 100px; }   /* 宽档 1:1 的最窄点(整行 1280)左半区 609px,值输入框只剩约 114px,最小宽度取 100 才放得下 */
+.cond .f-val   { flex: 1 1 100px; min-width: 100px; max-width: 320px; }   /* 下限 100px 是极窄时的兜底;并排时条件栏基准宽保证值输入框 ≥ 200px(见 .tb:not(.no-cond));封顶 320px,条件栏再宽值输入框也不再变长(库用 --smart-table-cond-value-max-width 调) */
 .cond > .n-btn, .cond > .pop-wrap { flex: none; }
 
 /* 下拉菜单:NDropdown 底色 = popoverColor(暗 rgb(72,72,78)),无描边、靠 boxShadow2,圆角 3px(dropdown/styles/light.mjs、_styles/common/light|dark.mjs)
@@ -478,8 +478,8 @@ table.n-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
   position: absolute; top: -3px; right: -3px; pointer-events: none;
 }
 
-/* —— 工具栏骨架:grid,默认 = 宽档单行 —— */
-/* 宽档(整行 ≥ 1280):两个等宽的列 1:1 —— 左半 = 搜索区域(标题 + 条件构造器 + 搜索/重置),右半 = 按钮区域(业务按钮 + 图标,靠右)。
+/* —— 工具栏骨架:grid(没有条件构造器的 .tb.no-cond 与窄档);带条件构造器的宽 / 中档见下面 .tb:not(.no-cond) 的 flex 换行 —— */
+/* 没有条件构造器的页面(.tb.no-cond)宽档仍是两个等宽的列:左半 = 标题,右半 = 按钮区域(业务按钮 + 图标,靠右)。
    中档 / 窄档下两个包装 .tb-left / .tb-right 用 display: contents 退场,里面的元素回到下面各自的 grid-area(见容器查询)。 */
 .tb {
   display: grid; align-items: center; column-gap: 12px; row-gap: 10px; margin-bottom: 12px;
@@ -725,6 +725,18 @@ table.n-table td.acts .n-btn.text + .n-btn.text { margin-left: 12px; }   /* 间�
     grid-template-columns: minmax(0, 1fr) auto auto;
     grid-template-areas: "title actions icons" "cond cond cond";
   }
+}
+
+/* 带条件构造器的宽 / 中档(≥ 600,同一套规则,档位判定不变):头部(标题 / 宿主按钮)· 条件栏 · 操作区排成一行,
+   放得下就并排,放不下就折行 —— 由浏览器按可用宽度决定,不按档位写死行数。折行用 wrap-reverse:后换出来的那一行放到上面,保持「操作区在上、条件栏在下」。
+   条件栏基准宽 710px = 值输入框以外的部分 + 200px(字段 136 + 比较符 112 + » 28 + 搜索 / 重置(中文各 80,英文 97 + 88)+ 5 处间距 8,中文 476、英文 501;+ 200 = 676 / 701):
+   并排时值输入框 ≥ 200px,条件栏吃掉头部与操作区之外的全部宽度(值输入框封顶 320px,多出来的是空白)。
+   .tb-left 退场(display: contents),标题 / 条件栏直接是 .tb 的子项;没有标题时 .tb-left 里只剩条件栏,不占位。 */
+@container (min-width: 600px) {
+  .tb:not(.no-cond) { display: flex; flex-flow: row wrap-reverse; align-items: center; gap: 10px 12px; }
+  .tb:not(.no-cond) .tb-left { display: contents; }
+  .tb:not(.no-cond) .tb-cond { flex: 1 1 710px; min-width: 0; }
+  .tb:not(.no-cond) .tb-right { display: flex; margin-left: auto; }
 }
 
 @container (max-width: 599px) {
@@ -2294,7 +2306,7 @@ function applyConditions(rows, conds, mod) {
    窄 < 600、中 < 960、宽 >= 960。三档的排布由 CSS 容器查询完成,
    JS 只用它决定「筛选」是弹气泡还是弹底部抽屉。
    ============================================================ */
-// 单行 1:1 需要左半区(标题 + 条件构造器,最小约 615px)放得下,整行 ≥ 约 1280;更窄落到两行。与 CSS 的 @container 阈值保持一致
+// 档位阈值与 CSS 的 @container 保持一致:窄 < 600 / 中 < 1280 / 宽 ≥ 1280。带条件构造器的宽 / 中档工具栏排布是同一套 flex 换行(放得下并排,放不下折行),阈值只决定窄档的「输入框 + 筛选」与没有条件构造器页面的两列骨架
 const T_NARROW = 600, T_WIDE = 1280;
 const tierOf = (w) => (w < T_NARROW ? 'narrow' : w < T_WIDE ? 'mid' : 'wide');
 

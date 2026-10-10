@@ -48,7 +48,7 @@ Search, filters, sorting, pagination, dict tags, column settings and editing all
   <a href="#documentation">Docs</a>
 </p>
 
-> **Version status**: the current version is `3.1.2` (npm `latest`). 3.0 is a major upgrade: some behavior changes even if you change no code. See [MIGRATION.md](./MIGRATION.md) for the upgrade steps. This page describes the current 3.0 implementation; progress and unfinished items are in [Milestones](#milestones).
+> **Version status**: the current version is `3.1.3` (npm `latest`). 3.0 is a major upgrade: some behavior changes even if you change no code. See [MIGRATION.md](./MIGRATION.md) for the upgrade steps. This page describes the current 3.0 implementation; progress and unfinished items are in [Milestones](#milestones).
 >
 > **Upgrading from 2.x?** 3.0.0 has breaking changes relative to 2.x (defaults and looks, e.g. the default page size and the pager style). Read the [migration guide MIGRATION.md](./MIGRATION.md) first.
 
@@ -150,7 +150,7 @@ Turn on `card-on-narrow` and the same `columns` serve both desktop and phones â€
 <SmartTable :columns="columns" :fetcher="fetcher" card-on-narrow />
 ```
 
-- **Tiers follow the container width** (not the viewport): a library root narrower than 600 is the narrow tier, under 1280 the mid tier, otherwise the wide tier. The root is measured with `ResizeObserver`, so tables inside side panels / dialogs / the maximized layer are judged by their own width. Mid vs. wide mainly affects the toolbar layout (one-line threshold about 1280).
+- **Tiers follow the container width** (not the viewport): a library root narrower than 600 is the narrow tier, under 1280 the mid tier, otherwise the wide tier. The root is measured with `ResizeObserver`, so tables inside side panels / dialogs / the maximized layer are judged by their own width. The mid and wide tiers share one toolbar layout for the condition search bar: the head, the condition bar and the actions sit on one row when they fit, and the condition bar wraps to the next row when they do not. The value input in that bar is capped at 320px; set the CSS variable `--smart-table-cond-value-max-width` to change the cap.
 - **Off by default**: without `card-on-narrow`, narrow and wide containers use the same table and toolbar (in a narrow container the pager still omits the page-size picker).
 - **Card list**: the first data column is the card title, the rest are two-column "label: value" pairs, and the action column (`card: 'action'`, default the last `fixed: 'right'` column) sits at the bottom of the card. Set `card: 'title' | 'meta' | 'action' | 'handle' | false` on a column to override; columns hidden in column settings are hidden on cards too. Tapping a card = `@row-click`, the checkbox sits at the top right, and your own `checked-row-keys` / `expanded-row-keys` bindings keep working.
 - **Touch sizes**: toolbar buttons, inputs and pager items grow to 40px (the official `large`); the narrow tier omits the page-size picker and uses the official `simple` pager.
@@ -168,7 +168,7 @@ Turn on `card-on-narrow` and the same `columns` serve both desktop and phones â€
 ## Install
 
 ```bash
-npm i smart-naive-table   # 3.1.2; to stay on 2.x install smart-naive-table@2
+npm i smart-naive-table   # 3.1.3; to stay on 2.x install smart-naive-table@2
 ```
 
 Requires `vue >= 3.3` and `naive-ui >= 2.44` in your project (`peerDependencies` are `vue ^3.3.0` and `naive-ui ^2.44.0`; the verified version is naive-ui 2.45.3). ESM output, TypeScript types included.
@@ -860,7 +860,7 @@ All `labels` keys are optional; missing keys fall back to the English defaults (
 
 This section is the **version roadmap and current progress**, not a changelog; per-item changes are in [CHANGELOG.md](./CHANGELOG.md) and upgrade steps in [MIGRATION.md](./MIGRATION.md).
 
-**Current stage: `3.1.2` (npm `latest`).** 3.0 is a major upgrade; see [MIGRATION.md](./MIGRATION.md) for the upgrade steps. The "Known gaps / limits" table below lists what 3.0.0 still does not do; later versions will cover it.
+**Current stage: `3.1.3` (npm `latest`).** 3.0 is a major upgrade; see [MIGRATION.md](./MIGRATION.md) for the upgrade steps. The "Known gaps / limits" table below lists what 3.0.0 still does not do; later versions will cover it.
 
 **What 3.0 already has** (matching P0 / P1 / P2 of the [spec](./docs/smart-naive-table-spec.md)):
 

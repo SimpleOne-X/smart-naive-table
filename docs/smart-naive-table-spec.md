@@ -90,7 +90,7 @@
 
 ## 4 布局
 
-- **三档**(按容器宽,**由 JS 量根节点宽度判定**(放大态量放大层宽),阈值 600 / 1280;不用视口媒体查询,也**不给根元素加 `container-type`**,所以不用 `@container`。理由:Teleport 搬走的是放大层而不是根;气泡 / 抽屉本来就要 JS 知道档位;原型也是 JS):窄 < 600、中 < 1280(模式 2 工具栏单行阈值)、宽 ≥ 1280。模式 1 的搜索网格仍是官方 `n-grid responsive="screen"`(视口口径),不动。**窄档有专属行为的部分(工具栏折叠、列头面板换 `NDrawer`、卡片)均为 P2(§3 末行);P1 已做的窄档只有模式 2 的「输入框 + 筛选」抽屉与批量栏的窄档排布**;P0 里与「窄」有关的只有 B4 的窄档分页(不画每页条数选择器)——它要在 JS 里决定渲不渲染 `suffix`,所以用 `ResizeObserver` 量库根节点的 `clientWidth`(还没量到时按非窄档处理),**P0 / P1 都没有用 `@container`**。
+- **三档**(按容器宽,**由 JS 量根节点宽度判定**(放大态量放大层宽),阈值 600 / 1280;不用视口媒体查询,也**不给根元素加 `container-type`**,所以不用 `@container`。理由:Teleport 搬走的是放大层而不是根;气泡 / 抽屉本来就要 JS 知道档位;原型也是 JS):窄 < 600、中 < 1280、宽 ≥ 1280(模式 2 的宽 / 中档工具栏排布是同一套 flex 换行,不再有「单行阈值」,见下)。模式 1 的搜索网格仍是官方 `n-grid responsive="screen"`(视口口径),不动。**窄档有专属行为的部分(工具栏折叠、列头面板换 `NDrawer`、卡片)均为 P2(§3 末行);P1 已做的窄档只有模式 2 的「输入框 + 筛选」抽屉与批量栏的窄档排布**;P0 里与「窄」有关的只有 B4 的窄档分页(不画每页条数选择器)——它要在 JS 里决定渲不渲染 `suffix`,所以用 `ResizeObserver` 量库根节点的 `clientWidth`(还没量到时按非窄档处理),**P0 / P1 都没有用 `@container`**。
 - **卡片内边距**:表格卡片与搜索卡片**四边 16px**(B11),官方做法 `size="small"` + 卡片自己的主题覆盖。**组件级 `themeOverrides` 是扁平形状** `{ paddingSmall: '16px 16px 16px' }`(`cardStyle.ts` `CARD_THEME_OVERRIDES`;`_mixins/use-theme.d.ts:23-25`、`card/src/Card.d.ts:90`);`{ Card: { paddingSmall } }` 是全局 `NConfigProvider` 的形状,**不要用在组件级**。只影响库里两张卡片(`SmartTable.vue` 的 `.smart-table-card`、`SearchForm.vue` 的 `.smart-table-search`)。加 1px 描边,四边到内容 17px(实测;`{ size: 'medium' }` 回退后为 21 / 25 / 25 / 21)。`cardProps` 合并在这套默认之后(§3),要 naive 默认的卡片内边距就传 `cardProps: { size: 'medium' }`。
 - **页面底色**是宿主的事;卡片在白底与 `NLayout embedded` 灰底上都必须成立。
 - **高度**:默认行为不变;`fillHeight` 开启时根 `height: 100%; min-height: 0`、卡片与卡片内容区 `flex: 1 1 auto; min-height: 0` 的 flex 列,表格映射官方 `flex-height` + `virtual-scroll` + `min-row-height`(组合与取值见 §3),忽略并警告 `max-height`;父容器必须有确定高度。不开 `fillHeight` 时整页长滚动,翻页后见 §3「翻页后回到卡片顶部」。
@@ -101,7 +101,9 @@
 - 模式 1 `container: 'card'`(默认,不变):独立搜索卡片。模式 2 `'table'`:并入表格卡片的一行条件构造器「字段 + 比较符 + 值」,字段候选 = 声明了 `search` 的列;产出仍是 `FilterValue`,走现成 `filterSerializer`。只写 `layout:'inline'` 等价 `'none'`。
 - 多条件:同字段多条可「且 / 或」(`FilterValue.logic`,**每字段一个值**,改任一条联动全部);**跨字段固定「且」**。
 - 比较符按字段类型(text / number / date / select)分发,换字段后不再适用要自动重置;无值算子(`isNull` / `isNotNull`)集中导出常量,`activeConditions`、面板、构造器、chips 都读它。
-- 模式 2 宽档严格 1:1(左半搜索、右半按钮 + 图标);值输入框最小 100px。
+- 模式 2 宽 / 中档(同一套规则,档位判定不变):头部 · 条件栏 · 操作区排成一行,放得下就并排、放不下条件栏折到下一行(`wrap-reverse`:操作区在上、条件栏在下);条件栏基准宽 710px(= 值输入框以外的部分,中文 476 / 英文 501,+ 200),并排时值输入框 ≥ 200px,下限 100px 只是极窄时的兜底。
+- 模式 2 值输入框封顶 320px,CSS 变量 `--smart-table-cond-value-max-width` 可调(放在表格或其祖先元素上,任何 CSS 长度);只作用于工具栏主行里的值输入框,窄档的输入框、「更多条件」气泡与抽屉里的值控件不受影响。
+- 模式 2 的头部(标题 + `#toolbar` 插槽)没有内容时不占位(`:empty` 隐藏),条件栏左缘与表格左缘贴齐。没有新增属性,也没有回退开关。
 - 模式 2(P1):「搜索」= 淡主色底(`secondary` + `type="primary"`)+ 放大镜,「重置」= 淡灰底(`secondary`)+ 逆时针箭头(设计 §2.13 / §2.15),回车也触发;页面上没有实心按钮。模式 1 搜索卡片里的「搜索」「重置」与模式 2 同一写法,图标槽一直在,loading 时官方在同一个槽里把放大镜换成转圈、按钮宽度不变(issue #5);输入框回车同样触发。
 - **操作区对齐**:卡片内「搜索 / 重置 / 展开 · 收起」同排垂直居中、同高(`n-space align="center"`);官方文字按钮的 `--n-height` 是 `initial`(没有固定高度和内边距,实测 28 × 14,会比同排 34px 的按钮上移 6px),所以「展开」按钮自己取主题 `heightMedium`、左右内边距 4px(实测三者 top / 高 / 中线一致:119 / 34 / 136)。
 - 模式 2 窄档(P1,2.6a):无「搜索」按钮(回车,`enterkeyhint: 'search'`);枚举字段选完即生效。模式 1 窄档与宽档同一套(只有 C5 的折叠修正)。

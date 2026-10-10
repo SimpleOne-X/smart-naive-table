@@ -307,8 +307,8 @@ const moreThemeOverrides = computed(() => ({
           {{ labels.clearSelection }}
         </n-button>
       </div>
-      <!-- 模式 2:标题 + 条件构造器(#cond)。宽档整行 1:1 分成两半(左 = 标题 + 构造器,右 = 按钮 + 图标);中 / 窄档 main 退场(display: contents),
-         标题 / 构造器 / 右半区落进各自的网格区域,构造器独占第 2 行 -->
+      <!-- 模式 2:标题 + 条件构造器(#cond)。main 只是包装(display: contents),标题 / 构造器 / 右半区直接是工具栏的子项:
+         宽 / 中档按可用宽度并排或折行(构造器折到下面一行),窄档落进网格区域,构造器独占第 2 行 -->
       <div v-else-if="$slots.cond" class="smart-table-toolbar-main smart-table-toolbar-main--cond">
         <div class="smart-table-toolbar-head">
           <h3
@@ -567,20 +567,10 @@ const moreThemeOverrides = computed(() => ({
 .smart-table-more-icon {
   display: inline-flex;
 }
-/* 模式 2(设计 2.11):宽档整行 1:1 —— 左半 = 标题 + 条件构造器,右半 = 按钮 + 图标(靠右);单行阈值 1280 由 SmartTable 的 tier 给 */
-.smart-table-toolbar--cond.smart-table-toolbar--wide {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  column-gap: 12px;
-}
-.smart-table-toolbar--wide .smart-table-toolbar-right {
-  justify-self: end;
-}
+/* 模式 2 的 main 只是 head + cond 的包装,不自成一层(display: contents):head / cond / right 直接是工具栏的子项,
+   窄档落进下面的网格区域,宽 / 中档按 flex 换行排。 */
 .smart-table-toolbar-main--cond {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
+  display: contents;
 }
 .smart-table-toolbar-head {
   display: flex;
@@ -596,11 +586,36 @@ const moreThemeOverrides = computed(() => ({
   white-space: nowrap;
 }
 .smart-table-toolbar-cond {
-  flex: 1 1 0;
   min-width: 0;
 }
-/* 中 / 窄档:两行 —— 行 1「标题 … 按钮 + 图标」,行 2 构造器(窄档的构造器自己画成「输入框 + 筛选」) */
+/* 模式 2 宽 / 中档(设计 2.11):头部 · 条件栏 · 操作区排成一行,放得下就并排,放不下就折行 —— 由浏览器按可用宽度决定,
+   不再按档位写死行数(此前宽档是两列 1:1,条件栏只占半列;中档写死两行,宽度够也不并排)。
+   折行用 wrap-reverse:后换出来的那一行放到上面,保持「操作区在上、条件栏在下」。档位仍由 SmartTable 的 tier 给(< 600 窄 / < 1280 中 / 其余宽),
+   宽 / 中档在这里是同一套规则。 */
 .smart-table-toolbar--cond.smart-table-toolbar--mid,
+.smart-table-toolbar--cond.smart-table-toolbar--wide {
+  flex-flow: row wrap-reverse;
+  gap: 10px 12px;
+}
+/* 条件栏的基准宽 = 值输入框以外的部分 + 200px(并排时值输入框至少 200px)。值输入框以外 = 字段 136 + 比较符 112 + 「»」28
+   + 搜索 / 重置按钮(中文各 80,英文 97 + 88)+ 5 处间距 8 —— 中文 476、英文 501(默认主题,真实浏览器实测);+ 200 = 676 / 701,取 710。
+   头部 + 基准宽 + 操作区放得下一行就并排,条件栏吃掉头部与操作区之外的全部宽度(值输入框由 ConditionBar 里的上限封顶,多出来的是空白);
+   放不下就折行,条件栏独占一行、拿到整行宽。min-width: 0 让它在比基准窄的行里仍能收缩(值输入框的 100px 下限在 ConditionBar)。 */
+.smart-table-toolbar--mid .smart-table-toolbar-cond,
+.smart-table-toolbar--wide .smart-table-toolbar-cond {
+  flex: 1 1 710px;
+}
+/* 操作区靠右:并排时它在最后一项,单独换到上一行时也贴右缘 */
+.smart-table-toolbar--mid .smart-table-toolbar-right,
+.smart-table-toolbar--wide .smart-table-toolbar-right {
+  margin-left: auto;
+}
+/* 没有标题、#toolbar 插槽也没渲染出东西时,头部是个空 div;它不能占位(否则参与 gap,条件栏左缘比下面的表格缩进一份间距) */
+.smart-table-toolbar--mid .smart-table-toolbar-head:empty,
+.smart-table-toolbar--wide .smart-table-toolbar-head:empty {
+  display: none;
+}
+/* 窄档:两行 —— 行 1「标题 … 按钮 + 图标」,行 2 构造器(窄档的构造器自己画成「输入框 + 筛选」) */
 .smart-table-toolbar--cond.smart-table-toolbar--narrow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -609,24 +624,17 @@ const moreThemeOverrides = computed(() => ({
     'cond cond';
   gap: 10px 12px;
 }
-.smart-table-toolbar--mid .smart-table-toolbar-main--cond,
-.smart-table-toolbar--narrow .smart-table-toolbar-main--cond {
-  display: contents;
-}
-.smart-table-toolbar--mid .smart-table-toolbar-head,
 .smart-table-toolbar--narrow .smart-table-toolbar-head {
   grid-area: head;
 }
-.smart-table-toolbar--mid .smart-table-toolbar-cond,
 .smart-table-toolbar--narrow .smart-table-toolbar-cond {
   grid-area: cond;
 }
-.smart-table-toolbar--mid .smart-table-toolbar-right,
 .smart-table-toolbar--narrow .smart-table-toolbar-right {
   grid-area: right;
 }
 /* 批量栏(设计原型 .tb-batch):复选框 + 「已选 N 项」(34px 高)、宿主按钮组(间距 8)、取消选择,间距 12;内容贴第 1 行顶部(根元素 min-height 占位,
-   两行高的中档工具栏勾选后内容不往中间飘);内置图标组仍在右侧,34px 高 */
+   两行高的工具栏(窄档,或宽 / 中档放不下折成两行)勾选后内容不往中间飘);内置图标组仍在右侧,34px 高 */
 .smart-table-toolbar--batch {
   align-items: flex-start;
 }

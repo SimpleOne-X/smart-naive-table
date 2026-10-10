@@ -48,7 +48,7 @@
   <a href="#文档索引">文档</a>
 </p>
 
-> **版本状态**：当前是 `3.1.2`（npm `latest`）。3.0 是 major 升级，不改任何代码也会有行为变化，升级步骤见 [MIGRATION.md](./MIGRATION.md)；本页描述的是 3.0 的当前实现，进度与未完成项见[里程碑](#里程碑)。
+> **版本状态**：当前是 `3.1.3`（npm `latest`）。3.0 是 major 升级，不改任何代码也会有行为变化，升级步骤见 [MIGRATION.md](./MIGRATION.md)；本页描述的是 3.0 的当前实现，进度与未完成项见[里程碑](#里程碑)。
 >
 > **从 2.x 升级？** 3.0.0 相对 2.x 有破坏性变更（涉及默认值与外观，如默认每页条数、分页形态），请先看 [升级指南 MIGRATION.md](./MIGRATION.md)。
 
@@ -150,7 +150,7 @@
 <SmartTable :columns="columns" :fetcher="fetcher" card-on-narrow />
 ```
 
-- **分档按容器宽度**（不是视口宽度）：库根节点宽度 < 600 为窄档，< 1280 为中档，其余为宽档；用 `ResizeObserver` 量根节点，嵌在侧栏 / 弹窗 / 放大层里也按它自己的宽度判定。中档与宽档主要影响工具栏的排布（单行阈值约 1280）。
+- **分档按容器宽度**（不是视口宽度）：库根节点宽度 < 600 为窄档，< 1280 为中档，其余为宽档；用 `ResizeObserver` 量根节点，嵌在侧栏 / 弹窗 / 放大层里也按它自己的宽度判定。中档与宽档的条件搜索栏所在工具栏是同一套排布：头部、条件栏、操作区排成一行，放得下就并排，放不下条件栏折到下一行；条件栏里的值输入框封顶 320px，可用 CSS 变量 `--smart-table-cond-value-max-width` 调。
 - **默认关闭**：不开 `card-on-narrow` 时，窄容器与宽容器是同一套表格与工具栏（窄容器下分页仍不画每页条数选择器）。
 - **卡片列表**：第一个数据列作卡片标题，其余列是两列「标签：值」，操作列（`card: 'action'`，缺省取最后一个 `fixed: 'right'` 的列）放在卡片底部；列上写 `card: 'title' | 'meta' | 'action' | 'handle' | false` 可覆盖；列设置里隐藏的列卡片里同样隐藏。点卡片 = `@row-click`，勾选框在卡片右上角，宿主绑的 `checked-row-keys` / `expanded-row-keys` 照常生效。
 - **触控尺寸**：工具栏按钮、输入框、分页项统一放大到 40px（官方 `large`）；窄档不画每页条数选择器，分页用官方 `simple`。
@@ -168,7 +168,7 @@
 ## 安装
 
 ```bash
-npm i smart-naive-table   # 3.1.2；仍要用 2.x 时装 smart-naive-table@2
+npm i smart-naive-table   # 3.1.3；仍要用 2.x 时装 smart-naive-table@2
 ```
 
 项目中需已安装 `vue >= 3.3` 和 `naive-ui >= 2.44`（`peerDependencies` 是 `vue ^3.3.0`、`naive-ui ^2.44.0`；验证过的版本是 naive-ui 2.45.3）。ESM 输出，自带 TypeScript 类型。
@@ -854,7 +854,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 
 这一节是**版本路线图与当前进度**，不是变更日志；逐项变更见 [CHANGELOG.md](./CHANGELOG.md)，升级步骤见 [MIGRATION.md](./MIGRATION.md)。
 
-**当前阶段：`3.1.2`（npm `latest`）。** 3.0 是 major 升级，升级步骤见 [MIGRATION.md](./MIGRATION.md)。下面「已知未完成 / 限制」是 3.0.0 里仍没做的部分，之后的版本再补。
+**当前阶段：`3.1.3`（npm `latest`）。** 3.0 是 major 升级，升级步骤见 [MIGRATION.md](./MIGRATION.md)。下面「已知未完成 / 限制」是 3.0.0 里仍没做的部分，之后的版本再补。
 
 **3.0 已具备的能力范围**（对应 [规格](./docs/smart-naive-table-spec.md) 的 P0 / P1 / P2）：
 
