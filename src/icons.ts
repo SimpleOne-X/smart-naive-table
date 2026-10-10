@@ -48,6 +48,8 @@ function smallIcon(paths: string[], strokeWidth: number): FunctionalComponent {
     )
 }
 export const ChevronDownIcon = smallIcon(['m4 6 4 4 4-4'], 1.8)
+// 窄档卡片树表的展开箭头(官方 NDataTable 的触发器也是向右的 ChevronRight,展开后转 90°)
+export const ChevronRightIcon = smallIcon(['m6 4 4 4-4 4'], 1.8)
 export const CloseIcon = smallIcon(['M4 4l8 8M12 4l-8 8'], 1.8)
 // 按钮里的加号(原型 I_BTN_PLUS):与其它按钮图标同一套几何,1em 跟随按钮图标槽(medium 18px / large 20px),不缩小
 export const PlusIcon = lineIcon(['M12 5v14M5 12h14'])
