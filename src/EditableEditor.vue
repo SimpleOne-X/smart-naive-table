@@ -236,6 +236,33 @@ onBeforeUnmount(() => {
   border-width: 6px 6px 0 0;
   border-color: var(--smart-table-xl-warn) transparent transparent transparent;
 }
+/* 可填格提示(editable.fillHint,默认关;关时 td 不带 smart-table-xfill,下面的规则不命中):有编辑器且未锁定的格铺主色 6% 的淡底,悬停多一圈 1px 内描边。
+   底色用 background-image 叠在 td 原有的 background-color 上、不改写它:固定列(sticky)的 td 是实底,改写成半透明会透出底下滚动的文字,斑马纹与行悬停色也靠原底色。
+   选中(2px 内描边)、校验错误(2px 红内描边)、编辑中(控件铺满单元格)的格不加底也不加悬停描边;新增行自己的 7% 底与首格 3px 色条优先,行内不再叠这层底,首格悬停时描边与色条合成。
+   描边同选中框一样是 inset box-shadow,不占布局、不改行高;没有位移与过渡。 */
+.smart-table--editable
+  .n-data-table-tr:not(.smart-table-xnew)
+  > .n-data-table-td.smart-table-xfill:not([data-xsel]):not(.smart-table-xerr):not(
+    .smart-table-xed
+  ) {
+  --smart-table-xl-fill: color-mix(in srgb, var(--smart-table-xl-primary) 6%, transparent);
+  background-image: linear-gradient(var(--smart-table-xl-fill), var(--smart-table-xl-fill));
+}
+.smart-table--editable
+  .n-data-table-td.smart-table-xfill:not([data-xsel]):not(.smart-table-xerr):not(
+    .smart-table-xed
+  ):hover {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--smart-table-xl-primary) 40%, transparent);
+}
+.smart-table--editable
+  .n-data-table-tr.smart-table-xnew
+  > .n-data-table-td.smart-table-xfill:first-child:not([data-xsel]):not(.smart-table-xerr):not(
+    .smart-table-xed
+  ):hover {
+  box-shadow:
+    inset 3px 0 0 var(--smart-table-xl-primary),
+    inset 0 0 0 1px color-mix(in srgb, var(--smart-table-xl-primary) 40%, transparent);
+}
 /* 编辑态:控件撑满单元格(绝对定位铺满 td,不参与行高计算) */
 .smart-table--editable .n-data-table-td.smart-table-xed:not(.smart-table-xed--ta) {
   padding: 0;

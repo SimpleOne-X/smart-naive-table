@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 可编辑表格场景页(浏览器验证用):300 行本地数据 + fillHeight 虚拟滚动 + 固定列 + 多选标签 + 行级只读 + 异步查重;
-// 开关:即时保存(save: 'cell')/ 紧凑密度。保存模拟 400ms,宿主把改动写回自己的数据再 done()。
+// 开关:即时保存(save: 'cell')/ 紧凑密度 / 可填格提示(fillHint)。保存模拟 400ms,宿主把改动写回自己的数据再 done()。
 import { computed, ref } from 'vue'
 import { NSpace, NSwitch, useMessage } from 'naive-ui'
 import {
@@ -41,6 +41,7 @@ const message = useMessage()
 const tableRef = ref<SmartTableInst<Row> | null>(null)
 const cellMode = ref(false)
 const dense = ref(true)
+const fillHint = ref(false)
 
 const columns: SmartTableColumn<Row>[] = [
   { type: 'selection', width: 40, fixed: 'left' },
@@ -49,6 +50,7 @@ const columns: SmartTableColumn<Row>[] = [
     key: 'name',
     title: '名称',
     width: 180,
+    fixed: 'left',
     rules: {
       required: true,
       // 异步查重:同名任务不允许(模拟 300ms 接口)
@@ -64,12 +66,13 @@ const columns: SmartTableColumn<Row>[] = [
   { key: 'tags', title: '标签', width: 200, options: tagOptions },
   { key: 'qty', title: '数量', width: 100, align: 'right', rules: { int: true, min: 0, max: 99 } },
   { key: 'done', title: '完成', width: 80 },
-  { key: 'due', title: '截止', width: 140 },
+  { key: 'due', title: '截止', width: 140, fixed: 'right' },
 ]
 const editable = computed(() => ({
   save: cellMode.value ? ('cell' as const) : ('batch' as const),
   newRow: () => ({ code: '(新)', name: '', tags: [], qty: 0, done: false, due: '2026-10-31' }),
   rowReadonly: (r: Row) => r.locked,
+  fillHint: fillHint.value,
 }))
 
 async function onSave(p: {
@@ -100,6 +103,10 @@ async function onSave(p: {
         'cell')</label
       >
       <label><n-switch v-model:value="dense" size="small" /> 紧凑</label>
+      <label
+        ><n-switch v-model:value="fillHint" size="small" data-testid="fill-hint" />
+        可填格提示(fillHint)</label
+      >
     </n-space>
     <div style="height: calc(100vh - 220px)" data-testid="edit-host">
       <SmartTable
