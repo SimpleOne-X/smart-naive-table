@@ -2,7 +2,7 @@
 // 对照页宿主外壳:复刻 docs/smart-naive-table-design.html 的侧栏 / 面包屑 / 标题 / NLayout embedded 灰底 / 全局设置四个开关。
 // 外壳本身不是被测对象(原型里也是手写的),被测的是 NLayout 里那张 <SmartTable>。
 // 外壳只读模块注册表(modules/registry.ts);新增模块不用改这个文件。
-// URL 参数:?m=1..14(模块)、?theme=light|dark(缺省跟随系统)、?lang=zh|en、?bg=gray|white、?density=compact|comfortable。
+// URL 参数:?m=1..15(模块)、?theme=light|dark(缺省跟随系统)、?lang=zh|en、?bg=gray|white、?density=compact|comfortable。
 import { computed, onMounted, provide, ref, watch } from 'vue'
 import {
   darkTheme,
@@ -173,7 +173,6 @@ const setShell = (field: Seg['field'], v: string) => ((shell as any)[field] = v)
         <div class="app">
           <aside class="side">
             <h1>{{ t('SmartTable 设计方案') }}</h1>
-            <p class="sub" id="verLine">v3.0.1 · 2026-10-04</p>
             <div class="group-title">{{ t('设计模块') }}</div>
             <nav id="modList">
               <template v-for="g in groups" :key="g.meta.name">
@@ -350,15 +349,9 @@ body {
 }
 .side h1 {
   font-size: 15px;
-  margin: 0 0 4px;
+  margin: 0 0 18px;
   letter-spacing: 0.2px;
   font-weight: 700;
-}
-.side .sub {
-  font-size: 11.5px;
-  color: var(--px-text-2);
-  margin: 0 0 18px;
-  line-height: 1.6;
 }
 .side .group-title {
   font-size: 11px;
@@ -592,7 +585,6 @@ body {
     padding: 10px 12px;
   }
   .side h1,
-  .side .sub,
   .side .group-title,
   #modPanel,
   #modList {
