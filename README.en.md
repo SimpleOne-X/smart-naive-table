@@ -48,7 +48,7 @@ Search, filters, sorting, pagination, dict tags, column settings and editing all
   <a href="#documentation">Docs</a>
 </p>
 
-> **Version status**: the current version is `3.1.3` (npm `latest`). 3.0 is a major upgrade: some behavior changes even if you change no code. See [MIGRATION.md](./MIGRATION.md) for the upgrade steps. This page describes the current 3.0 implementation; progress and unfinished items are in [Milestones](#milestones).
+> **Version status**: the current version is `3.2.0` (npm `latest`). 3.0 is a major upgrade: some behavior changes even if you change no code. See [MIGRATION.md](./MIGRATION.md) for the upgrade steps. This page describes the current 3.0 implementation; progress and unfinished items are in [Milestones](#milestones).
 >
 > **Upgrading from 2.x?** 3.0.0 has breaking changes relative to 2.x (defaults and looks, e.g. the default page size and the pager style). Read the [migration guide MIGRATION.md](./MIGRATION.md) first.
 
@@ -154,21 +154,22 @@ Turn on `card-on-narrow` and the same `columns` serve both desktop and phones �
 - **Off by default**: without `card-on-narrow`, narrow and wide containers use the same table and toolbar (in a narrow container the pager still omits the page-size picker).
 - **Card list**: the first data column is the card title, the rest are two-column "label: value" pairs, and the action column (`card: 'action'`, default the last `fixed: 'right'` column) sits at the bottom of the card. Set `card: 'title' | 'meta' | 'action' | 'handle' | false` on a column to override; columns hidden in column settings are hidden on cards too. Tapping a card = `@row-click`, the checkbox sits at the top right, and your own `checked-row-keys` / `expanded-row-keys` bindings keep working.
 - **Touch sizes**: toolbar buttons, inputs and pager items grow to 40px (the official `large`); the narrow tier omits the page-size picker and uses the official `simple` pager.
-- **Toolbar fold**: business buttons (`#toolbar-right` + "More") fold into "Actions ▾", which expands one extra row in place.
+- **Toolbar fold**: business buttons (`#toolbar-right` + "More") fold into "Actions ▾", which expands one extra row in place. When the host passes `#toolbar`, the head (title + `#toolbar`) takes the whole first row and wraps if it does not fit; "Actions ▾" sits at the left and the built-in icons at the right on the second row (without `#toolbar` it stays a single row).
 - **Search becomes "input + Filter"**: with the query builder (`search: { container: 'table' }`) the narrow tier keeps one input and a "Filter" button; tapping "Filter" opens the same multi-condition panel in a bottom drawer.
 - **Sort drawer**: when there are sortable columns, the toolbar gets a full-width "Sort" row at the bottom; it opens a bottom drawer with "None / Ascending / Descending" per column (toggle on/off only, priority is not editable).
 - **Bottom sheets**: in an editable grid (`editable`) tapping a card opens a bottom-drawer form (whole-row, saved immediately; a `select-table` field in it opens a bottom-anchored picker); `SmartSelectTable` also uses a bottom sheet when the viewport is narrower than 600 or the popover would not fit.
 - **Row dragging**: cards keep dragging; put `card: 'handle'` on the handle column and it renders at the far left of the title row; cards with `row-draggable` show the row number at the end of the title row.
 - **Summary card**: when you give Naive's `summary` (summary row), the narrow card list ends with a "Summary" card.
+- **Tree tables**: a table with `children-key` is flattened pre-order in the card list; titles are indented per level (`indent`, default 16px) and cards with children get an expand / collapse arrow before the title. It reads the official `NDataTable` props (`children-key`, `indent`, `expanded-row-keys`, `default-expanded-row-keys`, `default-expand-all`, `cascade`) — **no new props**. Paging / sorting act on root rows only (as in the official table), selection cascades per `cascade` and a parent card shows the indeterminate state. Without `expanded-row-keys` the library keeps the expanded state itself (it is not shared when switching between table and cards; bind it to share). Not done: lazy loading (`on-load`), `check-strategy`, `row-draggable` / `editable` together with a tree.
 - **Chips and pager**: active-condition chips take their own row above the pager on the narrow tier.
 - **Not done**: a narrow-tier drawer for column-header filters (card mode has no header, so the funnel has no entry; use the query builder to filter); the card list has no virtual scrolling (the narrow tier cannot change the page size, default 100 per page). Column settings are still a popover on the narrow tier, not a drawer.
 
-> In the preview, the main table of all 14 modules has `card-on-narrow` (shrink the window to about 400px wide, or use browser device emulation at 390 × 844): modules 2 / 3 / 4 show the query-builder filter drawer and the sort drawer, module 10 shows the drag handle on a card, and module 14 shows the bottom-drawer form opened from a card.
+> In the preview, the main table of all 15 modules has `card-on-narrow` (shrink the window to about 400px wide, or use browser device emulation at 390 × 844): modules 2 / 3 / 4 show the query-builder filter drawer and the sort drawer, module 10 shows the drag handle on a card, module 14 shows the bottom-drawer form opened from a card, and module 15 shows the tree cards (expand / collapse, cascading selection).
 
 ## Install
 
 ```bash
-npm i smart-naive-table   # 3.1.3; to stay on 2.x install smart-naive-table@2
+npm i smart-naive-table   # 3.2.0; to stay on 2.x install smart-naive-table@2
 ```
 
 Requires `vue >= 3.3` and `naive-ui >= 2.44` in your project (`peerDependencies` are `vue ^3.3.0` and `naive-ui ^2.44.0`; the verified version is naive-ui 2.45.3). ESM output, TypeScript types included.
@@ -701,7 +702,7 @@ Data columns accept every Naive UI column prop (`width`, `minWidth`, `fixed`, `a
 | `toolbar` | `false \| { refresh, density, columnSettings, more, maximize }` | refresh (remote only) and column settings; `density` / `maximize` default to `false` | Toolbar button switches; `more` holds the "More" menu options (the official `NDropdown` `options`), selecting one emits `more-select`; `maximize: true` or `{ zIndex }` turns on the "maximize" button (fills the viewport inside the page, z-index 1999 by default) |
 | `title` | `string` | — | Table title, or use the `#title` slot |
 | `card-props` | `Partial<CardProps>` | — | Official `NCard` props for the cards the library renders (table card, search card), merged over the default `size="small"` + 16px padding on all sides; pass `{ size: 'medium' }` for Naive's default card padding |
-| `card-on-narrow` | `boolean` | `false` | Narrow card mode: when the container is < 600 wide the table becomes a card list (columns map via `card`; tapping a card = `@row-click`, the checkbox sits top-right, the host's `checked-row-keys` / `expanded-row-keys` keep working), business buttons fold into an "Actions ▾" button that opens in place, and toolbar controls grow to touch size; pagination stays the official `simple` one (40px items, no page-size picker). With sortable columns the toolbar gets a bottom "Sort" button (opens a bottom drawer: None / Ascending / Descending per column, on/off only, priority is not editable); column-header **filters** have no entry on narrow yet, use `search: { container: 'table' }`. Off = narrow containers use the same table and toolbar as wide ones. The card list is not virtualized (narrow mode cannot change the page size; the default is 100) |
+| `card-on-narrow` | `boolean` | `false` | Narrow card mode: when the container is < 600 wide the table becomes a card list (columns map via `card`; tapping a card = `@row-click`, the checkbox sits top-right, the host's `checked-row-keys` / `expanded-row-keys` keep working; a tree's `children` are flattened pre-order with level indent and an expand arrow), business buttons fold into an "Actions ▾" button that opens in place, and toolbar controls grow to touch size; pagination stays the official `simple` one (40px items, no page-size picker). With sortable columns the toolbar gets a bottom "Sort" button (opens a bottom drawer: None / Ascending / Descending per column, on/off only, priority is not editable); column-header **filters** have no entry on narrow yet, use `search: { container: 'table' }`. Off = narrow containers use the same table and toolbar as wide ones. The card list is not virtualized (narrow mode cannot change the page size; the default is 100) |
 | `editable` | `boolean \| { rowReadonly?, newRow?, add?, remove?, save?, beforeunload?, labelWidth? }` | `false` | Editable grid, see "More scenarios". `rowReadonly(row)` locks a row; `newRow()` gives the initial values of an added row; `add: false` hides the toolbar "Add row", `{ position: 'bottom' }` appends at the end; `remove` hides the batch-bar "Delete selected"; `labelWidth` is the narrow drawer's label column (default 72); `save` is `'batch'` (default) or `'cell'`; `beforeunload: false` drops the leave prompt |
 | `fill-height` | `boolean` | `false` | Fill the parent: the body scrolls inside the card (official `flex-height` + virtual scroll) and pagination sticks to the bottom; **the parent needs a definite height**; `max-height` is ignored while on |
 | `storage-key` | `string` | — | Persist column settings (visibility / order / pinning / widths) to localStorage; **density is only read from / written to storage when `toolbar: { density: true }` (the density button) is on** — otherwise `default-density` decides |
@@ -828,7 +829,7 @@ All `labels` keys are optional; missing keys fall back to the English defaults (
 | Header filters | `filter`, `filterConfirm`, `filterReset`, `filterSelectAll`, the operator labels (`filterEqual`, `filterContains`, `filterGt`, `filterLike`, `filterIn`, ...), `filterNoValue`, `filterAddCondition`, `filterRemoveCondition`, `filterLogicAnd`, `filterLogicOr`, `filterAdvanced`, `filterSimple`, `filterClearAll`, `filterRestoreDefault`, `filterActiveCount` |
 | Query builder | `searchBy`, `searchMoreConditions`, `searchConditionN` |
 | Batch bar | `selectedCount` (with `{n}`), `clearSelection` |
-| Narrow tier | `operations`, `sort`, `sortNone`, `sortAscend`, `sortDescend` |
+| Narrow tier | `operations`, `sort`, `sortNone`, `sortAscend`, `sortDescend`, `treeExpand`, `treeCollapse` |
 | Editable grid | `editSave` (with `{n}`), `editDiscard`, `editDiscardConfirm` (with `{n}`: the popover text), `editDiscardOk`, `editHiddenDirty` (with `{n}`: "Includes M not currently visible"), `editAddRow`, `editDeleteSelected`, `editNewTitle`, `editEditTitle`, ... (full list in `SmartTableLabels`) |
 | Table picker | `pickTotal`, `pickSelected`, `pickClearSel`, `pickOk` |
 
@@ -860,7 +861,7 @@ All `labels` keys are optional; missing keys fall back to the English defaults (
 
 This section is the **version roadmap and current progress**, not a changelog; per-item changes are in [CHANGELOG.md](./CHANGELOG.md) and upgrade steps in [MIGRATION.md](./MIGRATION.md).
 
-**Current stage: `3.1.3` (npm `latest`).** 3.0 is a major upgrade; see [MIGRATION.md](./MIGRATION.md) for the upgrade steps. The "Known gaps / limits" table below lists what 3.0.0 still does not do; later versions will cover it.
+**Current stage: `3.2.0` (npm `latest`).** 3.0 is a major upgrade; see [MIGRATION.md](./MIGRATION.md) for the upgrade steps. The "Known gaps / limits" table below lists what 3.0.0 still does not do; later versions will cover it.
 
 **What 3.0 already has** (matching P0 / P1 / P2 of the [spec](./docs/smart-naive-table-spec.md)):
 

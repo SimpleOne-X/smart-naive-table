@@ -715,6 +715,9 @@ export interface SmartTableLabels {
   sortNone?: string
   sortAscend?: string
   sortDescend?: string
+  /** 窄档卡片的树表(cardOnNarrow + children-key):卡片标题前展开 / 折叠箭头的无障碍名。 */
+  treeExpand?: string
+  treeCollapse?: string
   /** 漏斗 aria-label 的后缀,含 {n} 占位(有效条件数)。 */
   filterActiveCount?: string
   filterAddCondition?: string

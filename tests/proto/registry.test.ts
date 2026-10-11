@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// 模块注册表:14 项、编号 1..14、键序 / 名称 / 亮点 / 状态 / 分组 / natural / rowClick 与原型 docs/smart-naive-table-design.html
-// 的 MODULES / GROUPS / MC 逐项一致(含模块 14「可编辑表格」)(读原型文件原文对表,改原型这几张表而没同步注册表会红)。
+// 模块注册表:15 项、编号 1..15、键序 / 名称 / 亮点 / 状态 / 分组 / natural / rowClick 与原型 docs/smart-naive-table-design.html
+// 的 MODULES / GROUPS / MC 逐项一致(含模块 14「可编辑表格」、模块 15「树形表格」)(读原型文件原文对表,改原型这几张表而没同步注册表会红)。
 import { describe, expect, it } from 'vitest'
 import ProtoModule from '../../playground/prototype/ProtoModule.vue'
 import ProtoPlaceholder from '../../playground/prototype/modules/ProtoPlaceholder.vue'
@@ -26,9 +26,9 @@ function literal(name: string, close: '}' | ']'): any {
   return new Function(`return (${html.slice(open, end + 2).trim()})`)()
 }
 
-// 原型可能多出对照页范围之外的模块 —— 只对 no ≤ 14 的部分对表(14 = excel 可编辑表格)
+// 原型可能多出对照页范围之外的模块 —— 只对 no ≤ 15 的部分对表(14 = excel 可编辑表格,15 = tree 树形表格)
 const protoMods = Object.entries(literal('MODULES', '}') as Record<string, any>).filter(
-  ([, m]) => m.no <= 14,
+  ([, m]) => m.no <= 15,
 )
 const protoGroups = (literal('GROUPS', ']') as { name: string; en: string; keys: string[] }[]).map(
   (g) => ({
@@ -38,9 +38,9 @@ const protoGroups = (literal('GROUPS', ']') as { name: string; en: string; keys:
 )
 
 describe('模块注册表', () => {
-  it('14 项,no 为 1..14,键序与原型 MODULES 一致', () => {
-    expect(MODULES).toHaveLength(14)
-    expect(MODULES.map((m) => m.no)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+  it('15 项,no 为 1..15,键序与原型 MODULES 一致', () => {
+    expect(MODULES).toHaveLength(15)
+    expect(MODULES.map((m) => m.no)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
     expect(META.map((m) => m.key)).toEqual(protoMods.map(([k]) => k))
     expect(MODULES.map((m) => m.key)).toEqual([
       'search',
@@ -57,6 +57,7 @@ describe('模块注册表', () => {
       'embed',
       'i18n',
       'excel',
+      'tree',
     ])
   })
 
@@ -78,10 +79,10 @@ describe('模块注册表', () => {
     expect(GROUPS).toEqual(protoGroups)
     expect(byKey('i18n').group).toBeUndefined()
     for (const g of GROUPS) for (const k of g.keys) expect(byKey(k).group).toBe(g.name)
-    expect(new Set(GROUPS.flatMap((g) => g.keys)).size).toBe(13)
+    expect(new Set(GROUPS.flatMap((g) => g.keys)).size).toBe(14)
   })
 
-  it('natural / rowClick 与原型 MC 一致(原型 MC 里 natural: 仅模块 10;rowClick: 模块 11;模块 12 恒为一屏)', () => {
+  it('natural / rowClick 与原型 MC 一致(原型 MC 里 natural: 模块 10 与 15;rowClick: 模块 11;模块 12 恒为一屏)', () => {
     const mc = html.slice(html.indexOf('const MC = {'), html.indexOf('const MCx'))
     for (const [key] of protoMods) {
       const m = new RegExp(`^  ${key}:\\s*\\{[\\s\\S]*?(?=^  \\w+:\\s*\\{|^\\};)`, 'm').exec(mc)
@@ -89,7 +90,7 @@ describe('模块注册表', () => {
       expect(!!byKey(key as any).natural, `${key}.natural`).toBe(/natural:\s*true/.test(m![0]))
       expect(!!byKey(key as any).rowClick, `${key}.rowClick`).toBe(/rowClick:\s*true/.test(m![0]))
     }
-    expect(MODULES.filter((m) => m.natural).map((m) => m.no)).toEqual([10])
+    expect(MODULES.filter((m) => m.natural).map((m) => m.no)).toEqual([10, 15])
     expect(MODULES.filter((m) => m.rowClick).map((m) => m.no)).toEqual([11])
   })
 
@@ -111,7 +112,8 @@ describe('模块注册表', () => {
     expect(byNo('7')?.key).toBe('persist')
     expect(byNo(13)?.key).toBe('i18n')
     expect(byNo(14)?.key).toBe('excel')
-    expect(byNo(15)).toBeUndefined()
+    expect(byNo(15)?.key).toBe('tree')
+    expect(byNo(16)).toBeUndefined()
     expect(byNo(null)).toBeUndefined()
     expect(DEFAULT_MOD).toBe('toolbar')
   })

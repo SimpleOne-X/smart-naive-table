@@ -256,9 +256,9 @@ describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', ()
     return mount(ProtoApp, { attachTo: document.body })
   }
 
-  // 侧栏是两级目录(组名 = 小标题,子页常显);外壳读注册表,侧栏是全部 5 组 13 个子页(含「可编辑表格」;没有组件的模块由注册表挂占位,侧栏项照出;i18n 不在侧栏)
+  // 侧栏是两级目录(组名 = 小标题,子页常显);外壳读注册表,侧栏是全部 5 组 14 个子页(含「可编辑表格」「树形表格」;没有组件的模块由注册表挂占位,侧栏项照出;i18n 不在侧栏)
   it.each([1, 2, 3, 4] as const)(
-    '模块 %i:侧栏是 5 组 13 个子页,标题、工具栏、表头都渲染出来',
+    '模块 %i:侧栏是 5 组 14 个子页,标题、工具栏、表头都渲染出来',
     async (m) => {
       const w = mountApp(m)
       await flushPromises()
@@ -269,7 +269,7 @@ describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', ()
         '数据',
         '布局',
       ])
-      expect(w.findAll('#modList .mod')).toHaveLength(13)
+      expect(w.findAll('#modList .mod')).toHaveLength(14)
       expect(w.find('.smart-table-title').exists()).toBe(false) // 单表模块工具栏不画表名(设计 §2.14:页顶已有页面标题)
       const heads = w.findAll('thead th').map((th) => th.text())
       expect(heads).toEqual(
@@ -303,12 +303,13 @@ describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', ()
       '列设置',
       '行拖拽排序',
       '主从联动',
+      '树形表格',
       '加载与错误处理',
       '增删改弹窗',
       '可编辑表格',
       '上下布局',
     ])
-    expect(mods.map((b) => b.find('.no').exists())).toEqual(Array(13).fill(false))
+    expect(mods.map((b) => b.find('.no').exists())).toEqual(Array(14).fill(false))
     expect(mods.map((b) => b.find('.hl').exists())).toEqual([
       false,
       true,
@@ -323,10 +324,11 @@ describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', ()
       false,
       false,
       false,
+      false,
     ]) // 原型 ★:条件搜索 / 表头过滤 / 字典 / 列设置
     // 状态:全部「已定」,侧栏没有状态徽标
-    expect(mods.map((b) => b.find('.st').exists())).toEqual(Array(13).fill(false))
-    expect(mods.map((b) => b.classes('on'))).toEqual([false, false, true, ...Array(10).fill(false)])
+    expect(mods.map((b) => b.find('.st').exists())).toEqual(Array(14).fill(false))
+    expect(mods.map((b) => b.classes('on'))).toEqual([false, false, true, ...Array(11).fill(false)])
     expect(w.find('.stage-head h2').text()).toBe('表头过滤')
     expect(w.find('.crumb').text().replace(/\s+/g, ' ')).toBe(
       'SmartTable 设计方案 / 查询 / 表头过滤',
@@ -353,7 +355,7 @@ describe('对照页(ProtoApp:原型的外壳 + 真实库渲染的一张表)', ()
     await mods()[1].trigger('click') // 条件搜索 = toolbar = ?m=2
     await flushPromises()
     expect(new URLSearchParams(location.search).get('m')).toBe('2')
-    expect(mods().map((b) => b.classes('on'))).toEqual([false, true, ...Array(11).fill(false)])
+    expect(mods().map((b) => b.classes('on'))).toEqual([false, true, ...Array(12).fill(false)])
     expect(tabs().map((t) => t.classes('on'))).toEqual([false, true, false, false])
     expect(w.find('.smart-table-search').exists()).toBe(false)
     expect(w.find('.crumb').text().replace(/\s+/g, ' ')).toBe(

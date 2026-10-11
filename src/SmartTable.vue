@@ -103,6 +103,16 @@ import CardList from './CardList.vue'
 import SortDrawer from './SortDrawer.vue'
 import { buildCardView } from './cardColumns'
 import { orderLocalRows, sliceRows } from './cardRows'
+import {
+  checkKey,
+  flattenTree,
+  indexTree,
+  nonLeafKeys,
+  normalizeChecked,
+  uncheckKey,
+  type CardTreeView,
+  type RowKey,
+} from './cardTree'
 import MaximizeLayer from './MaximizeLayer'
 import { ref } from 'vue'
 import { useRowDrag } from './useRowDrag'
@@ -794,6 +804,17 @@ function onPageChanged() {
   if (card) keepCardTopVisible(card)
 }
 
+/**
+ * 本地模式程序切页(实例的 goPage)。官方实例方法 page(n) 只走 doUpdatePage:改表格自己的页码、转发表格级回调,
+ * 不经过分页组件的 onUpdatePage;而库自己记的 localPage 只在那里更新 —— 不同步的话表格翻了页、localPage 还停在旧页,
+ * 读它的两处就拿到旧页:窄档卡片列表(cardRows 自己切页)不翻页,批量栏「本页全选」(pageRows)勾到旧页的行。
+ * 越界页码不用夹:读 localPage 的地方都会夹(sliceRows / pageRows),NDataTable 自己也夹。
+ */
+function goLocalPage(n: number): void {
+  localPage.value = n
+  tableRef.value?.page(n)
+}
+
 // NDataTable 的 data 形参是 RowData[](Record 索引),泛型 T 无索引签名,此处收窄。
 // 静态模式的过滤在这里落地(远程模式走 fetcher 参数,由后端过滤)。
 const baseData = computed(() => {
@@ -1317,18 +1338,130 @@ function hostExpandedKeys(): Array<string | number> {
   return Array.isArray(v) ? (v as Array<string | number>) : []
 }
 
-/** 卡片右上角勾选框:载荷同官方单行勾选 `(keys, rows, { row, action })`。 */
+/* ---- 窄档卡片的树表(children-key,设计 2.17) ----
+ * 读的都是透传给 NDataTable 的官方属性,没有新增:children-key / indent / expanded-row-keys / default-expanded-row-keys / default-expand-all / cascade。
+ * 语义对齐官方:分页 / 排序只作用于根行(上面的 cardRows 本来就是根行),卡片只负责把根行按先序拍平。
+ * attrs 不是响应式的,所以下面都写成函数,渲染期取(同 hostCheckedKeys)。没有行带 children 的表格一路走原来的分支,卡片与此前逐字节一致。 */
+const treeAttr = (camel: string, kebab: string): unknown => attrs[camel] ?? attrs[kebab]
+/** 模板里写 `default-expand-all`(不带值)时 attrs 里是空串,按真处理。 */
+const treeFlag = (v: unknown): boolean => v === true || v === ''
+const treeChildrenKey = (): string =>
+  (treeAttr('childrenKey', 'children-key') as string | undefined) ?? 'children'
+const treeIndent = (): number => {
+  const v = attrs.indent
+  return typeof v === 'number' ? v : 16
+}
+const treeCascade = (): boolean => attrs.cascade !== false
+function hostExpandedOrNull(): RowKey[] | null {
+  const v = treeAttr('expandedRowKeys', 'expanded-row-keys')
+  return Array.isArray(v) ? (v as RowKey[]) : null
+}
+/** 未绑 expanded-row-keys 时库内部持有展开键集;null = 还没人点过,用默认值。卡片模式下 NDataTable 被藏起来,拿不到它内部的展开态,只能自己持有。 */
+const localExpanded = ref<RowKey[] | null>(null)
+function expandedKeysNow(): RowKey[] {
+  const host = hostExpandedOrNull()
+  if (host) return host
+  if (localExpanded.value) return localExpanded.value
+  const opt = { childrenKey: treeChildrenKey(), rowKey: rowKeyFn.value }
+  if (treeFlag(treeAttr('defaultExpandAll', 'default-expand-all')))
+    return nonLeafKeys(tableData.value as T[], opt)
+  const d = treeAttr('defaultExpandedRowKeys', 'default-expanded-row-keys')
+  return Array.isArray(d) ? (d as RowKey[]) : []
+}
+/** 勾选级联要看到整份数据的树(本地模式 = 全部行,远程 = 当前页),不能只看当前页的卡片行。 */
+const cardIndex = computed(() =>
+  cardMode.value
+    ? indexTree(tableData.value as T[], {
+        childrenKey: treeChildrenKey(),
+        rowKey: rowKeyFn.value,
+        isDisabled: cardView.value?.isDisabled,
+      })
+    : null,
+)
+const rowHasKids = (row: T): boolean => {
+  const kids = (row as Record<string, unknown>)[treeChildrenKey()]
+  return Array.isArray(kids) && kids.length > 0
+}
+interface CardTreeData {
+  rows: T[]
+  tree: CardTreeView<T>
+}
+/**
+ * 树表的卡片数据:先序拍平后的行 + 视图(缩进 / 展开态 / 箭头文案)。当前页的根行里一个带子级的都没有 → null(走原来的卡片)。
+ * 按「行数组 + 展开键集 + children-key / indent / 文案」缓存,没变化时返回同一个对象,CardList 不会白白重渲染。
+ */
+let treeMemo: { rows: T[]; sig: string; data: CardTreeData | null } | null = null
+function cardTreeData(): CardTreeData | null {
+  const rows = cardRows.value
+  const keys = expandedKeysNow()
+  const labels = mergedLabels.value
+  const sig = [
+    treeChildrenKey(),
+    treeIndent(),
+    labels.treeExpand,
+    labels.treeCollapse,
+    keys.join(','),
+  ].join('|')
+  if (treeMemo && treeMemo.rows === rows && treeMemo.sig === sig) return treeMemo.data
+  let data: CardTreeData | null = null
+  if (rows.some(rowHasKids)) {
+    const nodes = flattenTree(rows, new Set(keys), {
+      childrenKey: treeChildrenKey(),
+      rowKey: rowKeyFn.value,
+    })
+    const byRow = new Map(nodes.map((n) => [n.row, n]))
+    data = {
+      rows: nodes.map((n) => n.row),
+      tree: {
+        indent: treeIndent(),
+        info: (row) => byRow.get(row) ?? { depth: 0, hasChildren: false, expanded: false },
+        expandLabel: labels.treeExpand,
+        collapseLabel: labels.treeCollapse,
+      },
+    }
+  }
+  treeMemo = { rows, sig, data }
+  return data
+}
+/** 卡片点箭头:展开 / 折叠。受控(绑了 expanded-row-keys)只通知宿主;否则库内部持有并通知,载荷同官方 `(keys)`。 */
+function onCardToggle(row: T) {
+  const key = rowKeyFn.value(row)
+  const cur = expandedKeysNow()
+  const next = cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key]
+  if (!hostExpandedOrNull()) localExpanded.value = next
+  for (const name of ['onUpdate:expandedRowKeys', 'onUpdateExpandedRowKeys'])
+    callAll(attrs[name], next)
+}
+/** 勾选态:树表按 cascade 归一化(宿主只给了父也算后代勾上),并给出半选键;没有树 = 原样。 */
+function cardCheckState(): { checked: RowKey[]; indeterminate: RowKey[] } {
+  const cur = hostCheckedKeys() ?? localChecked.value
+  const index = cardIndex.value
+  return index?.hasChildren
+    ? normalizeChecked(index, cur, treeCascade())
+    : { checked: cur, indeterminate: [] }
+}
+
+/** 卡片右上角勾选框:载荷同官方单行勾选 `(keys, rows, { row, action })`。树表按 cascade 级联(以归一化后的当前键集为基,同官方)。 */
 function onCardCheck(row: T, checked: boolean) {
   const key = rowKeyFn.value(row)
   const host = hostCheckedKeys()
   const cur = host ?? localChecked.value
-  const next = checked
-    ? cur.includes(key)
-      ? [...cur]
-      : [...cur, key]
-    : cur.filter((k) => k !== key)
+  const index = cardIndex.value
+  let next: RowKey[]
+  let nextRows: T[]
+  if (index?.hasChildren) {
+    const cascade = treeCascade()
+    const base = normalizeChecked(index, cur, cascade).checked
+    next = checked ? checkKey(index, base, key, cascade) : uncheckKey(index, base, key, cascade)
+    nextRows = next.flatMap((k) => {
+      const hit = index.nodes.get(k)
+      return hit ? [hit.row] : []
+    })
+  } else {
+    next = checked ? (cur.includes(key) ? [...cur] : [...cur, key]) : cur.filter((k) => k !== key)
+    nextRows = cardRows.value.filter((r) => next.includes(rowKeyFn.value(r)))
+  }
   if (!host) localChecked.value = next
-  const nextRows = cardRows.value.filter((r) => next.includes(rowKeyFn.value(r)))
   for (const name of ['onUpdate:checkedRowKeys', 'onUpdateCheckedRowKeys']) {
     callAll(attrs[name], next, nextRows, { row, action: checked ? 'check' : 'uncheck' })
   }
@@ -1652,8 +1785,7 @@ defineExpose({
   tableRef,
   revealRow,
   /** 跳到第 n 页(远程 = 重查;本地 = 切页)。 */
-  goPage: (n: number) =>
-    isRemote.value ? table.onPage(n) : Promise.resolve(tableRef.value?.page(n)),
+  goPage: (n: number) => (isRemote.value ? table.onPage(n) : Promise.resolve(goLocalPage(n))),
   // 可编辑表格(editable)
   dirtyCount: editor.count,
   isDirty: editor.isDirty,
@@ -1784,16 +1916,19 @@ defineExpose({
         />
         <CardList
           v-if="cardMode && cardView"
-          :rows="cardRows"
+          :rows="cardTreeData()?.rows ?? cardRows"
+          :tree="cardTreeData()?.tree"
           :summary="cardSummary"
           :summary-placement="cardSummaryPlacement()"
           :view="cardView"
           :row-key="rowKeyFn"
           :row-props="mergedRowProps"
-          :checked-keys="hostCheckedKeys() ?? localChecked"
+          :checked-keys="cardCheckState().checked"
+          :indeterminate-keys="cardCheckState().indeterminate"
           :expanded-keys="hostExpandedKeys()"
           :loading="isRemote && loading"
           @check="onCardCheck"
+          @toggle="onCardToggle"
         >
           <template v-if="slots.empty" #empty><slot name="empty" /></template>
         </CardList>

@@ -62,6 +62,7 @@ describe('语言开关', () => {
       'Column settings',
       'Row reordering',
       'Master-detail',
+      'Tree table',
       'Loading & errors',
       'CRUD dialogs',
       'Editable grid',
@@ -218,12 +219,12 @@ describe('侧栏 / 占位 / 档位', () => {
     expect(w.classes()).toContain('proto-host')
   })
 
-  it('?m=5 / 9 / 13 都能进(侧栏 13 项,13 不高亮任何子页)', async () => {
+  it('?m=5 / 9 / 13 都能进(侧栏 14 项,13 不高亮任何子页)', async () => {
     for (const m of [5, 9, 13]) {
       const w = await mountApp(m)
       expect(new URLSearchParams(location.search).get('m')).toBe(String(m))
       expect(w.find('#stage').exists()).toBe(true)
-      expect(w.findAll('#modList .mod')).toHaveLength(13)
+      expect(w.findAll('#modList .mod')).toHaveLength(14)
       if (m === 13) expect(w.findAll('#modList .mod.on')).toHaveLength(0)
       else expect(w.findAll('#modList .mod.on')).toHaveLength(1)
       w.unmount()

@@ -199,12 +199,13 @@
 ### 5.8 窄档卡片(P2,`cardOnNarrow`)
 - 列 → 卡片字段:默认零配置(第一个数据列作标题,其余「标签:值」两列,操作列放底部);列上 `card` 覆盖。**操作列 = `card: 'action'`,否则最后一个 `fixed: 'right'` 的列**。
 - 卡片固定**舒适间距**(不响应密度);无描边,8px 间距 + 极淡底色 + 「操作」行上方 1px 分隔线;勾选框在右上角,热区 44×44;「编辑 / 删除」44×44;字段值单行省略(虚拟滚动需要等高)。
-- 点卡片 = 现有 `rowClick`;列设置里隐藏的列卡片里同样隐藏。窄档工具栏 2 行(行 1 标题 + 操作 + 三图标,行 2 输入框 + 筛选);有可排序列时再多一行「排序」按钮,见下。
+- 点卡片 = 现有 `rowClick`;列设置里隐藏的列卡片里同样隐藏。窄档工具栏 2 行(行 1 标题 + 操作 + 三图标,行 2 输入框 + 筛选;宿主传了 `#toolbar` 槽时头部独占一行、「操作」与图标落到下一行,设计 2.16);有可排序列时再多一行「排序」按钮,见下。
 - **实现要点**:
   - **「排序」入口位置(以原型窄档实际渲染为准)**:不在行 1 的图标里、也不在行 2 的「输入框 + 筛选」里;原型只有**列头模块(m3 / m4)**在行 2 之下多一行(行 3)等分的「筛选 | 排序」两个文字按钮(角标 = 生效条数),其它模块只有 2 行。库照此:有可排序列时,工具栏最下面多一行整行宽的「排序」按钮(`smart-table-toolbar-sort`,角标 = 生效排序条数);没有可排序列就不画。→ 没有可排序列时窄档工具栏是 2 行,有排序列时是 3 行。
   - **结构**:卡片列表是 `CardList.vue`(`src/cardColumns.ts` 做列映射、`src/cardRows.ts` 做本地排序 + 分页切片);`NDataTable` **仍然挂着**,只用 CSS 藏掉表头与表体,留下官方 `simple` 分页(加载转圈也藏,卡片列表自己淡出)——分页 / chips 所在的 `pagination.prefix` / 本地页码 / 远程页码通知都不用重写。分页项放大到 40px 走 `pagination.size: 'large'` + `themeOverrides.itemSizeLarge`,输入框 / 下拉走 `NConfigProvider` 的 `componentOptions.Pagination`。卡片列表**不做虚拟滚动**(窄档不能改每页条数,默认每页 100),`fillHeight` / 放大态下撑满的是卡片列表自己的滚动。
   - **勾选 / 展开 / 拖拽**:卡片右上角勾选框读写宿主的 `checked-row-keys`(没绑则内部兜底);展开列的内容显示在卡片底部,显示哪些行读宿主的 `expanded-row-keys`(没绑就没有展开入口);拖拽:`card: 'handle'` 的列渲染在标题行最左,sortablejs 绑在卡片列表上。行号:可拖拽的卡片(`row-draggable`)在标题行末尾、勾选框之前显示行号(同原型 m10 的 `.rc-no`),序号列本身在卡片里仍不作为字段;不可拖拽的卡片不显示行号。
-  - **工具栏折叠**:`Toolbar` 的 `fold`(= `cardOnNarrow` 且窄档,批量栏出现时不折叠):「操作 ▾」是官方 large 档 secondary(淡灰底)按钮,展开原位多一行(不是浮层、不加动画)、等分业务按钮与「更多」;控件放大到 large 靠官方 `NConfigProvider` 的 `componentOptions.Button.size`(宿主自己写了 `size` 的按钮不受影响);图标按钮 40×40、间距 0(列设置按钮经 `ColumnSettings` 的 `size` 同步);「更多」菜单选项高 44px = Dropdown 主题变量 `optionHeightMedium`。
+  - **树表(`children-key`,设计 2.17)**:卡片列表认已有的官方属性 `children-key` / `indent` / `expanded-row-keys` / `default-expanded-row-keys` / `default-expand-all` / `cascade`,把当前页的根行按先序拍平(只进入已展开的节点),每张卡标题按层级缩进并带 44×44 的展开箭头(`aria-expanded`,文案 `labels.treeExpand` / `treeCollapse`)。分页 / 排序 / 过滤只作用于根行(同官方 NDataTable);展开态受控时读 `expanded-row-keys` 并通知 `onUpdate:expandedRowKeys`,未绑则库内部持有;勾选按 `cascade` 级联,父卡片半选。没有行带 `children` 的表格行为不变。不含:懒加载(`on-load`)、`check-strategy` 非 `all`、拖拽 / 可编辑 + 树。
+  - **工具栏折叠**:`Toolbar` 的 `fold`(= `cardOnNarrow` 且窄档,批量栏出现时不折叠):「操作 ▾」是官方 large 档 secondary(淡灰底)按钮,展开原位多一行(不是浮层、不加动画)、等分业务按钮与「更多」;控件放大到 large 靠官方 `NConfigProvider` 的 `componentOptions.Button.size`(宿主自己写了 `size` 的按钮不受影响);图标按钮 40×40、间距 0(列设置按钮经 `ColumnSettings` 的 `size` 同步);「更多」菜单选项高 44px = Dropdown 主题变量 `optionHeightMedium`。**`#toolbar` 槽例外(设计 2.16)**:传了 `#toolbar` 时窄档不把它挤进头部格,而是头部(标题 + `#toolbar`)独占一行,「操作 ▾」靠左、内置图标靠右落到第二行;没传时仍是单行「标题 | 操作 ▾ | 图标」。
   - **未做**:列头**筛选**的底部抽屉(§3 末行「列头面板在窄容器换底部 `NDrawer`」):`ColumnFilter` 的面板与 `NPopover` 触发器耦合,拆成可放进抽屉的面板需要单独重构;窄档下只有模式 2 条件构造器(「输入框 + 筛选」)能筛选。
 
 ### 5.9 条件模型:15 个操作符

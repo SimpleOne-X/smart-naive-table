@@ -7,8 +7,10 @@
 import { defineComponent, type PropType, type VNodeChild } from 'vue'
 import { NCheckbox, NConfigProvider, NEmpty, useThemeVars } from 'naive-ui'
 import type { CardView } from './cardColumns'
+import type { CardTreeView } from './cardTree'
+import { ChevronRightIcon } from './icons'
 
-defineProps<{
+const props = defineProps<{
   rows: T[]
   view: CardView<T>
   rowKey: (row: T) => string | number
@@ -18,6 +20,13 @@ defineProps<{
   checkedKeys: Array<string | number>
   /** 宿主绑的 expanded-row-keys。 */
   expandedKeys: Array<string | number>
+  /**
+   * 树表(children-key,设计 2.17):`rows` 已按先序拍平,这里给每张卡片的层级 / 展开态。标题前画展开箭头(有子级)或同宽占位(叶子),标题按层级缩进。
+   * 当前页没有任何行带子级时不传(null / 不写),卡片与没有这个能力时逐字节一致。
+   */
+  tree?: CardTreeView<T> | null
+  /** 半选的键(树表勾选级联:部分后代被勾、自己没被勾)。 */
+  indeterminateKeys?: Array<string | number>
   loading: boolean
   /**
    * 合计卡(宿主给了 naive 的 summary 时,SmartTable 在窄档把它换成卡片):每个合计行一张,标题 + 「标签:值」。
@@ -31,7 +40,10 @@ defineProps<{
   summaryPlacement?: 'top' | 'bottom'
 }>()
 
-const emit = defineEmits<{ check: [row: T, checked: boolean] }>()
+const emit = defineEmits<{ check: [row: T, checked: boolean]; toggle: [row: T] }>()
+
+/** 树表下某一行的层级 / 展开态(只在 tree 存在时调用)。 */
+const nodeOf = (row: T) => props.tree!.info(row)
 
 // 标签 / 单元格是 VNodeChild(字符串、数字或 VNode):用一个只吐出它的小组件渲染,patch 时按位置复用,不会每次重挂
 const RenderNode = defineComponent({
@@ -90,10 +102,31 @@ const ACTION_OPTIONS = { Button: { size: 'large' as const } }
       >
         <div
           class="smart-table-card-head"
-          :class="{ 'smart-table-card-head--handle': view.handle }"
+          :class="{
+            'smart-table-card-head--handle': view.handle,
+            'smart-table-card-head--tree': tree,
+          }"
         >
           <span v-if="view.handle" class="smart-table-card-handle">
             <RenderNode :node="view.handle.render(row, i)" />
+          </span>
+          <span
+            v-if="tree"
+            class="smart-table-card-lead"
+            :style="{ paddingLeft: `${nodeOf(row).depth * tree.indent}px` }"
+          >
+            <button
+              v-if="nodeOf(row).hasChildren"
+              type="button"
+              class="smart-table-card-tg"
+              :class="{ 'smart-table-card-tg--open': nodeOf(row).expanded }"
+              :aria-expanded="nodeOf(row).expanded"
+              :aria-label="nodeOf(row).expanded ? tree.collapseLabel : tree.expandLabel"
+              @click="emit('toggle', row)"
+            >
+              <ChevronRightIcon />
+            </button>
+            <span v-else class="smart-table-card-tg-ph" />
           </span>
           <span class="smart-table-card-title">
             <RenderNode v-if="view.title" :node="view.title.render(row, i)" />
@@ -105,6 +138,7 @@ const ACTION_OPTIONS = { Button: { size: 'large' as const } }
             <n-checkbox
               size="large"
               :checked="checkedKeys.includes(rowKey(row))"
+              :indeterminate="indeterminateKeys?.includes(rowKey(row)) ?? false"
               :disabled="view.isDisabled?.(row)"
               @update:checked="(v: boolean) => emit('check', row, v)"
             />
@@ -193,6 +227,54 @@ const ACTION_OPTIONS = { Button: { size: 'large' as const } }
 .smart-table-card-head--handle {
   align-items: center;
   gap: 8px;
+}
+/* 树表(设计 2.17,设计稿模块 15):只缩进标题(卡片仍占满整行),标题前是展开箭头。箭头盒 44×44(触控热区,与勾选框、拖拽手柄一致),
+   图标 16px 落在卡片内容左缘、与标题间距 8px(= 官方触发器的右间距);盒子用负外边距让热区伸进卡片内边距,并压在标题前 6px 之上(z-index),整块都点得中。
+   叶子卡片留同宽(24px)占位,让同层标题对齐。箭头与标题的间距由箭头盒自己的外边距定,所以清掉 head 的 gap,勾选框前补回 12px。 */
+.smart-table-card-head--tree {
+  gap: 0;
+}
+.smart-table-card-head--tree .smart-table-card-check {
+  margin-left: 12px;
+}
+.smart-table-card-lead {
+  display: inline-flex;
+  flex: none;
+}
+.smart-table-card-tg {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px -6px -10px -14px;
+  padding: 0;
+  font-size: 16px;
+  color: var(--st-card-text2);
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+.smart-table-card-tg :deep(svg) {
+  display: block;
+  transition: transform 0.15s;
+}
+.smart-table-card-tg--open :deep(svg) {
+  transform: rotate(90deg);
+}
+.smart-table-card-tg:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid color-mix(in srgb, var(--st-card-primary) 55%, transparent);
+  outline-offset: 2px;
+}
+.smart-table-card-tg-ph {
+  display: inline-block;
+  flex: none;
+  width: 24px;
+  height: 1px;
 }
 .smart-table-card-title {
   flex: 1 1 auto;

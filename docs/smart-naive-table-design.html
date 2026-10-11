@@ -923,6 +923,10 @@ table.n-table td.acts .n-btn.text + .n-btn.text { margin-left: 12px; }   /* 间�
   /* 模块 3 / 4:窄档第 2 行 = 条件搜索(搜索框 + 「条件」),第 3 行 = 筛选 / 排序两个按钮(卡片列表没有表头) */
   .tb.hdr-tb { grid-template-areas: "title ops icons" "csearch csearch csearch" "search search search"; }
   .tb.hdr-tb.ops-open { grid-template-areas: "title ops icons" "actions actions actions" "csearch csearch csearch" "search search search"; }
+  /* 窄档 + 宿主传了 #toolbar 槽(模块 3 的「我负责的」,设计 2.16):头部(标题 + #toolbar)独占第 1 行、放不下就换行;「操作 ▾」靠左、内置图标靠右落到第 2 行,展开的业务按钮行接在它下面。不传 #toolbar 时仍是上面的单行「标题 | 操作 ▾ | 图标」 */
+  .tb.hdr-tb.tb-headrow { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "title title title" "ops . icons" "csearch csearch csearch" "search search search"; }
+  .tb.hdr-tb.tb-headrow.ops-open { grid-template-areas: "title title title" "ops . icons" "actions actions actions" "csearch csearch csearch" "search search search"; }
+  .tb.tb-headrow .tb-lt { flex-wrap: wrap; }
 
   /* 搜索卡片的表单控件:窄档同样 size="large"(与 .tb / .sheet 的窄档规则一致) */
   .search-card .n-btn, .search-card .n-input, .search-card .n-select { height: 40px; font-size: 15px; }
@@ -1486,8 +1490,6 @@ html[data-theme="dark"] { --tip-bg: rgb(72, 72, 78); --tip-fg: rgba(255, 255, 25
 .pop.tip .pop-arrow i { background: var(--tip-bg); }
 /* 表体自成层叠上下文:里面表头 / 固定列的 z-index 不与表外的气泡(列设置、更多菜单)竞争 */
 .tbl-scroll { isolation: isolate; }
-.slot-n { display: none; }
-@container (max-width: 599px) { .slot-w { display: none; } .slot-n { display: inline-flex; } }
 /* 窄档(容器 < 600)日期范围面板:官方双日历并排宽 581px,超出 390 视口、右半与「确认」够不着;自有适配 = 两个日历上下叠(宽 290),分隔线变横线 */
 .dp-panel.range.stack { grid-template-columns: auto; grid-template-areas: "l" "div" "r" "act"; }
 .dp-panel.range.stack .dp-vdiv { width: auto; height: 1px; }
@@ -1523,6 +1525,27 @@ table.n-table td.ex, table.n-table th.ex { width: 40px; padding: 0; text-align: 
 .ex-tg svg { width: 100%; height: 100%; display: block; }
 .ex-tg.open { transform: rotate(90deg); }
 .ex-tg:focus-visible { outline: 2px solid color-mix(in srgb, var(--n-primary) 55%, transparent); outline-offset: 2px; border-radius: 3px; }
+
+/* ---- 模块 15 树形表格(设计 2.17,提议) ----
+   表格(宽 / 中档)= 官方 NDataTable 的树形态:名称列里「每层一个宽 indent(默认 16px)的空块 + 16×16 的 ChevronRight 触发器(右间距 8px,展开后转 90°)」,
+   叶子用同宽的占位(es/data-table/src/styles/index.cssr.mjs:49-88、TableParts/Body.mjs)。
+   窄档卡片:只缩进标题(卡片仍占满整行宽,层级靠标题缩进表达),标题前是展开箭头:盒子 44×44(触控热区,与勾选框、拖拽手柄一致),
+   图标 16px 落在卡片内容左缘,与标题间距 8px(= 官方触发器的右间距);盒子用负外边距让热区伸进卡片内边距,并压在标题前 6px 之上(z-index),整块都点得中。
+   叶子卡片留同宽空位(24px),让同层标题对齐;整页都没有子级时不留。 */
+.tr-cell { display: inline-flex; align-items: center; max-width: 100%; vertical-align: top; }   /* top:inline-flex 默认按基线对齐,会多出一截行内空隙把行撑高 */
+.tr-ind { display: inline-block; flex: none; height: 1px; }
+.tr-tg { display: inline-flex; flex: none; width: 16px; height: 16px; margin: 0 8px 0 0; padding: 0; border: 0; background: none; color: var(--n-text); cursor: pointer; transition: transform .15s; }
+.tr-tg svg { display: block; width: 100%; height: 100%; }
+.tr-tg.open { transform: rotate(90deg); }
+.tr-tg:focus-visible, .rc-tg:focus-visible { outline: 2px solid color-mix(in srgb, var(--n-primary) 55%, transparent); outline-offset: 2px; border-radius: 3px; }
+.tr-ph { display: inline-block; flex: none; width: 16px; height: 1px; margin-right: 8px; }
+.rc-head.tr-head { gap: 0; }                         /* 箭头与标题的间距由箭头盒的负外边距定,不吃 .rc-head 的 12px gap */
+.rc-head.tr-head .n-check { margin-left: 12px; }     /* gap 清零后,勾选框与标题之间补回 12px */
+.tr-lead { display: inline-flex; flex: none; }       /* 层级缩进 = 内联 padding-left(层数 × 16px) */
+.rc-tg { position: relative; z-index: 1; display: inline-flex; flex: none; align-items: center; justify-content: center; width: 44px; height: 44px; margin: -10px -6px -10px -14px; padding: 0; border: 0; background: none; color: var(--n-text); cursor: pointer; }
+.rc-tg svg { display: block; width: 16px; height: 16px; transition: transform .15s; }
+.rc-tg.open svg { transform: rotate(90deg); }
+.rc-tg-ph { display: inline-block; flex: none; width: 24px; height: 1px; }
 .tbl-scroll table.n-table tr.exp-row > td { height: auto; line-height: 1.6; padding: 0; white-space: normal; overflow: visible; background: var(--n-card-bg); }   /* overflow 必须 visible:td 一旦是滚动容器,里面的 sticky 就相对它而不是表体,内容会跟着横向滚走 */
 .exp-in { position: sticky; left: 0; width: var(--sc-w, 100%); box-sizing: border-box; padding: 12px 16px 14px 56px; }
 .exp-t { font-size: 13px; color: var(--n-text-2); margin-bottom: 8px; }
@@ -1957,6 +1980,7 @@ const MODULES = {
   embed:   { no: 12, name: '上下布局',           en: 'Stacked layout',           status: 'done' },
   i18n:    { no: 13, name: '多语言与页面底色',   en: 'Language & background',    status: 'done' },
   excel:   { no: 14, name: '可编辑表格',         en: 'Editable grid',            status: 'done' },   // Excel 式单元格编辑 + 按数据类型推断编辑控件(设计文档「可编辑表格」一节);示例场景 = 工艺路线设计(编辑 / 拖动重排并重编号 / 行级只读 / 合计)
+  tree:    { no: 15, name: '树形表格',         en: 'Tree table',               status: 'done' },   // 窄档卡片的树表(设计 2.17,已确认):宽 / 中档是官方树形态的表格,窄档是先序拍平的卡片
 };
 const STATUS_TXT = { done: '已定', doing: '提议', todo: '待议' };
 const STATUS_EN = { done: 'Final', doing: 'Proposed', todo: 'Open' };   // 侧栏是 data-raw(不走文本节点词典),状态徽标的英文要在这里直接出
@@ -1972,7 +1996,7 @@ const STATUS_EN = { done: 'Final', doing: 'Proposed', todo: 'Open' };   // 侧�
 const GROUPS = [
   { name: '查询', en: 'Query',   keys: ['search', 'toolbar', 'filter', 'sort'] },
   { name: '列',   en: 'Columns', keys: ['wide', 'dict', 'persist'] },
-  { name: '行',   en: 'Rows',    keys: ['drag', 'ms'] },
+  { name: '行',   en: 'Rows',    keys: ['drag', 'ms', 'tree'] },
   { name: '数据', en: 'Data',    keys: ['states', 'crud', 'excel'] },
   { name: '布局', en: 'Layout',  keys: ['embed'] },
 ];
@@ -2652,6 +2676,7 @@ const MC = {
   embed:   { cols: 'material', page: 'embed', title: '物料单据' },   // 设计 12.3:整页恒为一屏,「物料单据」在上、铺满剩余高度、虚拟滚动;「入库明细」在下、限高后内部滚动
   i18n:    { cols: 'i18n' },   // 模块 13 只用工具栏条件搜索,没有搜索卡(页面不在侧栏,避免出现两套搜索);不带默认条件
   excel:   { cols: 'excel', title: '工艺路线 · 变速箱壳体 GB-2201', excel: true, drag: true, summary: true, indexLabel: '工序号', indexW: 80, pagination: false, virtual: false, acts: false, batch: 'excel' },   // 可编辑表格(工艺路线示例)。12 行 → 整页直出、不分页(pagination:false);序号列 = 工序号(位置,拖动后跟着变、不可编辑);drag = 手柄列 + 行拖拽重排(松手即保存顺序);summary = 合计行;无操作列(删除走勾选 + 批量栏)
+  tree:    { cols: 'material', page: 'tree', natural: true, immediate: false, actions: false },   // 设计 2.17:自带机构树数据与分页(5 个根、每页 3 个),整页自然高度(同模块 10)
 };
 const MCx = () => MC[state.mod];
 const colKind = (mod = state.mod) => MC[mod].cols;
@@ -2793,7 +2818,7 @@ function condsOfKey(k) {
 }
 /* 工具栏带一行式条件搜索的模块:模块 2–13 全部,除了 —— 模块 1(独立的搜索表单卡片)与模块 10(拖拽排序:过滤后按行号拖会改错行,不加)。
    模块 12 的「入库明细」子表与「选择物料」弹窗没有工具栏,不在此列;它的主表(物料单据大表)有。 */
-const COND_EXEMPT = new Set(['search', 'drag']);
+const COND_EXEMPT = new Set(['search', 'drag', 'tree']);
 const hasCond = (m = state.mod) => !COND_EXEMPT.has(m);
 const hdrMod = () => state.mod === 'filter' || state.mod === 'sort';   // 模块 3 / 4:列头过滤 + 排序的宿主页面
 const HS = () => state.h[state.mod];
@@ -4195,12 +4220,11 @@ function chipsHtml() {
    宿主的主操作「新增」是本屏唯一主色按钮。窄档没有表头(卡片列表),筛选 / 排序的入口是第 2 行的两个文字按钮(与模块 2 窄档的「输入框 + 筛选」同一行位,行数不变) */
 function hdrBarHtml() {
   const nf = hfColsActive(), ns = HS().sorts.length;
-  /* #toolbar 左侧插槽:模块 3 在标题旁放一个宿主的快捷过滤按钮「我负责的」(经 setFilter 写负责人列的过滤值) */
+  /* #toolbar 左侧插槽:模块 3 在标题旁放一个宿主的快捷过滤按钮「我负责的」(经 setFilter 写负责人列的过滤值);窄档不再由宿主另收进「操作」展开行,库让 #toolbar 槽独占头部一行(设计 2.16) */
   const mine = HS().fv.owner?.conditions.length === 1 && HS().fv.owner.conditions[0].op === 'equal' && HS().fv.owner.conditions[0].value === '张伟';
   const mk = (cls) => `<button class="n-btn ${mine ? 'tint' : 'sec'} ${cls}" data-act="mine" aria-pressed="${mine}">${I_BTN_USER}我负责的</button>`;
-  const slot = state.mod === 'filter' ? mk('slot-w') : '';
-  const slotN = state.mod === 'filter' ? mk('slot-n') : '';   // 窄档:左侧插槽放不下,宿主把它收进「操作」展开行
-  return `<div class="tb hdr-tb${state.opsOpen ? ' ops-open' : ''}" id="searchZone">
+  const slot = state.mod === 'filter' ? mk('') : '';
+  return `<div class="tb hdr-tb${slot ? ' tb-headrow' : ''}${state.opsOpen ? ' ops-open' : ''}" id="searchZone">
     <div class="tb-left">${MCx().title || slot ? `<div class="tb-title tb-lt">${MCx().title ? `<h3 class="st-title">${MCx().title}</h3>` : ''}${slot}</div>` : ''}
     ${condBlockHtml()}
     </div>
@@ -4208,7 +4232,7 @@ function hdrBarHtml() {
     <button class="n-btn sec ops-toggle" data-act="toggleOps" aria-expanded="${state.opsOpen}">操作&nbsp;<span class="caret">${state.opsOpen ? '▴' : '▾'}</span></button>
     <div class="tb-right">
       <div class="tb-actions">
-        ${slotN}<button class="n-btn tint" data-act="add">${I_BTN_PLUS} 新增</button>
+        <button class="n-btn tint" data-act="add">${I_BTN_PLUS} 新增</button>
         ${moreHtml()}
       </div>
       ${iconsHtml()}
@@ -5388,6 +5412,10 @@ const EN_PAIRS = [
   ['下载导入模板', 'Download template'], ['已下载导入模板', 'Template downloaded'], ['刷新', 'Refresh'], ['列设置', 'Columns'], ['放大', 'Maximize'], ['还原', 'Restore'], ['操作', 'Actions'],
   ['序号', 'No.'], ['编辑', 'Edit'], ['删除', 'Delete'], ['详情', 'Details'], ['收起', 'Collapse'], ['展开', 'Expand'], ['搜索', 'Search'], ['重置', 'Reset'], ['筛选', 'Filter'],
   ['批量审核', 'Approve selected'], ['批量删除', 'Delete selected'], ['取消选择', 'Deselect'], ['全部清除', 'Clear all'], ['清除全部', 'Clear all'], ['我负责的', 'Mine'], ['更多条件', 'More conditions'],
+  // 模块 15 树形表格
+  ['机构名称', 'Organization'], ['机构编码', 'Code'], ['人数', 'Headcount'], ['总部', 'Headquarters'], ['生产中心', 'Production'], ['车削一组', 'Turning 1'], ['车削二组', 'Turning 2'],
+  ['加工中心', 'Machining'], ['质量中心', 'Quality'], ['来料检验组', 'Incoming QC'], ['实验室', 'Lab'], ['华东分公司', 'East China'], ['销售部', 'Sales'], ['一号库', 'Warehouse 1'],
+  ['二号库', 'Warehouse 2'], ['华南分公司', 'South China'], ['研发院', 'R&D Institute'], ['机械设计组', 'Mechanical design'], ['电气设计组', 'Electrical design'], ['共享服务中心', 'Shared services'],
   ['高级条件', 'Advanced'], ['收起高级条件', 'Hide advanced'], ['添加条件', 'Add condition'], ['选择字段', 'Select field'], ['比较符', 'Operator'], ['不需要填值', 'No value needed'], ['输入后回车', 'Type and press Enter'],
   ['恢复默认', 'Restore defaults'], ['固定到左侧', 'Pin left'], ['固定到右侧', 'Pin right'], ['取消固定', 'Unpin'], ['全选', 'Select all'], ['升序', 'Ascending'], ['降序', 'Descending'], ['取消', 'Cancel'], ['关闭', 'Close'],
   ['保存', 'Save'], ['清除', 'Clear'], ['此刻', 'Now'], ['移除', 'Remove'], ['移除这条条件', 'Remove this condition'], ['删除这条', 'Delete this one'], ['删除这条条件', 'Delete this condition'], ['条件', 'Condition'],
@@ -5558,6 +5586,7 @@ state.det = ['M1000-A', 'M1000-B', 'M1024', 'M2011', 'M1000-C', 'M3050'].map(det
 function pageHtml() {
   const pg = MCx().page;
   if (pg === 'drag') return dragPageHtml();
+  if (pg === 'tree') return treePageHtml();
   if (pg === 'ms') return msPageHtml();
   if (pg === 'embed') return embedPageHtml();
   return MCx().sf ? schemeAHtml() : schemeEHtml();
@@ -5778,6 +5807,135 @@ const _setPageSize = setPageSize;
 setPageSize = function (n) { const ch = _setPageSize(n); if (ch) natScroll(); return ch; };
 
 /* ============================================================
+   模块 15:树形表格(设计 2.17,提议)—— 窄档卡片认 children-key
+   库:卡片列表读官方 NDataTable 的 children-key / indent / expanded-row-keys / default-expanded-row-keys / cascade,没有新增属性。
+   官方树语义(naive-ui 2.45.3 es/data-table/src,卡片模式照此对齐):分页只切根节点(use-table-data.mjs:153-159)、排序与列头过滤只作用于根节点
+   (use-sorter.mjs:55-81、use-table-data.mjs:69-105)、勾选按 cascade 级联(use-check.mjs:96-141)、展开键集与 type: 'expand' 列共用(use-expand.mjs:21-39)。
+   本页自带一份机构树(5 个根,每页 3 个根 → 2 页):宽 / 中档 = 官方树形态的表格,窄档 = 先序拍平的卡片。
+   默认展开「总部」和「生产中心」(= default-expanded-row-keys);勾选带级联与半选;分页条的「共 5 条」数的是根节点。
+   ============================================================ */
+const TREE_INDENT = 16, TREE_SIZE = 3;   // indent 取官方默认 16;每页 3 个根节点(演示分页按根行计)
+const TREE_ROWS = [
+  { id: 'HQ', name: '总部', code: 'HQ', owner: '张伟', heads: 128, status: '启用', children: [
+    { id: 'HQ-PD', name: '生产中心', code: 'HQ-PD', owner: '李强', heads: 86, status: '启用', children: [
+      { id: 'PD-L1', name: '车削一组', code: 'PD-L1', owner: '王强', heads: 24, status: '启用' },
+      { id: 'PD-L2', name: '车削二组', code: 'PD-L2', owner: '陈静', heads: 22, status: '启用' },
+      { id: 'PD-MC', name: '加工中心', code: 'PD-MC', owner: '黄磊', heads: 40, status: '停用' } ] },
+    { id: 'HQ-QA', name: '质量中心', code: 'HQ-QA', owner: '赵敏', heads: 18, status: '启用', children: [
+      { id: 'QA-IQ', name: '来料检验组', code: 'QA-IQ', owner: '孙悦', heads: 10, status: '启用' },
+      { id: 'QA-LB', name: '实验室', code: 'QA-LB', owner: '吴磊', heads: 8, status: '启用' } ] },
+    { id: 'HQ-PU', name: '采购部', code: 'HQ-PU', owner: '周杰', heads: 12, status: '启用' } ] },
+  { id: 'EC', name: '华东分公司', code: 'EC', owner: '郑浩', heads: 64, status: '启用', children: [
+    { id: 'EC-SA', name: '销售部', code: 'EC-SA', owner: '冯雪', heads: 30, status: '启用' },
+    { id: 'EC-WH', name: '仓储部', code: 'EC-WH', owner: '蒋涛', heads: 34, status: '启用', children: [
+      { id: 'WH-1', name: '一号库', code: 'WH-1', owner: '沈洋', heads: 18, status: '启用' },
+      { id: 'WH-2', name: '二号库', code: 'WH-2', owner: '韩梅', heads: 16, status: '停用' } ] } ] },
+  { id: 'SC', name: '华南分公司', code: 'SC', owner: '杨帆', heads: 41, status: '启用', children: [
+    { id: 'SC-SA', name: '销售部', code: 'SC-SA', owner: '朱琳', heads: 41, status: '启用' } ] },
+  { id: 'RD', name: '研发院', code: 'RD', owner: '徐静', heads: 52, status: '启用', children: [
+    { id: 'RD-ME', name: '机械设计组', code: 'RD-ME', owner: '何军', heads: 28, status: '启用' },
+    { id: 'RD-EE', name: '电气设计组', code: 'RD-EE', owner: '高峰', heads: 24, status: '启用' } ] },
+  { id: 'SS', name: '共享服务中心', code: 'SS', owner: '林芳', heads: 9, status: '停用' },
+];
+const ttKids = (n) => n.children ?? [];
+const ttDesc = (n) => ttKids(n).flatMap((c) => [c, ...ttDesc(c)]);
+const TREE_IDX = new Map();   // id → { n, parent }
+(function ttIndex(list, parent) { list.forEach((n) => { TREE_IDX.set(n.id, { n, parent }); ttIndex(ttKids(n), n.id); }); })(TREE_ROWS, null);
+const ttFresh = () => ({ exp: new Set(['HQ', 'HQ-PD']), checked: new Set(), page: 1 });
+state.tree = ttFresh();
+const ttPageCount = () => Math.max(1, Math.ceil(TREE_ROWS.length / TREE_SIZE));
+const ttPageRoots = () => { const p = state.tree.page; return TREE_ROWS.slice((p - 1) * TREE_SIZE, p * TREE_SIZE); };
+/* 先序拍平:只进入已展开的节点(展开态 = expanded-row-keys) */
+function ttFlat(roots) {
+  const out = [], walk = (n, depth) => { out.push({ n, depth }); if (ttKids(n).length && state.tree.exp.has(n.id)) ttKids(n).forEach((c) => walk(c, depth + 1)); };
+  roots.forEach((n) => walk(n, 0));
+  return out;
+}
+/* cascade 勾选(同官方 treemate):勾父 = 勾上全部后代;子全勾则父自动勾上、否则父不勾(部分勾 = 半选) */
+function ttNormalize(raw) {
+  const out = new Set(raw);
+  raw.forEach((id) => ttDesc(TREE_IDX.get(id).n).forEach((d) => out.add(d.id)));
+  const walk = (n) => { const ks = ttKids(n); if (!ks.length) return out.has(n.id); const all = ks.map(walk).every(Boolean); if (all) out.add(n.id); else out.delete(n.id); return all; };
+  TREE_ROWS.forEach(walk);
+  return out;
+}
+function ttUncheck(raw, n) {   // 取消 = 去掉本节点、全部后代与所有祖先(祖先不可能再是「全勾」)
+  raw.delete(n.id); ttDesc(n).forEach((d) => raw.delete(d.id));
+  for (let p = TREE_IDX.get(n.id).parent; p; p = TREE_IDX.get(p).parent) raw.delete(p);
+}
+function ttToggleCheck(id) {
+  const t = state.tree, n = TREE_IDX.get(id).n, raw = new Set(t.checked);
+  if (t.checked.has(id)) ttUncheck(raw, n); else raw.add(id);
+  t.checked = ttNormalize(raw);
+}
+/* 表头全选:只针对当前页的根节点(官方 doCheckAll 用 paginatedData,cascade: true) */
+function ttToggleAll() {
+  const t = state.tree, roots = ttPageRoots(), allOn = roots.every((r) => t.checked.has(r.id)), raw = new Set(t.checked);
+  roots.forEach((r) => { if (allOn) ttUncheck(raw, r); else raw.add(r.id); });
+  t.checked = ttNormalize(raw);
+}
+const ttState = (n) => (state.tree.checked.has(n.id) ? 'on' : ttDesc(n).some((d) => state.tree.checked.has(d.id)) ? 'half' : 'off');
+const ttPill = (n) => `<span class="pill${n.status === '停用' ? ' off' : ''}">${esc(n.status)}</span>`;
+
+function ttPagerHtml(page, count, total) {
+  const btn = (off, act, ico) => `<div class="n-pagination-item n-pagination-item--button${off ? ' n-pagination-item--disabled' : ''}"${off ? '' : ` data-act="${act}"`}><span class="ico">${ico}</span></div>`;
+  return `<div class="n-pagination simple"><div class="n-pagination-prefix">共 ${total} 条</div>${btn(page <= 1, 'ttPrev', PG_ICO.prev)}<div class="n-pagination-quick-jumper"><div class="n-input"><input type="text" inputmode="numeric" value="${page}" data-ttjump aria-label="当前页" /></div></div><span class="pg-total"> / ${count}</span>${btn(page >= count, 'ttNext', PG_ICO.next)}</div>`;
+}
+function treePageHtml() {
+  const t = state.tree, narrow = state.tier === 'narrow', dens = state.compact ? 'compact' : 'normal';
+  t.page = Math.min(Math.max(1, t.page), ttPageCount());
+  const roots = ttPageRoots(), flat = ttFlat(roots), anyKids = roots.some((r) => ttKids(r).length);
+  const tgLabel = (on) => (on ? '收起' : '展开');
+  let main;
+  if (narrow) {
+    main = `<div class="tbl-cards">${flat.map(({ n, depth }, i) => {
+      const kids = ttKids(n).length, on = t.exp.has(n.id), st = ttState(n);
+      const arrow = kids
+        ? `<button type="button" class="rc-tg${on ? ' open' : ''}" data-act="ttTog" data-v="${esc(n.id)}" aria-expanded="${on}" aria-label="${tgLabel(on)}">${I_CHEVR}</button>`
+        : anyKids ? '<span class="rc-tg-ph"></span>' : '';
+      return `<div class="rc${st === 'on' ? ' sel' : ''}" data-i="${i}" data-no="${esc(n.id)}" data-depth="${depth}">
+        <div class="rc-head tr-head"><span class="tr-lead" style="padding-left:${depth * TREE_INDENT}px">${arrow}</span><span class="rc-title">${esc(n.name)}</span>${checkHtml(st === 'on', st === 'half', 'ttCk', n.id)}</div>
+        <dl class="rc-desc"><div><dt>机构编码</dt><dd>${esc(n.code)}</dd></div><div><dt>负责人</dt><dd>${esc(n.owner)}</dd></div><div><dt>人数</dt><dd>${n.heads}</dd></div><div><dt>状态</dt><dd>${ttPill(n)}</dd></div></dl></div>`;
+    }).join('')}</div>`;
+  } else {
+    const sts = roots.map(ttState), all = sts.every((s) => s === 'on'), half = !all && sts.some((s) => s !== 'off');
+    const rows = flat.map(({ n, depth }, i) => {
+      const kids = ttKids(n).length, on = t.exp.has(n.id), st = ttState(n);
+      const arrow = kids
+        ? `<button type="button" class="tr-tg${on ? ' open' : ''}" data-act="ttTog" data-v="${esc(n.id)}" aria-expanded="${on}" aria-label="${tgLabel(on)}">${I_CHEVR}</button>`
+        : anyKids ? '<span class="tr-ph"></span>' : '';
+      return `<tr data-i="${i}" data-no="${esc(n.id)}" aria-level="${depth + 1}"><td class="ck">${checkHtml(st === 'on', st === 'half', 'ttCk', n.id)}</td>
+        <td><span class="tr-cell">${depth ? `<span class="tr-ind" style="width:${depth * TREE_INDENT}px"></span>` : ''}${arrow}${esc(n.name)}</span></td>
+        <td>${esc(n.code)}</td><td>${esc(n.owner)}</td><td class="num">${n.heads}</td><td>${ttPill(n)}</td></tr>`;
+    }).join('');
+    main = `<div class="tbl-table"><div class="tbl-scroll"><table class="n-table" style="min-width:640px"><colgroup><col style="width:40px"><col><col style="width:140px"><col style="width:120px"><col style="width:100px"><col style="width:100px"></colgroup>
+      <thead><tr><th class="ck">${checkHtml(all, half, 'ttAll')}</th><th>机构名称</th><th>机构编码</th><th>负责人</th><th class="num">人数</th><th>状态</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></div>`;
+  }
+  return `<div class="smart-table" data-density="${dens}"><div class="n-card"><div class="dt">${main}<div class="dt-foot">${ttPagerHtml(t.page, ttPageCount(), TREE_ROWS.length)}</div></div></div></div>`;   // 没有工具栏:树的设计点在表体,工具栏沿用其它模块
+}
+function treeAct(act, v) {
+  const t = state.tree;
+  switch (act) {
+    case 'ttTog': if (t.exp.has(v)) t.exp.delete(v); else t.exp.add(v); break;
+    case 'ttCk': ttToggleCheck(v); break;
+    case 'ttAll': ttToggleAll(); break;
+    case 'ttPrev': t.page--; break;
+    case 'ttNext': t.page++; break;
+    default: return false;
+  }
+  renderPreview();
+  return true;
+}
+/* 页码输入框:回车 / 失焦跳转(同官方 simple 分页的 quick jumper) */
+function ttJump(inp) { const n = Number.parseInt(inp.value, 10); if (!Number.isNaN(n)) state.tree.page = n; renderPreview(); }
+document.addEventListener('change', (e) => { const j = e.target.closest?.('[data-ttjump]'); if (j) ttJump(j); });
+document.addEventListener('keydown', (e) => { const j = e.target.closest?.('[data-ttjump]'); if (j && e.key === 'Enter' && !e.isComposing) ttJump(j); });
+/* 进入模块 = 宿主重新挂载表格:展开 / 勾选 / 页码回到初始(未绑 expanded-row-keys 时库内部持有展开态,重挂载即重置) */
+const _enterBeforeTree = enterModule;
+enterModule = function (m) { if (m === 'tree') state.tree = ttFresh(); _enterBeforeTree(m); };
+
+/* ============================================================
    动作 / 事件接入
    ============================================================ */
 const _runAct = runAct;
@@ -5787,6 +5945,7 @@ function b3Act(act, v) {
     case 'lang': setLang(v); render(); trFlush(); return true;
     case 'pageBg': state.pageBg = v; document.documentElement.dataset.bg = v; renderSidePanel(); return true;
     case 'density': state.compact = v === 'compact'; render(); return true;
+    case 'ttTog': case 'ttCk': case 'ttAll': case 'ttPrev': case 'ttNext': return treeAct(act, v);
     case 'tnSel': state.ms.sel = v; state.activeRow = null; state.drawer = null; state.open = null; firstPage('ms'); renderPreview(); requery(); return true;
     case 'tnTog': state.ms.exp[v] = !state.ms.exp[v]; renderPreview(); return true;
     case 'drClose': state.drawer = null; renderPreview(); return true;
@@ -5828,7 +5987,7 @@ document.addEventListener('click', (e) => {
 document.addEventListener('input', (e) => {
   const pin = e.target.closest?.('[data-pin]');
   if (pin && state.pick) { state.pick[pin.dataset.pin] = pin.value; return; }
-  const pj = e.target.closest?.('[data-pkjump]');
+  const pj = e.target.closest?.('[data-pkjump], [data-ttjump]');
   if (pj) pj.value = pj.value.replace(/\D+/g, '');
 });
 document.addEventListener('change', (e) => {
