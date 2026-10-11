@@ -10,8 +10,10 @@ import {
 import { fetchWide, queryWide } from '../../playground/prototype/backends/m5-wide'
 import { MOCK_DELAY } from '../../playground/prototype/fetcher'
 import ProtoApp from '../../playground/prototype/ProtoApp.vue'
+import { loaderOf } from '../../playground/prototype/modules/registry'
 import { SmartTable } from '../../src/index'
 import type { SmartTableParams } from '../../src/types'
+import { waitUntil } from './_wait'
 
 // 模块 5「多级表头与固定列」:数据与原型 WIDE_DATA 同源、后端求值、对照页组件的列方案 / 展开行 / 合计行。
 MOCK_DELAY.ms = 0
@@ -121,16 +123,13 @@ describe('模块 5 对照页(ProtoApp ?m=5:真实库渲染)', () => {
 
   async function mountM5() {
     history.replaceState(null, '', '/prototype.html?m=5&theme=light')
+    await loaderOf(5)?.() // 模块组件是懒加载的(同 _mount.ts 的 mountApp):先 import 进模块缓存,忙的机器上首次动态 import 会很慢
     const w = mount(ProtoApp, { attachTo: document.body })
-    for (let i = 0; i < 10; i++) {
-      await flushPromises()
-      if (
+    await waitUntil(
+      () =>
         w.find('.n-data-table').exists() &&
-        w.findAll('.n-data-table-tbody .n-data-table-tr').length > 3
-      )
-        break
-      await new Promise((r) => setTimeout(r, 20))
-    }
+        w.findAll('.n-data-table-tbody .n-data-table-tr').length > 3,
+    )
     return w
   }
   const columnsOf = (w: ReturnType<typeof mount>): any[] =>

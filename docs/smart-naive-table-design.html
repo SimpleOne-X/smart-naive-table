@@ -113,7 +113,7 @@
   /* —— 设计稿外壳(侧栏/主区/待议占位页):自有,官方无对应物 —— */
   --shell-bg: #ececee;                   /* 自有 */
   --panel-bg: #ffffff;                   /* 自有 */
-  --accent: #2563eb;                     /* 自有(当前无规则引用,保留) */
+  --accent: #2563eb;                     /* 自有(当前无规则引用) */
   --warn: #d97706;                       /* 自有:「进行中」徽标。刻意不取官方 warningColor #f0a020(CL:83),它在白底上对比度仅约 2.2:1 */
   --ok: #18a058;                         /* 自有:「已完成」徽标。数值恰与官方 successColor 相同(CL:79) */
 }
@@ -220,10 +220,9 @@ body {
 .app { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
 .side {
   background: var(--panel-bg); border-right: 1px solid var(--n-border);
-  padding: 22px 14px 8px; position: sticky; top: 0; height: 100vh; overflow-y: auto;   /* 底部内边距 8px:13 个子页的侧栏在 1440×900 下刚好放下、不出滚动条 */
+  padding: 22px 14px 8px; position: sticky; top: 0; height: 100vh; overflow-y: auto;   /* 底部内边距 8px;侧栏内容比视口高时由侧栏自身滚动(overflow-y: auto) */
 }
-.side h1 { font-size: 15px; margin: 0 0 4px; letter-spacing: .2px; }
-.side .sub { font-size: 11.5px; color: var(--n-text-2); margin: 0 0 18px; line-height: 1.6; }
+.side h1 { font-size: 15px; margin: 0 0 18px; letter-spacing: .2px; }
 .side .group-title {
   font-size: 11px; font-weight: 600; letter-spacing: .08em;
   color: var(--n-text-2); text-transform: uppercase; margin: 22px 0 8px;
@@ -245,25 +244,6 @@ body {
 .mod .hl { flex: none; font-size: 11px; line-height: 1; color: var(--warn); }
 #grpBar { display: none; }
 
-/* ---- 升级变更页。入口 = 侧栏版本行里的「升级变更」文字链接(不占目录高度);
-   这是外壳里的文档页、不是表格模拟,属于设计标准 3 的明确例外(见设计文档「2.1.1 → 3.0.0 变更总览」)。 ---- */
-.ver-link { font: inherit; color: var(--n-primary); background: none; border: 0; padding: 0; cursor: pointer; }
-.ver-link:hover { text-decoration: underline; }
-.ver-link.on { font-weight: 600; }
-.chg { background: var(--n-card-bg); border: 1px solid var(--n-border); border-radius: 10px; padding: 20px 24px 24px; color: var(--n-text); font-size: 13px; line-height: 1.65; }
-.chg-lead { margin: 0; color: var(--n-text-2); }
-.chg-lead b { color: var(--n-text); font-weight: 600; }
-.chg h3 { font-size: 14px; font-weight: 600; margin: 22px 0 6px; }
-.chg-note { margin: 0 0 8px; color: var(--n-text-2); }
-.chg-wrap { overflow-x: auto; }
-.chg-t { width: 100%; min-width: 720px; border-collapse: collapse; }
-.chg-t th, .chg-t td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--n-border); }
-.chg-t th { background: var(--n-th-bg); font-weight: 500; white-space: nowrap; }
-.chg-t td:first-child { white-space: nowrap; color: var(--n-text-2); }
-.chg-t b { font-weight: 600; }
-.chg code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: var(--n-fill); padding: 0 4px; border-radius: 3px; }
-.chg ol { margin: 0; padding-left: 20px; }
-.chg .warn { color: var(--warn); }
 .mod .st { font-size: 10px; padding: 1px 5px; border-radius: 3px; flex: none; font-weight: 500; }
 .st.done { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
 .st.doing { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
@@ -337,7 +317,7 @@ body {
   transition: border-color .15s, box-shadow .15s, background-color .15s; user-select: none;
 }
 .n-select:hover { border-color: var(--n-primary-hover); }
-.n-select:focus-visible { outline: 0; border-color: var(--n-primary-hover); box-shadow: var(--n-ring-select); }   /* 已聚焦、菜单未展开:borderFocus = primaryColorHover + boxShadowFocus(selection/styles/light.mjs:60、65-67、dark.mjs:66、71-73;selection/src/styles/index.cssr.mjs:123-125),写在 .open 之前,展开后的 primaryColor 覆盖它 */
+.n-select:focus-visible { outline: 0; border-color: var(--n-primary-hover); box-shadow: var(--n-ring-select); }   /* 已聚焦、菜单未展开:borderFocus = primaryColorHover + boxShadowFocus(selection/styles/light.mjs:60、65-67、dark.mjs:66、71-73;selection/src/styles/index.cssr.mjs:123-125),写在 .open 规则前面,展开后的 primaryColor 覆盖它 */
 .n-select.open { border-color: var(--n-primary); background: var(--n-select-bg-active); box-shadow: var(--n-ring-select); }
 .n-select .val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .n-select .val.ph { color: var(--n-text-3); }
@@ -447,7 +427,7 @@ table.n-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .cond { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .cond .f-field { width: 136px; flex: none; }
 .cond .f-op    { width: 112px; flex: none; }
-.cond .f-val   { flex: 1 1 100px; min-width: 100px; max-width: 320px; }   /* 下限 100px 是极窄时的兜底;并排时条件栏基准宽保证值输入框 ≥ 200px(见 .tb:not(.no-cond));封顶 320px,条件栏再宽值输入框也不再变长(库用 --smart-table-cond-value-max-width 调) */
+.cond .f-val   { flex: 1 1 100px; min-width: 100px; max-width: 320px; }   /* 下限 100px 是极窄时的兜底;并排时条件栏基准宽保证值输入框 ≥ 200px(见 .tb:not(.no-cond));封顶 320px,条件栏再宽值输入框也不会变长(库用 --smart-table-cond-value-max-width 调) */
 .cond > .n-btn, .cond > .pop-wrap { flex: none; }
 
 /* 下拉菜单:NDropdown 底色 = popoverColor(暗 rgb(72,72,78)),无描边、靠 boxShadow2,圆角 3px(dropdown/styles/light.mjs、_styles/common/light|dark.mjs)
@@ -832,13 +812,12 @@ table.n-table td.acts .n-btn.text + .n-btn.text { margin-left: 12px; }   /* 间�
     position: sticky; top: 0; z-index: 20; height: auto; overflow: visible;
     border-right: 0; border-bottom: 1px solid var(--n-border); padding: 10px 12px;
   }
-  .side h1, .side .sub, .side .group-title, #modPanel, #modList { display: none; }
+  .side h1, .side .group-title, #modPanel, #modList { display: none; }
   #grpBar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }   /* 窄档:两级目录收成顶部分组条 */
   #grpBar::-webkit-scrollbar { display: none; }
   .mod { width: auto; flex: none; margin-bottom: 0; white-space: nowrap; }
   .main { padding: 0; background: var(--n-body-bg); }
   .crumb, .stage-head, .stage-desc { display: none; }
-  .chg { border-radius: 0; border-width: 0; padding: 16px 12px; }
   .stage-head[data-sub] { display: block; margin: 0; padding: 10px 12px 0; }   /* 有子页的分组:标题仍隐藏,只留子页签一行(放在 .viewport 上方,不进顶部分组条) */
   .stage-head[data-sub] h2 { display: none; }
   .subtabs { display: inline-flex; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
@@ -857,7 +836,7 @@ table.n-table td.acts .n-btn.text + .n-btn.text { margin-left: 12px; }   /* 间�
    只用 CSS 变量,明暗两套由 :root / html[data-theme="dark"] 的 token 决定;无新增 transition / animation / transform。
 
    官方来源(均在 D:\Andy\smart-naive-table\node_modules\naive-ui\es 下):
-   - 列数 '1 s:2 m:3 l:4' 与 responsive="screen":SmartTable 默认 searchCols = src/config.ts:81;
+   - 列数 '1 s:2 m:3 l:4' 与 responsive="screen":SmartTable 默认 searchCols = src/config.ts;
      SearchForm.vue 把它传给 <n-grid :cols responsive="screen">。
      断点:config-provider/src/config.mjs defaultBreakpoints = { xs:0, s:640, m:1024, l:1280, xl:1536, xxl:1920 };
      判定 = vooks useBreakpoints(lib/use-breakpoints.js) 的 matchMedia(`(min-width: Npx)`) —— 视口宽度,不是容器宽度。
@@ -1189,7 +1168,7 @@ table.n-table th.h-th { user-select: none; transition: background-color .15s; }
 .h-th:hover .th-filter:not(.on):not(.show),
 .h-th:focus-within .th-filter:not(.on):not(.show),
 .h-th .th-filter:focus-visible:not(.on):not(.show) { opacity: 1; }   /* 选择器带 :not() 是为了优先级不低于上面的隐藏规则 */
-/* 触屏(没有悬停,如平板):未激活的箭头 / 漏斗改为淡显常驻,否则永远点不到(见 3.9) */
+/* 触屏(没有悬停,如平板):未激活的箭头 / 漏斗淡显常驻,否则永远点不到(见 3.9) */
 @media (hover: none) {
   .h-th .th-sorter:not(.on), .h-th .th-filter:not(.on):not(.show) { opacity: .5; }
 }
@@ -1206,7 +1185,7 @@ table.n-table th.h-th { user-select: none; transition: background-color .15s; }
 .hp-opt { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; cursor: pointer; white-space: nowrap; }
 .hp-row { display: grid; align-items: center; gap: 8px; margin-bottom: 12px; grid-template-columns: 56px 112px minmax(0, 1fr) 28px; }
 .hp-row .f-op, .hp-row .f-val, .hp-row .logic { position: relative; min-width: 0; }
-.hp-lead { font-size: 14px; color: var(--n-text); text-align: center; min-width: 0; }   /* 引导标签与同行控件同档:size=small → fontSizeSmall 14px(同 .n-select.sm,_styles/common/_common.mjs:15、22),不再是写死的 12px;字色 textColor2(CL:93),与窄档抽屉块头「条件 N」、同列里「且」下拉的文字同色。库里字号随 size 取主题 fontSizeSmall / Medium / Large,不写死 px(issue #7) */
+.hp-lead { font-size: 14px; color: var(--n-text); text-align: center; min-width: 0; }   /* 引导标签与同行控件同档:size=small → fontSizeSmall 14px(同 .n-select.sm,_styles/common/_common.mjs:15、22);字色 textColor2(CL:93),与窄档抽屉块头「条件 N」、同列里「且」下拉的文字同色。库里字号随 size 取主题 fontSizeSmall / Medium / Large,不写死 px */
 .hp-row .n-input, .hp-row .n-select { width: 100%; }
 .hp-tools { display: flex; align-items: center; margin: -4px 0 8px; }
 /* 面板里的「添加条件 / 高级条件 ▾ / 收起高级条件 ▴」= 淡灰 secondary + small 档(28px、0 10px、14px,与同面板的值控件同高;设计 2.15 D) */
@@ -1259,7 +1238,7 @@ html[data-theme="dark"] .seg button.on { background: var(--n-primary); color: va
 .sheet .hp-opt { height: 40px; margin-bottom: 0; font-size: 15px; }
 .sheet .hp-group { max-height: none; }
 .sheet .hp-row { grid-template-columns: minmax(0, 1fr) auto; gap: 12px 8px; margin-bottom: 16px; }
-.sheet .hp-row .hp-lead { grid-column: 1; grid-row: 1; text-align: left; font-size: 15px; }   /* 抽屉 size=large → fontSizeLarge 15px,与块头下面的字段 / 比较符 / 值控件同档(原 14px 比它们小一号;issue #7) */
+.sheet .hp-row .hp-lead { grid-column: 1; grid-row: 1; text-align: left; font-size: 15px; }   /* 抽屉 size=large → fontSizeLarge 15px,与块头下面的字段 / 比较符 / 值控件同档 */
 .sheet .hp-row .hp-lead.logic { width: 88px; }
 .sheet .hp-row .f-op { grid-column: 1 / -1; grid-row: 2; }
 .sheet .hp-row .f-val { grid-column: 1 / -1; grid-row: 3; }
@@ -1526,7 +1505,7 @@ table.n-table td.ex, table.n-table th.ex { width: 40px; padding: 0; text-align: 
 .ex-tg.open { transform: rotate(90deg); }
 .ex-tg:focus-visible { outline: 2px solid color-mix(in srgb, var(--n-primary) 55%, transparent); outline-offset: 2px; border-radius: 3px; }
 
-/* ---- 模块 15 树形表格(设计 2.17,提议) ----
+/* ---- 模块 15 树形表格(设计 2.17,已定) ----
    表格(宽 / 中档)= 官方 NDataTable 的树形态:名称列里「每层一个宽 indent(默认 16px)的空块 + 16×16 的 ChevronRight 触发器(右间距 8px,展开后转 90°)」,
    叶子用同宽的占位(es/data-table/src/styles/index.cssr.mjs:49-88、TableParts/Body.mjs)。
    窄档卡片:只缩进标题(卡片仍占满整行宽,层级靠标题缩进表达),标题前是展开箭头:盒子 44×44(触控热区,与勾选框、拖拽手柄一致),
@@ -1662,13 +1641,13 @@ html[data-theme="dark"] { --n-shadow-1: 0 1px 2px -2px rgba(0, 0, 0, .24), 0 3px
    模块 10–13 + 外壳开关(语言 / 页面底色 / 个人密度)
    ============================================================ */
 
-/* ---- 外壳:侧栏「主题」组里的四行开关(明暗 / 语言 / 页面底色 / 密度),都是宿主外壳的控件,不在表格页面里 ---- */
+/* ---- 外壳:侧栏「全局设置」组里的四行开关(明暗 / 语言 / 页面底色 / 密度),都是宿主外壳的控件,不在表格页面里 ---- */
 .shell-row { margin-bottom: 6px; }
 .shell-row .sr-l { display: block; font-size: 11px; line-height: 1.3; color: var(--n-text-2); margin: 0 0 3px 2px; }
 .shell-row .mini button { padding: 4px 6px; }
 .side .group-title { margin: 16px 0 8px; }
 .mod { padding: 7px 10px; margin-bottom: 2px; }
-#modList .mod { padding: 6px 10px; margin-bottom: 1px; }   /* 两级目录 12 个子页常显:条目收紧一点,1440×900 下侧栏(含全局设置)不出滚动 */
+#modList .mod { padding: 6px 10px; margin-bottom: 1px; }   /* 两级目录 14 个子页常显:条目收紧一点,让侧栏(含全局设置)尽量放进一屏 */
 .side { scrollbar-width: thin; }
 
 /* ---- 页面底色:灰 = NLayout embedded(colorEmbedded = actionColor);白 = 不开 embedded(color = bodyColor,亮色 #fff;暗色两者相等,没有差别) ---- */
@@ -1694,7 +1673,7 @@ html[lang="en"] .search-grid .n-form-item > label { width: 124px; }   /* 英文 
 #stage[data-nat] table.n-table thead th { position: static; }
 .smart-table .card-top { scroll-margin-top: 16px; }
 
-/* ---- 卡片头:标题 + 右侧操作(嵌入形态里的子表卡片) ---- */
+/* ---- 卡片头:标题 + 右侧操作(上下布局里的子表卡片) ---- */
 .card-hd { display: flex; align-items: center; gap: 12px; min-height: 28px; margin-bottom: 12px; }
 .card-hd .card-title { flex: 1; min-width: 0; font-size: 16px; font-weight: 500; color: var(--n-text-1); }
 
@@ -1764,7 +1743,7 @@ table.desc th, table.desc td { border: 1px solid var(--n-border); padding: 8px 1
 table.desc th { width: 108px; background: var(--n-th-bg); color: var(--n-text-2); font-weight: 400; }
 .dw-sub { margin: 20px 0 8px; font-size: 14px; font-weight: 500; color: var(--n-text-1); }
 
-/* ---- 模块 12:嵌入形态 ---- */
+/* ---- 模块 12:上下布局 ---- */
 .sub-card { padding-bottom: 8px; }
 /* 模块 12:子表卡排在大表下方,自然高度、不参与「吃剩余高度」(压过 .smart-table > .n-card:not(.search-card) 的 flex:1);
    封顶高度落在 .tbl-scroll 上:多出的行在子表内滚动,thead 吸顶(基底规则)、合计行吸底;封顶 = 视口 28%,夹在 140–280px,大表至少留出 --vs-min-h */
@@ -1939,7 +1918,6 @@ html[data-theme="dark"] { --n-td-striped: rgb(36, 36, 39); }   /* dark:composite
 <div class="app">
   <aside class="side">
     <h1>SmartTable 设计方案</h1>
-    <p class="sub" id="verLine" data-raw></p>
     <div class="group-title">设计模块</div>
     <nav id="modList" data-raw></nav>
     <div id="grpBar" data-raw></div>
@@ -1988,9 +1966,9 @@ const STATUS_EN = { done: 'Final', doing: 'Proposed', todo: 'Open' };   // 侧�
 /* ============================================================
    侧栏两级目录:组名是一个名词的小标题(不可点),子页常显 ——
    对齐 MUI X / AG Grid 文档的「对象(列 / 行)+ 行为(查询)」分法,一眼看全功能。分组只是呈现:
-   内部模块键、MODULES 的 no、enterModule('键')、对照页 ?m=1..4、docs/baseline 的 m1–m14 文件名都与分组无关。
+   内部模块键、MODULES 的 no、enterModule('键')、对照页 ?m=1..15、docs/baseline 的 m1–m14 文件名都与分组无关。
    窄档(≤ 860px)侧栏收成顶部分组条(#grpBar),组内 ≥2 个子页时在内容区上方出子页签。
-   i18n(m13)不在任何分组里:语言 / 页面底色 / 密度是侧栏「全局设置」的开关、对每个模块生效;页面与 enterModule('i18n') 保留。
+   i18n(m13)不在任何分组里:语言 / 页面底色 / 密度是侧栏「全局设置」的开关、对每个模块生效;页面与 enterModule('i18n') 照常可用。
    以后加功能:优先往已有的组里加键;只有新领域攒到 ≥2 页又放不进现有组时才开新组。
    ============================================================ */
 const GROUPS = [
@@ -2003,80 +1981,6 @@ const GROUPS = [
 const groupOf = (key) => GROUPS.find((g) => g.keys.includes(key));
 /* 侧栏 / 面包屑 / 页头标题的名称按语言直接出(外层带 data-raw,不走文本节点词典):「列」「行」「数据」这类短词进词典会误伤别处 */
 const navName = (o) => (state.lang === 'en' ? o.en : o.name);
-
-/* ============================================================
-   升级变更页:2.1.1 → 3.0.0 的变更表。与设计文档「2.1.1 → 3.0.0 变更总览」同一张表的浏览版,
-   冲突时以设计文档为准(改那边要同步这里与 MIGRATION.md)。外壳文档页,不是表格模拟(设计标准 3 的明确例外)。
-   文案写法:`code` → <code>、**粗体** → <b>;整页 data-raw 不走文本节点词典(按词替换会把中文句子拆碎),英文模式只加一行说明。
-   ============================================================ */
-const CHG = {
-  breaking: [
-    ['B1', '默认每页条数', '10 → **100**;可选 `[10,20,50]` → 没开 `fillHeight` 的表格 `[100,500,1000]`,开了的 `[100,1000,10000]`(后者见 D4);不开 `fillHeight` 时翻页后滚回卡片顶部', '所有表格;**⚠ 后端限制 `pageSize` 上限会拒绝请求**', '全局 `defaultPageSize` / `pageSizes`'],
-    ['B2', '默认密度', '`comfortable` → **`compact`**;存储里的旧密度不再覆盖宿主值', '所有表格', "全局 `density: 'comfortable'`;`loadState(key, 'comfortable')`"],
-    ['B3', '密度按钮', '默认显示 → **不显示**', '所有表格', '`toolbar: { density: true }`'],
-    ['B4', '分页外观', '页码序列 → **官方 `simple`**;`showQuickJumper` / `pageSlot` 失效;窄档不画每页条数', '所有表格', '`pagination: { simple: false }`'],
-    ['B5', '静态模式的刷新按钮', '显示 → **隐藏**', '用 `data` 的表格', '无(本来无效)'],
-    ['B6', '表头排序 / 漏斗图标', '常驻 → **悬停才显示**;漏斗可 Tab 聚焦、点击可冒泡到宿主', '有排序 / 过滤列', '无'],
-    ['B7', '列头过滤面板', '单条件 / 勾选 → **多条件编辑**(默认操作符仍 8 个)', '有 `filter` 的列', '无'],
-    ['B8', '拖宽后的余量', '占位列 → **最后一个可拖数据列吸收**(该列没有把手)', '开了 `resizable`', '那一列 `resizable: false`'],
-    ['B11', '卡片内边距', '20 / 24 / 20 → **四边 16px**', '所有表格', "`cardProps: { size: 'medium' }`"],
-    ['B12', '列宽拖拽下限', '60px → 带图标列 93 / 102 / 123', '开了 `resizable`', '列上写 `minWidth`'],
-    ['V1', '卡片标题', '600 / `textColor2` → **500 / `textColor1`**', '所有表格', '`#title` 插槽自定字重'],
-    ['V2', '工具栏间距', '4px → **业务组 8 / 图标组 4 / 组间 12**', '有工具栏按钮', '业务组内自包 `n-space`'],
-    ['V3', '内置图标按钮', '图标 18px → **16px**', '所有表格', '宿主 CSS'],
-    ['V4', '表头漏斗', '26 × 22 深色 → **22 × 22 闲置灰、已筛选主色**', '有 `filter` 的列', '无'],
-    ['V5', '过滤列标题', '拖窄时折行 → **单行省略**', '有 `filter` 的列', '宿主 CSS'],
-    ['V6', '单选过滤', '复选框模拟 → **官方 `NRadio`**', '`multiple: false` 的列', '无'],
-    ['V7', '列设置', '可全部取消 → **至少保留一列**', '所有表格', '无'],
-    ['V8', '库自己的气泡', 'Esc 无反应 → **Esc 关闭**', '所有表格', '无'],
-    ['V9', '列宽拖拽把手', '列界左侧细线 → **骑在列界上、悬停才显示**;松手不再误触排序', '开了 `resizable`', '无'],
-    ['T1', '类型 `FilterAction`', '8 → **15** 个成员', '穷尽它的 TS 代码', '补上新成员'],
-    ['T2', '类型 `SmartTableInst`', '新增 `sort` / `clearSorter`', '手写实现 / mock', '补上两个方法'],
-  ],
-  fixes: [
-    ['C1', '多列排序不再被截成单列', '箭头回显与远程参数变正确'],
-    ['C2', '**`defaultSortOrder` 现在生效**', '**⚠ 首次请求带排序参数、静态数据按它排序、箭头回显**'],
-    ['C3', 'options 列的过滤值不再丢条件', '自动展开「高级条件」'],
-    ['C5', '窄屏折叠态至少露出首个搜索字段', '此前 0 个'],
-    ['C6', '`@update:sorter` 只调一次', '此前每次点表头调两次'],
-    ['C7', '纯日期串按本地零点解析', 'UTC 以西不再显示成前一天'],
-    ['C8', '`labels` 里的 `undefined` 不再覆盖默认', '不再渲染字面 undefined'],
-  ],
-  planned: [
-    ['D1', '当前行高亮色', '靛蓝 8% → **主色系约 9%**,明暗各一', '用了 `activeRowKey`', '全局 `activeRowBg`'],
-    ['D2', '`@row-click` 的触发范围', '行内任何点击 → **忽略按钮 / 勾选框 / 链接 / 输入框**', '用了 `@row-click` 且行内有按钮', '`row-props` 的 `onClick`'],
-    ['D3', '请求失败后的页码', '停在没拿到的那一页 → **回到请求前的页码与条数**', '远程模式翻页时请求失败', '无(缺陷修复)'],
-    ['D4', '每页条数可选项', '没开 `fillHeight` 的表格不变 `[100,500,1000]`;**开了 `fillHeight`(虚拟滚动)的表格 → `[100,1000,10000]`**(默认都是 100)', '开了 `fillHeight` 的表格;**⚠ 选 10000 时请求的 `pageSize` 是 10000**。不开 `fillHeight` 时实测一页 10000 行要 9.4 秒、1.3GB,所以不提供', '全局或单表 `pageSizes`'],
-  ],
-  checklist: [
-    '**后端 `pageSize` 上限**:默认 100、下拉里还有 500 / 1000(开了 `fillHeight` 的是 1000 / 10000);不支持的,升级前先设全局 `defaultPageSize` / `pageSizes`(B1、D4)。',
-    '**搜 `defaultSortOrder`**:列上写过的,首次请求会带排序参数(C2)。',
-    "**想保持旧外观**:全局 `density: 'comfortable'`;单表 `toolbar: { density: true }`、`pagination: { simple: false }`、`cardProps: { size: 'medium' }`。",
-    '**TypeScript**:穷尽 `FilterAction` 的代码、手写的 `SmartTableInst` 实现 / mock(T1、T2)。',
-    "**直接调 `loadState` 的**:传第二参数 `'comfortable'`(B2)。",
-    '**自定义 CSS**:覆盖过表头、漏斗、拖拽把手、卡片内边距的,逐项重新核对。',
-    '**用了 `@row-click` / `activeRowKey` 的**:留意 D1、D2(落地后生效)。',
-    '**naive-ui 版本**:验证环境是 2.45.3,`peerDependencies` 是 `^2.44.0`;2.44.0 ~ 2.45.2 之间的版本未单独测,建议锁定到验证过的版本。',
-  ],
-};
-const chgFmt = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  .replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/⚠/g, '<span class="warn">⚠</span>');
-const chgTable = (head, rows) => `<div class="chg-wrap"><table class="chg-t"><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead>
-  <tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${chgFmt(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
-function changesHtml() {
-  const H5 = ['#', '变更', '2.1.1 → 3.0.0', '影响谁', '回退方式'];
-  return `<div class="chg" data-raw>
-    ${state.lang === 'en' ? '<p class="chg-note">This page is available in Chinese only. The upgrade guide is MIGRATION.md in the repository root.</p>' : ''}
-    <p class="chg-lead">相对 2.1.1:<b>${CHG.breaking.length}</b> 项破坏性变更已实现 · <b>${CHG.fixes.length}</b> 项缺陷修复会改变行为 · <b>${CHG.planned.length}</b> 项设计已定、库待实现。回退方式多数是一行属性;升级步骤见仓库根目录 <code>MIGRATION.md</code>,详细说明见 <code>CHANGELOG.md</code>。</p>
-    <h3>破坏性变更 · 已实现(3.0.0),不改代码升级后也会变</h3>${chgTable(H5, CHG.breaking)}
-    <h3>缺陷修复 · 行为会变,但旧行为本来就是错的</h3>${chgTable(['#', '修复', '升级后可见的变化'], CHG.fixes)}
-    <h3>设计已定、库待实现 · 落地时同样是破坏性变更</h3>
-    <p class="chg-note">原型里已经是定稿行为,库现状还是 2.1.1 的样子;必须在 3.0.0 正式版之前落地,否则按 semver 只能等 4.0 或做成默认关闭的开关。</p>${chgTable(H5, CHG.planned)}
-    <h3>纯新增 · 不传就和 2.1.1 一样</h3>
-    <p class="chg-note">${chgFmt("条件构造器 `search.container: 'table'`、批量栏 `#batch`、放大 `toolbar.maximize`、生效条件 chips `filterChips`、「更多」菜单 `toolbar.more`、铺满 + 虚拟滚动 `fillHeight`、多列排序与 `sort()` / `clearSorter()`、15 个过滤操作符、`cardProps`、`zhCNLabels`、全局 `defaultPageSize`;P2 窄屏卡片 `cardOnNarrow`(默认关)。")}</p>
-    <h3>已上线项目升级检查清单</h3><ol>${CHG.checklist.map((c) => `<li>${chgFmt(c)}</li>`).join('')}</ol>
-  </div>`;
-}
 
 /* ============================================================
    演示数据 —— 条件求值是真的,所以数据也要是真的
@@ -2149,9 +2053,9 @@ function genRows(base, total) {
 const DATA = [...DATA_BASE.map(r => ({ ...r })), ...genRows(DATA_BASE, DATA_TOTAL)];
 
 /* ============================================================
-   模块 5–9 的数据 —— 全部由同一份确定性 2000 行派生(固定种子,刷新页面不变)。
+   模块 5 / 6 的数据 —— 全部由同一份确定性 2000 行派生(固定种子,刷新页面不变)。
    模块 5 宽表 = 物料清单(25 个数据列,含多级表头);模块 6 字典 = 同一批行,但状态 / 部门存成编码(value),要靠字典翻成 label;
-   这两份数据与模块 1–4 / 7–9 共用的 DATA 相互独立(模块 9 的增删改只改 DATA)。
+   这两份数据与模块 1–4 / 7–9 / 11–13 共用的 DATA 相互独立(模块 9 的增删改只改 DATA)。
    ============================================================ */
 const DAY_MS = 864e5;
 const isoDay = (ts) => new Date(ts).toISOString().slice(0, 10);   // 全程用 UTC,与时区无关
@@ -2215,7 +2119,7 @@ const hookStates = () => {
 
 /* 分页默认值 —— 按库的默认,不是宿主覆盖:每页 100 条、可选项按是否开 fillHeight 分两套(PAGER_CFG 是开了 fillHeight 的 [100, 1000, 10000],PAGER_NOFILL 是没开的 [100, 500, 1000])、显示 size picker。
    库内置 defaultPageSize 100、pageSizes [100, 500, 1000](config.ts 的 BUILTIN_DEFAULTS.pageSizes);
-   10000 只在开了 fillHeight 时提供(设计文档变更总览 D4;不开时一页 10000 行要 9.4 秒、1.3GB)。
+   10000 只在开了 fillHeight 时提供(不开时一页 10000 行要 9.4 秒、1.3GB)。
    分页统一用官方 simple 简洁模式(页码输入框 / 总页数,见 paginationHtml),自带页码跳转,所以没有页码序列 / 省略号 / pageSlot / showQuickJumper。
    库没有默认 prefix(总数文案只能由宿主经 #pagination-prefix 插槽给),prefix 在这里保留成宿主开启的形态;窄档不显示。 */
 const PAGER_CFG = {
@@ -2353,7 +2257,7 @@ const state = {
   // 模式 1(模块 1)搜索表单:草稿 sf 随输入即改;点搜索才把快照写进 sfApplied(null = 没有搜索条件)
   sfCollapsed: true,  // 搜索卡片折叠到首行(collapsible 的初始态)
   sfCols: 0,          // 上次渲染时的列数;视口跨过断点才重绘
-  // 条件构造器(主条)/ 多条件面板里的附加条件 / 点了搜索之后生效的条件快照:模块 2–13 的工具栏各有一份,见下方 cm / cmOf(state.main / more / applied 是按当前模块读写的访问器)
+  // 条件构造器(主条)/ 多条件面板里的附加条件 / 点了搜索之后生效的条件快照:模块 2–9 / 11–14 的工具栏各有一份,见下方 cm / cmOf(state.main / more / applied 是按当前模块读写的访问器)
   open: null,         // 当前展开的下拉/面板 id
   panelOpen: false,   // 多条件面板(宽/中档是气泡,窄档是底部抽屉)
   checked: [],        // 勾选行的 no(跨页保留;表头全选只针对当前页)
@@ -2372,7 +2276,7 @@ const state = {
   tbW: 0,             // tbH 是在多宽的容器下量的
   toast: null,        // { id, msg }
 };
-/* 工具栏一行式条件搜索的状态(模块 2–13 都有,模块 1 用独立的搜索表单卡片、不在此列):每个模块各一份 { main, more, applied },互不串。
+/* 工具栏一行式条件搜索的状态(模块 2–9 / 11–14 都有;模块 1 用独立的搜索表单卡片,模块 10 / 15 没有条件搜索):每个模块各一份 { main, more, applied },互不串。
    state.main / state.more / state.applied 是按 state.mod 读写的访问器(同 state.sf 的做法),所以条件构造器、气泡、抽屉、chips 的代码不用知道「现在是哪个模块」。 */
 state.cm = {};
 const cmOf = (mod = state.mod) => (state.cm[mod] ??= { main: defaultMain(), more: [], applied: null });
@@ -2405,13 +2309,13 @@ const I_CHECK   = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" s
 const I_DASH    = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h8"/></svg>`;
 /* 表头图标:排序箭头 path 逐字取自 naive-ui es/_internal/icons/ArrowDown.mjs(viewBox 0 0 28 28);
    漏斗 = 库自有扩展:官方 es/_internal/icons/Filter.mjs 是三条递减横线(HeaderButton/FilterButton.mjs:4 引用),不是漏斗;
-   库用自绘实心漏斗(src/icons.ts:27-31,viewBox 0 0 24 24):漏斗是通用的「筛选」符号、与相邻排序箭头不易混淆(三横线易被看成菜单 / 列表)。 */
+   库用自绘实心漏斗(src/icons.ts,viewBox 0 0 24 24):漏斗是通用的「筛选」符号、与相邻排序箭头不易混淆(三横线易被看成菜单 / 列表)。 */
 const I_ARROW   = `<svg viewBox="0 0 28 28" aria-hidden="true"><path d="M23.7916,15.2664 C24.0788,14.9679 24.0696,14.4931 23.7711,14.206 C23.4726,13.9188 22.9978,13.928 22.7106,14.2265 L14.7511,22.5007 L14.7511,3.74792 C14.7511,3.33371 14.4153,2.99792 14.0011,2.99792 C13.5869,2.99792 13.2511,3.33371 13.2511,3.74793 L13.2511,22.4998 L5.29259,14.2265 C5.00543,13.928 4.53064,13.9188 4.23213,14.206 C3.93361,14.4931 3.9244,14.9679 4.21157,15.2664 L13.2809,24.6944 C13.6743,25.1034 14.3289,25.1034 14.7223,24.6944 L23.7916,15.2664 Z"/></svg>`;
 const I_FUNNEL  = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5A1.5 1.5 0 0 1 4.5 4h15A1.5 1.5 0 0 1 20.7 6.4l-5.7 6.8V19a1 1 0 0 1-1.5.9l-3-1.7a1 1 0 0 1-.5-.9v-4.1L3.3 6.4A1.5 1.5 0 0 1 3 5.5z"/></svg>`;
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
-/* 条件搜索 / 列头过滤的字段:按「行数据的形状」分三套 —— material(模块 2–4 / 7–9 / 11–13 共用的物料单据)、wide(模块 5 宽表)、dict(模块 6:状态 / 部门存的是编码)。
+/* 条件搜索 / 列头过滤的字段:按「行数据的形状」分四套 —— material(模块 2–4 / 7–9 / 11–13 共用的物料单据)、wide(模块 5 宽表)、dict(模块 6:状态 / 部门存的是编码)、excel(模块 14:由列声明 + 类型推断派生,见 FIELDS_BY_KIND 的 excel 访问器)。
    type 决定可用比较符(OPS_BY_TYPE)与值控件;select 的 options 可以是字符串,或 { value, label }(值是编码、显示是 label);get = 取值函数(行里存的形式与条件的值形式不同时用)。 */
 const WIDE_FIELDS = [
   { key: 'no', label: '物料编码', type: 'text' }, { key: 'name', label: '物料名称', type: 'text' }, { key: 'spec', label: '规格说明', type: 'text' },
@@ -2458,11 +2362,11 @@ const COLS = [
   { key: 'dept', label: '部门', w: 88 }, { key: 'amount', label: '金额', num: 1, w: 104 },
   { key: 'bizDate', label: '单据日期', w: 112 },
 ];
-/* 特殊列与操作列:序号 indexWidth 默认 64(config.ts:84);勾选 40(官方 selection 列);操作列放得下「编辑 / 删除」两个文字按钮:
+/* 特殊列与操作列:序号 indexWidth 默认 64(config.ts);勾选 40(官方 selection 列);操作列放得下「编辑 / 删除」两个文字按钮:
    各 42px(28px 文字 + 6px × 2 内边距 + 1px × 2 边框)+ 间隔,舒适密度单元格内边距 12 × 2 → 120(再窄按钮会被省略号截成「编辑 …」) */
 const CK_W = 40, IDX_W = 64, ACTS_W = 140, RD_W = 48;   // RD_W:行拖拽手柄列(同模块 10 的 .rd-h 宽 48)
 /* ============================================================
-   列定义按模块分三套(material = 模块 1–4 / 7–9 共用的物料单据;wide = 模块 5 宽表;dict = 模块 6 字典),列设置状态(顺序 / 显隐 / 固定 / 列宽)按模块各一份。
+   列定义按模块分五套(material = 模块 1–4 / 7–9 / 11–12 共用的物料单据;wide = 模块 5 宽表;dict = 模块 6 字典;i18n = 模块 13 函数式列标题;excel = 模块 14 工艺路线),列设置状态(顺序 / 显隐 / 固定 / 列宽)按模块各一份。
    「单元」= 列设置里的一项:普通列,或一组多级表头(children)。固定 / 显隐 / 顺序都以单元为粒度,组内的叶子列继承(库的 settingItems 也是顶层列)。
    叶子列字段:key / label / w(宽)/ num(右对齐)/ flex / ell(超长省略 + Tooltip)/ html(r)(自定义渲染)/ card(窄档卡片映射:'title' | 'meta' | false)/ hide(初始隐藏)
    ============================================================ */
@@ -2498,7 +2402,7 @@ const WIDE_UNITS = [
 /* 模块 6:同一批行,状态 / 部门是编码,经字典翻成 label;金额 money;日期 / 日期时间 format;函数格式;空值 emptyText;hide 初始隐藏 */
 const fmtDate = (ts) => isoDay(ts);
 const fmtDatetime = (s) => s.replace('T', ' ');
-const dash = '<span class="empty-txt">—</span>';   // emptyText:仅 null / undefined 算空(useColumns.ts:495,504),空串不算
+const dash = '<span class="empty-txt">—</span>';   // emptyText:仅 null / undefined 算空(useColumns.ts),空串不算
 const DICT_UNITS = [
   { key: 'no', label: '物料编码', w: 112, card: 'title' },
   { key: 'name', label: '物料名称', w: 176, flex: 1 },
@@ -2770,8 +2674,8 @@ const SF_DEFS_SEARCH = [
   { key: 'urgent',  label: '仅看加急', ctl: 'switch' },
   { key: 'memo',    label: '备注',     ctl: 'input', span: 2 },
 ];
-/* 搜索表单(SearchForm)只剩模块 1 用;模块 6(字典)、模块 8(数据状态)、模块 13(i18n)用卡片内搜索(工具栏条件搜索),没有搜索表单卡。
-   选项写法:字符串 | { v, l, disabled } | { g: 分组名, items: [...] }(search 的 options 支持 disabled / children 分组,types.ts:27-37) */
+/* 搜索表单(SearchForm)只有模块 1 用;其余模块(如模块 6 字典、模块 8 加载与错误处理、模块 13 多语言)用卡片内搜索(工具栏条件搜索),没有搜索表单卡。
+   选项写法:字符串 | { v, l, disabled } | { g: 分组名, items: [...] }(search 的 options 支持 disabled / children 分组,types.ts) */
 const SFDEFS = {
   search: SF_DEFS_SEARCH,
 };
@@ -2816,7 +2720,7 @@ function condsOfKey(k) {
   if (hasCond(k)) out.push(...(cmOf(k).applied ?? []));
   return out;
 }
-/* 工具栏带一行式条件搜索的模块:模块 2–13 全部,除了 —— 模块 1(独立的搜索表单卡片)与模块 10(拖拽排序:过滤后按行号拖会改错行,不加)。
+/* 工具栏带一行式条件搜索的模块:模块 2–9 与 11–14。不带的:模块 1(独立的搜索表单卡片)、模块 10(拖拽排序:过滤后按行号拖会改错行)、模块 15(树形表格:树的设计点在表体,没有工具栏)。
    模块 12 的「入库明细」子表与「选择物料」弹窗没有工具栏,不在此列;它的主表(物料单据大表)有。 */
 const COND_EXEMPT = new Set(['search', 'drag', 'tree']);
 const hasCond = (m = state.mod) => !COND_EXEMPT.has(m);
@@ -2828,7 +2732,7 @@ const HS = () => state.h[state.mod];
    ============================================================ */
 /* 宿主的列声明(对应库的列配置):sorters 里有的列才可排序。
    模块 3:sorter: true(官方单列互斥);模块 4:sorter: { multiple: n }(官方多列,n 大者优先,与点击顺序无关:use-sorter.mjs:56-59)+ 日期列 defaultSortOrder: 'descend'。
-   列头过滤:所有数据列都可过滤;有候选项的列(单据状态 / 部门)是 options 模式,其余是 condition 模式(useColumns.ts:154)。 */
+   列头过滤:所有数据列都可过滤;有候选项的列(单据状态 / 部门)是 options 模式,其余是 condition 模式(useColumns.ts)。 */
 const H_CFG = {
   filter: { multiple: false, sorters: { no: {}, amount: {}, bizDate: {} } },
   sort:   { multiple: true,  sorters: { status: { multiple: 4 }, dept: { multiple: 3 }, amount: { multiple: 2 }, bizDate: { multiple: 1 } } },   // 单据状态按字典顺序(已审核 < 未审核 < 已关闭)排,不是 label 的拼音(sortRows)
@@ -2896,7 +2800,7 @@ function load(k) {
     catch (e) {
       r.loading = false;
       if (r.loaded) Object.assign(state.pager[k], { page: r.page, size: r.size });   // 页码退回「现在表里这批数据」所在的页(库 useSmartTable 同样退回最近一次成功展示的页,见其 shown)
-      // 保留旧数据,只提示(useSmartTable.ts:52-55:失败保留旧 rows,走 @error;宿主用 NMessage 提示)
+      // 保留旧数据,只提示(useSmartTable.ts:失败保留旧 rows,走 @error;宿主用 NMessage 提示)
       if (state.mod === pagerKeyToMod(k)) renderPreview();
       toast(e.message, 'error');
       return;
@@ -2954,7 +2858,7 @@ function canCollapse() {
 }
 function hpClose() { state.hp = null; state.open = null; }
 /* filter.defaultValue:列声明里带的默认过滤值。初始过滤态 = 各列默认值;面板「重置」= 恢复该列默认(没有默认就清除);
-   chips 行末按钮在有默认值的表上叫「恢复默认」(全部列恢复各自默认,没默认的清空),否则「清除全部」(FilterChips.vue:158、useFilters.ts:32) */
+   chips 行末按钮在有默认值的表上叫「恢复默认」(全部列恢复各自默认,没默认的清空),否则「清除全部」(FilterChips.vue、useFilters.ts) */
 const H_DEFAULTS = { filter: { status: { logic: 'and', conditions: [{ op: 'equal', value: '未审核' }] } }, sort: {} };
 const cloneFv = (fv) => JSON.parse(JSON.stringify(fv));
 const hasDefaults = (mod) => Object.keys(H_DEFAULTS[mod] ?? {}).length > 0;
@@ -2984,7 +2888,7 @@ const hfCount = (key) => HS().fv[key]?.conditions.length ?? 0;
 const hfColsActive = () => Object.keys(HS().fv).length;
 /* 列头面板 / 抽屉里的选项与值在窄档全部取 40px 触控尺寸(CSS 处理);popover 用 sm */
 /* ---- 列宽拖拽 ----
-   库能力:resizable 默认 false、下限 resizeMinWidth = 60(config.ts:82-84)、配合 storageKey 记住宽度、拖过后冻结各列宽度;原型里宿主开启 resizable。剩余宽度由最后一个数据列吸收(不设占位列,见设计文档 3.11)。
+   库能力:resizable 默认 false、下限 resizeMinWidth = 60(config.ts)、配合 storageKey 记住宽度、拖过后冻结各列宽度;原型里宿主开启 resizable。剩余宽度由最后一个数据列吸收(不设占位列,见设计文档 3.11)。
    官方把手:data-table-resize-button 容器宽 8px、居中线宽 2px 高 50%、悬停 / 拖动时线变 thIconColorActive(styles/_common.mjs:10-11、data-table/src/styles/index.cssr.mjs:172-195)。 */
 const RESIZE_MIN = 60;
 const isFrozen = () => Object.keys(state.colW).length > 0;
@@ -2993,7 +2897,7 @@ const cw = (c) => state.colW[c.key] ?? Math.max(hdrMod() ? hdrColW(c) : c.w, col
 /* 拖拽下限:库默认 60;有排序 / 过滤图标的表头,还要放得下「标题两个字 + 图标簇」,否则图标会被标题盖住或被截断 */
 const colMin = (c) => (hdrMod() ? Math.max(RESIZE_MIN, 12 + 44 + 30 + (sortable(c.key) ? 21 : 0) + 16) : RESIZE_MIN);   // 标题留 44px = 两个字 + 省略号
 /* 拖过列宽后吸收剩余宽度的列 = 最后一个数据列(不钉宽度,col 不写 width)。「操作」代表右侧固定的操作列,不能当填充:
-   官方算固定列偏移时,没有数字宽度的固定列按 0 算(data-table/src/use-scroll.mjs:34-78),库也因此给固定列补最小宽度(useColumns.ts:286) */
+   官方算固定列偏移时,没有数字宽度的固定列按 0 算(data-table/src/use-scroll.mjs:34-78),库也因此给固定列补最小宽度(useColumns.ts) */
 /* 吸收列 = 最后一个可见、非固定的数据列(固定列不能当吸收列);全部固定时退回最后一个数据列 */
 const fillColKey = (cols) => (cols.slice().reverse().find(c => !fixedOf(c.key)) ?? cols[cols.length - 1])?.key;
 const tableMinW = () => colPlan().reduce((n, it) => n + it.w, 0);
@@ -3020,7 +2924,7 @@ function pageInfo() {
   return { total: r.total, size: pg.size, count, page: pg.page, loading: r.loading, loaded: r.loaded,
     startIndex: start, endIndex: start + r.items.length - 1, slice: r.items };
 }
-const firstPage = (k) => { state.pager[k].page = 1; };   // 筛选条件变了 -> 回第 1 页(对齐库远程模式 search()/reset() 的 page = 1,useSmartTable.ts:60-72)
+const firstPage = (k) => { state.pager[k].page = 1; };   // 筛选条件变了 -> 回第 1 页(对齐库远程模式 search()/reset() 的 page = 1,useSmartTable.ts)
 
 /* 翻页:返回页码是否真的变了(同页不触发,对齐 Pagination.mjs doUpdatePage) */
 function goPage(p) {
@@ -3093,7 +2997,7 @@ function delRow(no) {
   return true;
 }
 
-/* 批量审核:勾选行的状态改为「已审核」,返回真正发生变化的行数;完成后取消选择 */
+/* 批量审核:把勾选行的状态置为「已审核」,返回真正发生变化的行数;完成后取消选择 */
 function batchApprove() {
   let n = 0;
   DATA.forEach(r => { if (state.checked.includes(r.no) && r.status === '未审核') { r.status = '已审核'; n++; } });
@@ -3143,7 +3047,7 @@ function doSfSearch() {
   pruneChecked(true);
 }
 function doSfReset() {
-  state.sf = sfDefault();          // 重置 = 恢复 search.defaultValue(没有默认值的字段清空),不是一律清空(useSmartTable.ts:65-73)
+  state.sf = sfDefault();          // 重置 = 恢复 search.defaultValue(没有默认值的字段清空),不是一律清空(useSmartTable.ts)
   state.sfApplied = sfClone(state.sf);
   state.open = null;
   firstPage(state.mod);
@@ -3190,7 +3094,7 @@ function checkHtml(on, half, act, v) {
     : '';
   return `<span class="${cls}"${attr}>${on ? I_CHECK : half ? I_DASH : ''}</span>`;
 }
-const valText = (v) => (Array.isArray(v) ? v.join(', ') : String(v ?? ''));   // chips 里数组值用「, 」连接(filterChips.ts:25-29)
+const valText = (v) => (Array.isArray(v) ? v.join(', ') : String(v ?? ''));   // chips 里数组值用「, 」连接(filterChips.ts)
 const badgeHtml = (n) => `<span class="badge">${n}</span>`;
 
 
@@ -3464,7 +3368,7 @@ function restoreFocus(f) {
 
 
 /* ============================================================
-   模块 9:新增 / 编辑 / 删除(CRUD)
+   模块 9:增删改弹窗(CRUD)
    行为对照 src/useTableCrud.ts 与 playground/DemoCrud.vue:openCreate / openEdit(row)→ 表单回填;submit() 带 submitting;成功关窗 + 提示 + 刷新(新增回第 1 页、编辑停在当前页);
    失败保窗 + message.error。弹窗 = NModal preset="card"(宽 480、NForm label-placement=left label-width=80、footer 取消 / 保存);窄档改底部抽屉(与列头过滤抽屉一致)。
    批量删除确认 = NDialog warning;行内删除确认 = NPopconfirm(见 pcOpen)。所有模块的「新增 / 编辑」共用这一个弹窗(模块 2 的「新增」也接到这里)。
@@ -3559,7 +3463,7 @@ function modalRootHtml() {
     <div class="mc-foot">${foot}</div></div></div></div>`;
 }
 
-/* 状态列:字典 value → label + 语义色 NTag(tag: true + tagType):已审核 success、未审核 warning、已关闭 default;金额 format: 'money' 千分位两位小数(format.ts:32-36) */
+/* 状态列:字典 value → label + 语义色 NTag(tag: true + tagType):已审核 success、未审核 warning、已关闭 default;金额 format: 'money' 千分位两位小数(format.ts) */
 const STATUS_CLS = { '已审核': '', '未审核': ' warn', '已关闭': ' off' };
 const fmtMoney = (v) => Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 function cellHtml(c, r) {
@@ -3647,7 +3551,7 @@ function condRowHtml(c, id, opts = {}) {
 }
 
 /* 多条件面板(宽/中档的气泡内容):第 1 行就是工具栏主行的同一条条件,所以字段 / 比较符 / 值 / 引导占位 / 底部三个按钮都与主行同档(medium,不加 sm),
-   两种高度并排会错位(issue #11);删除条件是圆形小图标按钮,不随档 */
+   两种高度并排会错位;删除条件是圆形小图标按钮,不随档 */
 function condPanelHtml() {
   const rows = state.more.map((c, i) => {
     const id = `m${i}`;
@@ -4148,7 +4052,7 @@ function condNarrowHtml(narrowLabel = '筛选', cls = '') {
       <span class="pop-wrap"><button class="n-btn sec" data-act="togglePanel">${I_BTN_FILTER}${narrowLabel}</button>${n > 0 ? badgeHtml(n) : ''}</span>
     </div>`;
 }
-/* 工具栏标题是可选的(设计 2.1):单表页面页顶已有页面标题,不再重复表名;同页多张表(模块 11 / 12)与带单据身份的标题(模块 14)才传 */
+/* 工具栏标题是可选的(设计 2.1):单表页面页顶已有页面标题,工具栏不重复表名;同页多张表(模块 11 / 12)与带单据身份的标题(模块 14)才传 */
 const tbTitleHtml = (t) => t ? `<h3 class="st-title tb-title">${t}</h3>` : '';
 function normalBarHtml() {
   if (!hasCond()) {
@@ -4220,7 +4124,7 @@ function chipsHtml() {
    宿主的主操作「新增」是本屏唯一主色按钮。窄档没有表头(卡片列表),筛选 / 排序的入口是第 2 行的两个文字按钮(与模块 2 窄档的「输入框 + 筛选」同一行位,行数不变) */
 function hdrBarHtml() {
   const nf = hfColsActive(), ns = HS().sorts.length;
-  /* #toolbar 左侧插槽:模块 3 在标题旁放一个宿主的快捷过滤按钮「我负责的」(经 setFilter 写负责人列的过滤值);窄档不再由宿主另收进「操作」展开行,库让 #toolbar 槽独占头部一行(设计 2.16) */
+  /* #toolbar 左侧插槽:模块 3 在标题旁放一个宿主的快捷过滤按钮「我负责的」(经 setFilter 写负责人列的过滤值);窄档由库让 #toolbar 槽独占头部一行,宿主不必另收进「操作」展开行(设计 2.16) */
   const mine = HS().fv.owner?.conditions.length === 1 && HS().fv.owner.conditions[0].op === 'equal' && HS().fv.owner.conditions[0].value === '张伟';
   const mk = (cls) => `<button class="n-btn ${mine ? 'tint' : 'sec'} ${cls}" data-act="mine" aria-pressed="${mine}">${I_BTN_USER}我负责的</button>`;
   const slot = state.mod === 'filter' ? mk('') : '';
@@ -4294,7 +4198,7 @@ function hpRowHtml(c, i, f) {
   return `<div class="hp-row">${lead}${op}${hpValHtml(c, i, f)}${del}</div>`;
 }
 
-/* 官方单选过滤(filterMultiple: false)用 NRadio;多选用 NCheckbox,且 >1 个选项时第一行是「全选」(ColumnFilter.vue:205-214) */
+/* 官方单选过滤(filterMultiple: false)用 NRadio;多选用 NCheckbox,且 >1 个选项时第一行是「全选」(ColumnFilter.vue) */
 const H_SINGLE = { filter: { dept: true } };   // 模块 3:部门是单选勾选列(filter.multiple: false)
 const H_CUSTOM = { filter: { owner: true } };  // 模块 3:负责人用宿主自定义面板(filter.render)
 const OWNERS = ['张伟', '李娜', '王强', '刘洋', '陈静', '赵磊', '周敏', '吴凡', '郑浩', '孙婷', '黄磊', '何欣'];
@@ -4490,23 +4394,20 @@ function measureTb(w) {
    渲染
    ============================================================ */
 function renderMods() {
-  const en = state.lang === 'en', hl = en ? 'Highlight' : '亮点', inDoc = !!state.view;
-  /* 版本行:v3.0.0 +「升级变更」入口(文字链接,不占目录高度) */
-  $('verLine').innerHTML = `v3.0.1 · 2026-10-04 · <button class="ver-link ${state.view === 'changes' ? 'on' : ''}" data-act="view" data-v="changes">${en ? 'Upgrade notes' : '升级变更'}</button>`;
-  /* 宽档两级目录:组名小标题 + 全部子页(当前子页高亮;★ = 亮点;状态徽标只在「提议 / 待议」时出);在文档页时不高亮任何子页 */
+  const en = state.lang === 'en', hl = en ? 'Highlight' : '亮点';
+  /* 宽档两级目录:组名小标题 + 全部子页(当前子页高亮;★ = 亮点;状态徽标只在「提议 / 待议」时出) */
   $('modList').innerHTML = GROUPS.map((g) => `<div class="nav-h">${navName(g)}</div>` + g.keys.map((k) => {
     const m = MODULES[k];
-    return `<button class="mod ${k === state.mod && !inDoc ? 'on' : ''}" data-act="mod" data-v="${k}">
+    return `<button class="mod ${k === state.mod ? 'on' : ''}" data-act="mod" data-v="${k}">
       <span class="nm">${navName(m)}</span>${m.hl ? `<span class="hl" title="${hl}" aria-label="${hl}">★</span>` : ''}${m.status !== 'done' ? `<span class="st ${m.status}">${en ? STATUS_EN[m.status] : STATUS_TXT[m.status]}</span>` : ''}
     </button>`;
   }).join('')).join('');
-  /* 窄档分组条:点分组 = 进入其第一个子页(已在组内则保持当前子页);末尾是「升级变更」(窄档版本行随侧栏隐藏) */
-  const cur = inDoc ? null : groupOf(state.mod);
-  $('grpBar').innerHTML = GROUPS.map((g) => `<button class="mod ${cur === g ? 'on' : ''}" data-act="mod" data-v="${cur === g ? state.mod : g.keys[0]}"><span class="nm">${navName(g)}</span></button>`).join('')
-    + `<button class="mod ${state.view === 'changes' ? 'on' : ''}" data-act="view" data-v="changes"><span class="nm">${en ? 'Upgrade notes' : '升级变更'}</span></button>`;
+  /* 窄档分组条:点分组 = 进入其第一个子页(已在组内则保持当前子页) */
+  const cur = groupOf(state.mod);
+  $('grpBar').innerHTML = GROUPS.map((g) => `<button class="mod ${cur === g ? 'on' : ''}" data-act="mod" data-v="${cur === g ? state.mod : g.keys[0]}"><span class="nm">${navName(g)}</span></button>`).join('');
 }
 
-/* 侧栏下半:只有主题切换(外壳自身的控件) */
+/* 侧栏下半「全局设置」:本函数只含明暗开关;完整的四行开关(明暗 / 语言 / 页面底色 / 密度)由文件后部重新赋值的 renderSidePanel 渲染 */
 function renderSidePanel() {
   $('modPanel').innerHTML = `<div class="group-title">全局设置</div>
     <div class="mini">
@@ -4516,17 +4417,6 @@ function renderSidePanel() {
 }
 
 function renderStage() {
-  if (state.view === 'changes') {   // 外壳文档页:不挂表格(#preview 不存在时 renderPreview / resize 都会直接返回)
-    const en = state.lang === 'en';
-    $('crumb').innerHTML = `<span>SmartTable 设计方案</span> / <span data-raw>${en ? 'Upgrade notes' : '升级变更'}</span>`;
-    $('stageName').textContent = en ? '2.1.1 → 3.0.0 upgrade notes' : '2.1.1 → 3.0.0 升级变更';
-    $('subTabs').innerHTML = '';
-    $('stageHead').toggleAttribute('data-sub', false);
-    $('stageDesc').textContent = '';
-    $('stage').toggleAttribute('data-nat', true); $('stage').toggleAttribute('data-rowclick', false);
-    $('stage').innerHTML = `<div class="viewport">${changesHtml()}</div>`;
-    return;
-  }
   const mod = MODULES[state.mod], g = groupOf(state.mod);
   /* 面包屑 = SmartTable 设计方案 / 分组名 / 子页名(不带编号);i18n 不属于任何分组,只有两段。分组名 / 子页名按语言直接出(data-raw) */
   $('crumb').innerHTML = `<span>SmartTable 设计方案</span>${g ? ` / <span data-raw>${navName(g)}</span>` : ''} / <span data-raw>${navName(mod)}</span>`;
@@ -4537,7 +4427,7 @@ function renderStage() {
   $('subTabs').innerHTML = subs.map((k) => `<button class="subtab ${k === state.mod ? 'on' : ''}" data-act="mod" data-v="${k}" data-raw>${navName(MODULES[k])}</button>`).join('');
   $('stageHead').toggleAttribute('data-sub', subs.length > 0);
 
-  /* 四个模块的舞台都只有一个真实的宿主页面区域,没有任何说明 */
+  /* 各模块的舞台都只有一个真实的宿主页面区域,没有任何说明 */
   $('stageDesc').textContent = '';
   $('stage').toggleAttribute('data-nat', !!MCx().natural); $('stage').toggleAttribute('data-rowclick', !!MCx().rowClick);
   $('stage').innerHTML = `<div class="viewport"><div id="preview"></div></div>`;
@@ -4569,7 +4459,7 @@ function renderPreview() {
   const el = $('preview');
   if (!el) { renderOverlay(); return; }
 
-  /* 1. 渲染前先量:容器宽度定档位;换 DOM 之前记下工具栏高度给批量栏占位 */
+  /* 1. 渲染前先量:容器宽度定档位;换 DOM 前记下工具栏高度给批量栏占位 */
   const w = previewW(el);
   if (w > 0) state.tier = tierOf(w);
   if (state.tier !== 'narrow') state.sd = null;   // 排序抽屉只属于窄档
@@ -4622,7 +4512,7 @@ function ovSync(ov, cls, html, keep) {
   const el = t.content.firstElementChild;
   el.__html = html;
   if (cur) {
-    const top = cur.querySelector('.sheet-body')?.scrollTop ?? 0;   // 抽屉整体被换掉,内部滚动位置要带过去
+    const top = cur.querySelector('.sheet-body')?.scrollTop ?? 0;   // 抽屉整体被换掉,内部滚动位置要带到新抽屉
     cur.replaceWith(el);
     const body = el.querySelector('.sheet-body');
     if (body && top) body.scrollTop = top;
@@ -4773,7 +4663,7 @@ function exportCsv() {
 
 /* 切模块 = 宿主重新挂载表格:勾选清空;挂载即请求(immediate 默认 true;模块 8 是 immediate: false,等点「搜索」);模块 6 的部门字典是异步的 */
 function enterModule(m) {
-  state.mod = m; state.view = null; closeFloats();
+  state.mod = m; closeFloats();
   state.tbW = 0;                                   // 各模块的工具栏高度不同,占位高度要重新量
   state.checked = [];
   state.crud = null; state.dlg = null;
@@ -4785,7 +4675,6 @@ function enterModule(m) {
 function runAct(act, v) {
   switch (act) {
     case 'mod': enterModule(v); return;
-    case 'view': state.view = v; closeFloats(); state.crud = null; state.dlg = null; state.drawer = null; state.pick = null; render(); trFlush(); return;   // 外壳文档页(升级变更)
     case 'theme':  state.theme = v; document.documentElement.dataset.theme = v; render(); return;
 
     /* 筛选 */
@@ -4903,7 +4792,7 @@ function runAct(act, v) {
       if (state.fixed[k] === side) delete state.fixed[k]; else state.fixed[k] = side;
       csSave(); redraw(); return;
     }
-    case 'colReset':   // 恢复默认:顺序 / 显隐 / 固定 / 列宽全部还原(ColumnSettings.vue + SmartTable.vue:308-312)
+    case 'colReset':   // 恢复默认:顺序 / 显隐 / 固定 / 列宽全部还原(ColumnSettings.vue + SmartTable.vue)
       state.cs[state.mod] = csFresh(state.mod); csClear();   // 同时清掉 storageKey 里存的
       redraw(); return;
     case 'refresh': requery(); return;   // 刷新的反馈 = 表格 loading(库没有消息提示)
@@ -5143,7 +5032,7 @@ document.addEventListener('click', (e) => {
         const i = Number(rest[0]), v2 = rest.slice(1).join(':'), c = d.conds[i];
         if (id === 'op' && c) {
           const multi = (o) => ['in', 'notIn'].includes(o);
-          if (VALUELESS.has(v2) || multi(v2) !== multi(c.op)) c.value = multi(v2) ? [] : '';   // 换比较符后值的形态(标量 / 数组 / 无值)不再适用就清空,不猜测转换
+          if (VALUELESS.has(v2) || multi(v2) !== multi(c.op)) c.value = multi(v2) ? [] : '';   // 换比较符后值的形态(标量 / 数组 / 无值)与新比较符不匹配就清空,不猜测转换
           c.op = v2;
         } else if (id === 'logic') d.logic = v2;   // 且 / 或是按列一个值(FilterValue.logic)
         else if (id === 'val' && c) c.value = v2;
@@ -5399,14 +5288,11 @@ document.addEventListener('change', (e) => {
    ============================================================ */
 state.lang = 'zh';
 state.pageBg = 'gray';
-state.view = null;   // 外壳文档页:null = 显示当前模块;'changes' = 升级变更页(runAct('view'),enterModule 时清回 null)
 const EN_PAIRS = [
   // 外壳
-  ['SmartTable 设计方案', 'SmartTable Design Spec'], ['设计模块', 'Design Modules'], ['全局设置', 'Global settings'], ['主题', 'Theme'], ['明暗', 'Mode'], ['语言', 'Language'], ['页面底色', 'Page background'], ['密度', 'Density'],
+  ['SmartTable 设计方案', 'SmartTable Design Spec'], ['设计模块', 'Design Modules'], ['全局设置', 'Global settings'], ['明暗', 'Mode'], ['语言', 'Language'], ['页面底色', 'Page background'], ['密度', 'Density'],
   ['浅色', 'Light'], ['深色', 'Dark'], ['灰', 'Gray'], ['白', 'White'], ['紧凑', 'Compact'], ['舒适', 'Comfortable'], ['已定', 'Final'], ['提议', 'Proposed'],
-  ['搜索区布局', 'Search Area'], ['按钮与工具栏', 'Toolbar'], ['过滤筛选', 'Filtering'], ['排序', 'Sorting'], ['列类型与宽表', 'Column Types'],
-  ['字典与格式化', 'Dictionaries'], ['列设置与持久化', 'Column Settings'], ['数据状态', 'Data States'], ['新增 / 编辑 / 删除', 'CRUD'],
-  ['行拖拽排序', 'Row Drag'], ['主从联动与行交互', 'Master-Detail'], ['精简与嵌入形态', 'Embedded'], ['多语言与页面底色', 'Language & Bg'],
+  ['排序', 'Sorting'],
   // 表格 / 工具栏
   ['物料单据', 'Material Documents'], ['物料清单', 'Material List'], ['物料字典', 'Material Dictionary'], ['新增', 'Add'], ['更多', 'More'], ['导出所选', 'Export selected'], ['导出', 'Export'], ['导入', 'Import'],
   ['下载导入模板', 'Download template'], ['已下载导入模板', 'Template downloaded'], ['刷新', 'Refresh'], ['列设置', 'Columns'], ['放大', 'Maximize'], ['还原', 'Restore'], ['操作', 'Actions'],
@@ -5549,7 +5435,7 @@ function setLang(l) {
 }
 
 /* ============================================================
-   外壳开关 + 模块 10(行拖拽)· 11(主从联动与行交互)· 12(精简与嵌入形态)· 13(多语言与页面底色,表格复用引擎)
+   外壳开关 + 模块 10(行拖拽排序)· 11(主从联动)· 12(上下布局)· 13(多语言与页面底色,表格复用引擎)
    ============================================================ */
 
 /* ---- 外壳:侧栏「全局设置」组 = 明暗 + 语言 + 页面底色 + 个人密度。对所有模块生效 ---- */
@@ -5598,8 +5484,8 @@ const msPaneW = (w) => (w < 720 ? w : w - msSideW(w) - 16);
 
 /* ============================================================
    模块 10:行拖拽排序(rowDraggable + dragHandle,@row-drag-sort)
-   库:src/useRowDrag.ts(sortablejs 懒加载,animation 150、handle 选择器、onEnd 里直接重排行数组并 emit rowDragSort { from, to, reordered });SmartTable.vue:72-73、521-527;
-   手柄图标 = 库的 DragIcon(icons.ts:34-38,2×3 点阵);库不自动加手柄列,宿主自己加一列并给 dragHandle 选择器。
+   库:src/useRowDrag.ts(sortablejs 懒加载,animation 150、handle 选择器、onEnd 里直接重排行数组并 emit rowDragSort { from, to, reordered });SmartTable.vue;
+   手柄图标 = 库的 DragIcon(icons.ts,2×3 点阵);库不自动加手柄列,宿主自己加一列并给 dragHandle 选择器。
    原型用指针事件手写等价物(sortablejs 的拖影 / 占位 / 150ms 位移动画);窄档卡片模式:保留拖拽(手柄 44×44 触控目标),不另开「排序模式」—— 最简方案。
    ============================================================ */
 function dragPageHtml() {
@@ -5679,8 +5565,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ============================================================
-   模块 11:主从联动与行交互
-   库:`params`(变化后回第 1 页重查,useSmartTable.ts:60-72 / SmartTable.vue params)联动、`active-row-key` 行高亮(SmartTable.vue:71、448-470、668-672)+ `@row-click`;
+   模块 11:主从联动
+   库:`params`(变化后回第 1 页重查,useSmartTable.ts / SmartTable.vue params)联动、`active-row-key` 行高亮(SmartTable.vue)+ `@row-click`;
    宿主:左侧部门 NTree(官方 tree/src/styles/index.cssr.mjs、tree/styles/light.mjs)、右侧 NDrawer 详情(drawer/styles/light.mjs)+ NDescriptions(descriptions/styles/_common.mjs)。
    宽:树 240 + 表;中:树 200;窄(< 720):树退化为表格上方的下拉(NTreeSelect 的样子)。
    ============================================================ */
@@ -5734,9 +5620,9 @@ function drawerHtml() {
 }
 
 /* ============================================================
-   模块 12:精简与嵌入形态
+   模块 12:上下布局
    ① 下方「入库明细」子表:search:false · toolbar:false · pagination:false · striped(tdColorStriped,data-table/styles/light.mjs:48)+ 合计行(summary,Body.mjs:494-517);
-   ② 「选择物料」弹窗:search.layout:'inline'(无卡片,单行自动换行,SearchForm.vue:120-133)+ 勾选 + toolbar:false + 每页 8 行(simple 分页);窄档改底部抽屉;
+   ② 「选择物料」弹窗:search.layout:'inline'(无卡片,单行自动换行,SearchForm.vue)+ 勾选 + toolbar:false + 每页 8 行(simple 分页);窄档改底部抽屉;
    ③ 页面恒为一屏、不整页滚动(设计 12.3):上方「物料单据」大表 = 与其它模块相同的 fillHeight + 虚拟滚动,吃掉除下方子表外的全部剩余高度;
       下方「入库明细」子表自然高度、封顶(.sub-card .tbl-scroll 的 max-height),超出在子表内部滚动,表头吸顶、合计行吸底。
    ============================================================ */
@@ -5807,7 +5693,7 @@ const _setPageSize = setPageSize;
 setPageSize = function (n) { const ch = _setPageSize(n); if (ch) natScroll(); return ch; };
 
 /* ============================================================
-   模块 15:树形表格(设计 2.17,提议)—— 窄档卡片认 children-key
+   模块 15:树形表格(设计 2.17,已定)—— 窄档卡片认 children-key
    库:卡片列表读官方 NDataTable 的 children-key / indent / expanded-row-keys / default-expanded-row-keys / cascade,没有新增属性。
    官方树语义(naive-ui 2.45.3 es/data-table/src,卡片模式照此对齐):分页只切根节点(use-table-data.mjs:153-159)、排序与列头过滤只作用于根节点
    (use-sorter.mjs:55-81、use-table-data.mjs:69-105)、勾选按 cascade 级联(use-check.mjs:96-141)、展开键集与 type: 'expand' 列共用(use-expand.mjs:21-39)。
@@ -6039,7 +5925,7 @@ findFid = function (fid) { return fid.startsWith('pin:') ? document.querySelecto
 /*B4-BEGIN*/
 /* ============================================================
    模块 14 · 可编辑表格 —— 交互
-   模型:「选中格 → 进入编辑」+ 批量保存。草稿直接写在数据层(XL_DATA 的行对象),state.xl.orig 记「改之前的值」,所以搜索 / 翻页 / 重新请求都不会丢草稿;
+   模型:「选中格 → 进入编辑」+ 批量保存。草稿直接写在数据层(XL_DATA 的行对象),state.xl.orig 记「改动前的值」,所以搜索 / 翻页 / 重新请求都不会丢草稿;
    新增行 = state.xl.news(待保存),删除 = state.xl.dels(待保存,行划线淡化)。「保存修改(N)」的 N = 改过的格 + 新增行 + 待删行(新增 / 待删行里改的格不重复计)。
    宽 / 中档:表格逐格编辑;窄档(< 600):不逐格编辑,点卡片 → 底部抽屉表单(控件按同一套推断生成),抽屉里的「保存」是整行的即时保存。
    ============================================================ */
@@ -6352,7 +6238,7 @@ const XL_ST_COLS = [
 ];
 const XL_ST_PH = XL_ST_COLS.slice(0, 3).map((c, i) => (i ? c.l.replace(/^工序/, '') : c.l)).join('/');   // 占位符由可搜索的列自动拼:「工序编码/名称/工作中心」
 function xlStInit(cur) {
-  return { q: '', page: 1, size: PAGER_CFG.defaultPageSize, sizeOpen: false, hl: -1 };   // 每页 100(可选 100 / 1000 / 10000 = PAGER_CFG,同 D4 的 fillHeight 档):36 行一页放完;打开时滚到当前值所在行(xlStScroll),选中行高亮
+  return { q: '', page: 1, size: PAGER_CFG.defaultPageSize, sizeOpen: false, hl: -1 };   // 每页 100(可选 100 / 1000 / 10000 = PAGER_CFG,即开了 fillHeight 的档):36 行一页放完;打开时滚到当前值所在行(xlStScroll),选中行高亮
 }
 const xlSt = () => state.xl.form?.st ?? (state.xl.edit?.kind === 'select-table' ? state.xl.st : null);
 /* 打开时判断气泡放不放得下:横向(触发格起始对齐、末端对齐都会伸出视口)或纵向(触发格上方、下方都没有一个面板高度的空间)放不下,就改用底部面板,与窄档同一块面板、不画箭头。官方 NPopover 只会在 -start / -end、top / bottom 之间翻转,不会夹进视口 */
@@ -6630,7 +6516,7 @@ function xfSave() {
     let n = 0;
     if (f.isNew) { XL_DATA.push({ no: f.no, ...out }); n = 1; firstPage('excel'); }
     else {
-      const row = xlRow(f.no), base = { ...row, ...(x.orig[f.no] ?? {}) };   // 与「改之前的值」比,草稿里已改的格也算这次保存的
+      const row = xlRow(f.no), base = { ...row, ...(x.orig[f.no] ?? {}) };   // 与「改动前的值」比,草稿里已改的格也算这次保存的
       for (const k of Object.keys(out)) if (!xlEq(base[k], out[k])) n++;
       Object.assign(row, out); delete x.orig[f.no];
     }
@@ -6655,7 +6541,7 @@ function b4Act(act, v) {
   }
   return false;
 }
-const xlOn = () => state.mod === 'excel' && !state.view;
+const xlOn = () => state.mod === 'excel';
 const xlStop = (e) => { e.preventDefault(); e.stopImmediatePropagation(); };
 
 /* 点击(捕获阶段,先于原型原有的全局点击处理):下拉选项 / 点到编辑格之外 = 提交 / 点单元格 = 选中 → 再点 = 编辑 / 复选框直接切换 / 窄档点卡片开抽屉 */
