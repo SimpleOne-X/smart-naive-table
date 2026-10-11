@@ -11,6 +11,7 @@ import { MOCK_DELAY } from '../../playground/prototype/fetcher'
 import ProtoApp from '../../playground/prototype/ProtoApp.vue'
 import { SmartTable } from '../../src/index'
 import type { SmartTableParams } from '../../src/types'
+import { waitUntil } from './_wait'
 
 // 模块 6「字典、标签与格式化」:数据(编码 + 时间戳 + ISO 串 + null)、后端(字典编码 / 日期取值求值)、对照页的字典翻译 / 标签 / 格式化 / 空值占位 / 初始隐藏列。
 MOCK_DELAY.ms = 0
@@ -129,11 +130,7 @@ describe('模块 6 对照页(ProtoApp ?m=6:真实库渲染)', () => {
       },
       { attachTo: document.body },
     )
-    for (let i = 0; i < 10; i++) {
-      await flushPromises()
-      if (w.findAll('.n-data-table-tbody .n-data-table-tr').length > 3) break
-      await new Promise((r) => setTimeout(r, 20))
-    }
+    await waitUntil(() => w.findAll('.n-data-table-tbody .n-data-table-tr').length > 3)
     return w
   }
   const cellsOf = (w: ReturnType<typeof mount>, row: number) =>
