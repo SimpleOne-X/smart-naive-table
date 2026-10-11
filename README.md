@@ -44,13 +44,9 @@
   <a href="#快速开始">快速开始</a> ·
   <a href="#常用写法">常用写法</a> ·
   <a href="#api-速查">API</a> ·
-  <a href="#里程碑">里程碑</a> ·
+  <a href="#已知限制">已知限制</a> ·
   <a href="#文档索引">文档</a>
 </p>
-
-> **版本状态**：当前是 `3.2.0`（npm `latest`）。3.0 是 major 升级，不改任何代码也会有行为变化，升级步骤见 [MIGRATION.md](./MIGRATION.md)；本页描述的是 3.0 的当前实现，进度与未完成项见[里程碑](#里程碑)。
->
-> **从 2.x 升级？** 3.0.0 相对 2.x 有破坏性变更（涉及默认值与外观，如默认每页条数、分页形态），请先看 [升级指南 MIGRATION.md](./MIGRATION.md)。
 
 ## 亮点
 
@@ -75,12 +71,12 @@
 
 ## 功能清单
 
-下表按「组件预览」的 14 个模块组织（侧栏 查询 / 列 / 行 / 数据 / 布局 五组）。**预览**列写的是模块号：`npm run dev` 后打开 `http://localhost:5173/prototype.html?m=<模块号>`（`&theme=dark` 切暗色），就能看到对应功能的真实表现；窄档在浏览器里把窗口缩到 400 宽左右即可。预览列写「—」的是预览没有单独模块、但库里有实现的能力。带 ★ 的是最值得一试的几项。
+下表按「组件预览」的 15 个模块组织（侧栏 查询 / 列 / 行 / 数据 / 布局 五组）。**预览**列写的是模块号：`npm run dev` 后打开 `http://localhost:5173/prototype.html?m=<模块号>`（`&theme=dark` 切暗色），就能看到对应功能的真实表现；窄档在浏览器里把窗口缩到 400 宽左右即可。预览列写「—」的是预览没有单独模块、但库里有实现的能力。带 ★ 的是最值得一试的几项。
 
 | 分组 | 功能 | 怎么开 | 预览 |
 |---|---|---|---|
 | **表格基础** | 远程 `fetcher` / 静态 `data` 两种数据源：请求防竞态、空参数剔除、失败时页码还原、`@error`、空状态、`immediate: false` 首屏不请求 | `fetcher` / `data` | m8 |
-| | 分页：官方 `simple` 分页，默认每页 100，可选项随 `fill-height` 区分；不开 `fill-height` 时翻页自动回卡片顶部 | 默认 | m2–m14 |
+| | 分页：官方 `simple` 分页，默认每页 100，可选项随 `fill-height` 区分；不开 `fill-height` 时翻页自动回卡片顶部 | 默认 | m2–m15 |
 | | 勾选、展开行、序号列、合计行（`summary`）、多级表头、固定列 | `type: 'selection' / 'expand' / 'index'`、`children`、`fixed` | m5 |
 | **查询与过滤** | 搜索表单：列上 `search`，自动选控件（输入 / 数字 / 下拉 / 日期 / 日期范围 / 开关 / 自定义），可折叠 / 单行 | `search: true` | m1 |
 | | ★ 条件搜索：「字段 + 比较符 + 值」条件构造器，并入表格卡片，点「更多条件」展开多条件面板 | `:search="{ container: 'table' }"` | m2 |
@@ -88,9 +84,10 @@
 | | 多列排序：本地 / 服务端，默认排序，`sort()` / `clearSorter()` | `sorter: { multiple: n }` | m4 |
 | **列** | ★ 字典、标签与格式化：状态翻译成彩色标签，日期 / 金额格式化，异步字典自动去重，空值占位 | `options` + `tag` / `format` | m6 |
 | | ★ 列设置：显隐、拖拽排序、左右固定、记住用户设置、恢复默认；列宽拖拽 | `storage-key`、`resizable` | m7、m6 |
-| **窄档（移动端）** | 窄档卡片列表、「操作 ▾」折叠、触控尺寸、筛选抽屉、排序抽屉、合计卡、卡片内勾选 / 展开 / 拖拽手柄；详见[移动端自适应](#移动端自适应) | `card-on-narrow` | m2–m14（390 宽） |
+| **窄档（移动端）** | 窄档卡片列表、「操作 ▾」折叠、触控尺寸、筛选抽屉、排序抽屉、合计卡、卡片内勾选 / 展开 / 拖拽手柄；详见[移动端自适应](#移动端自适应) | `card-on-narrow` | m2–m15（390 宽） |
 | **行** | 行拖拽排序：整行或手柄拖，松手发 `@row-drag-sort`，窄档卡片保留拖拽 | `row-draggable`、`drag-handle` | m10、m14 |
 | | 主从联动：外部条件联动（`params`）、当前行高亮、点击行联动详情 | `params`、`active-row-key`、`@row-click` | m11 |
+| | 树形表格：官方 `children-key` 树表；窄档卡片先序拍平、标题按层级缩进、带展开 / 折叠箭头，勾选按 `cascade` 级联 | `children-key`、`cascade`、`default-expanded-row-keys`（官方属性） | m15 |
 | **数据与编辑** | 增删改弹窗：`useTableCrud` 管理打开 / 提交 / 删除状态，弹窗和表单用你自己的 `n-modal` + `n-form`（预览里窄档改用底部抽屉） | `useTableCrud()` | m9 |
 | | ★ 可编辑表格：Excel 式单元格编辑，按数据类型推断控件，Excel 粘贴、撤销、行级只读、异步校验、批量保存 + 脏标记 + 放弃，可选即时保存；窄档点卡片开底部抽屉 | `editable` + `@save` | m14 |
 | | 下拉表格选择：独立组件 `SmartSelectTable`，也是可编辑表格 `select-table` 编辑器的内核（选一行同时填其它列） | `SmartSelectTable` / `editorProps` | m14（编辑器）；独立用法见 `/playground.html` |
@@ -151,25 +148,25 @@
 ```
 
 - **分档按容器宽度**（不是视口宽度）：库根节点宽度 < 600 为窄档，< 1280 为中档，其余为宽档；用 `ResizeObserver` 量根节点，嵌在侧栏 / 弹窗 / 放大层里也按它自己的宽度判定。中档与宽档的条件搜索栏所在工具栏是同一套排布：头部、条件栏、操作区排成一行，放得下就并排，放不下条件栏折到下一行；条件栏里的值输入框封顶 320px，可用 CSS 变量 `--smart-table-cond-value-max-width` 调。
-- **默认关闭**：不开 `card-on-narrow` 时，窄容器与宽容器是同一套表格与工具栏（窄容器下分页仍不画每页条数选择器）。
+- **默认关闭**：不开 `card-on-narrow` 时，窄容器与宽容器是同一套表格与工具栏（窄容器下分页也不画每页条数选择器）。
 - **卡片列表**：第一个数据列作卡片标题，其余列是两列「标签：值」，操作列（`card: 'action'`，缺省取最后一个 `fixed: 'right'` 的列）放在卡片底部；列上写 `card: 'title' | 'meta' | 'action' | 'handle' | false` 可覆盖；列设置里隐藏的列卡片里同样隐藏。点卡片 = `@row-click`，勾选框在卡片右上角，宿主绑的 `checked-row-keys` / `expanded-row-keys` 照常生效。
 - **触控尺寸**：工具栏按钮、输入框、分页项统一放大到 40px（官方 `large`）；窄档不画每页条数选择器，分页用官方 `simple`。
-- **工具栏折叠**：业务按钮（`#toolbar-right` + 「更多」）收成「操作 ▾」，点开在原位多出一行。宿主传了 `#toolbar` 时，头部（标题 + `#toolbar`）独占第一行、放不下就换行，「操作 ▾」靠左、内置图标靠右落到第二行（不传 `#toolbar` 仍是单行）。
+- **工具栏折叠**：业务按钮（`#toolbar-right` + 「更多」）收成「操作 ▾」，点开在原位多出一行。宿主传了 `#toolbar` 时，头部（标题 + `#toolbar`）独占第一行、放不下就换行，「操作 ▾」靠左、内置图标靠右落到第二行（不传 `#toolbar` 时是单行）。
 - **搜索收成「输入框 + 筛选」**：用条件构造器（`search: { container: 'table' }`）时，窄档只留一个输入框和「筛选」按钮，点「筛选」从底部抽屉展开同一份多条件面板。
 - **排序抽屉**：有可排序列时，工具栏最下面多一行「排序」按钮，点开底部抽屉，每列「无 / 升序 / 降序」（只能启停，不改优先级）。
 - **底部面板**：可编辑表格（`editable`）在窄档点卡片 = 底部抽屉表单（整行即时保存，其中的 `select-table` 字段点开贴底选择面板）；`SmartSelectTable` 在视口 < 600 或放不下浮层时也改用底部面板。
 - **行拖拽**：卡片保留拖拽，手柄列写 `card: 'handle'`，放在标题行最左；开了 `row-draggable` 的卡片在标题行末尾显示行号。
 - **合计卡**：宿主给了 naive 的 `summary`（合计行）时，窄档卡片列表末尾多一张「合计」卡。
-- **树表**：带 `children-key` 的树表在卡片里按先序拍平，标题按层级缩进（每层 `indent`，默认 16px），有子级的卡片标题前有展开 / 折叠箭头。读的都是 `NDataTable` 的官方属性（`children-key`、`indent`、`expanded-row-keys`、`default-expanded-row-keys`、`default-expand-all`、`cascade`），**没有新增属性**；分页 / 排序只作用于根行（同官方），勾选按 `cascade` 级联、父卡片半选。没绑 `expanded-row-keys` 时展开态由库持有（表格 ↔ 卡片切档不互通，绑上就互通）。没做：懒加载（`on-load`）、`check-strategy`、`row-draggable` / `editable` 与树同用。
+- **树表**：行里带 `children`（字段名取 `children-key`，默认 `children`）的树表在卡片里按先序拍平，标题按层级缩进（每层 `indent`，默认 16px），有子级的卡片标题前有展开 / 折叠箭头。读的都是 `NDataTable` 的官方属性（`children-key`、`indent`、`expanded-row-keys`、`default-expanded-row-keys`、`default-expand-all`、`cascade`），**不需要库自己的额外属性**；分页 / 排序只作用于根行（同官方），勾选按 `cascade` 级联、父卡片半选。没绑 `expanded-row-keys` 时展开态由库持有（表格 ↔ 卡片切档不互通，绑上就互通）。不支持：懒加载（`on-load`）、`check-strategy`、`row-draggable` / `editable` 与树同用。
 - **chips 与分页**：已生效条件 chips 在窄档单独占一行、放在分页上方。
-- **没做的**：列头漏斗的窄档抽屉（卡片模式没有表头，漏斗没有入口；需要筛选请用条件构造器）；卡片列表不做虚拟滚动（窄档不能改每页条数，默认每页 100）。列设置在窄档仍是气泡，不是抽屉。
+- **限制**：列头漏斗的窄档抽屉（卡片模式没有表头，漏斗没有入口；需要筛选请用条件构造器）；卡片列表不做虚拟滚动（窄档不能改每页条数，默认每页 100）。列设置在窄档是气泡，不是抽屉。
 
 > 预览里 15 个模块的主表都带 `card-on-narrow`（窗口缩到 400 宽左右，或用浏览器的设备模拟 390 × 844）：模块 2 / 3 / 4 看条件搜索、筛选抽屉与排序抽屉，模块 10 看卡片里的拖拽手柄，模块 14 看卡片点开的底部抽屉表单，模块 15 看树表卡片（展开 / 折叠、级联勾选）。
 
 ## 安装
 
 ```bash
-npm i smart-naive-table   # 3.2.0；仍要用 2.x 时装 smart-naive-table@2
+npm i smart-naive-table
 ```
 
 项目中需已安装 `vue >= 3.3` 和 `naive-ui >= 2.44`（`peerDependencies` 是 `vue ^3.3.0`、`naive-ui ^2.44.0`；验证过的版本是 naive-ui 2.45.3）。ESM 输出，自带 TypeScript 类型。
@@ -243,7 +240,7 @@ const fetcher: SmartTableFetcher<User> = async ({ page, pageSize, ...query }) =>
 { key: 'age', title: '年龄', search: { type: 'number' } }              // 指定控件类型
 { key: 'keyword', title: '关键字', hideInTable: true, search: true }   // 只做搜索项，不显示成列
 
-// 日期范围，并把参数名改为 createRange → fetcher 收到 createRange: ['2024-01-01', '2024-01-31']
+// 日期范围，参数名指定为 createRange → fetcher 收到 createRange: ['2024-01-01', '2024-01-31']
 { key: 'createTime', title: '创建时间', search: { type: 'daterange', key: 'createRange' } }
 ```
 
@@ -412,8 +409,8 @@ const columns: SmartTableColumn<Row>[] = [
 - 每页条数选择器是嵌在分页 `suffix` 里的官方 `NPagination`，文案跟随 `<n-config-provider>` 的语言（「100 / 页」），不需要额外配置文案；`pageSizes` 里写 `{ label, value }` 对象会原样显示，当前每页条数不在选项里时自动并入
 - 窄档（表格根节点宽度 < 600px）不画每页条数选择器，免得分页条折行
 - 默认每页条数的解析优先级：实例 `default-page-size` > 实例 `pagination.pageSize` / `pagination.defaultPageSize` > 全局 `defaultPageSize` > 宿主（实例或全局）显式给的 `pageSizes` 的第一项 > 100
-- 想回到页码序列：`:pagination="{ simple: false }"`（此时走官方 `showSizePicker` / `pageSizes`）；`simple` 下官方不渲染 `showQuickJumper` / `pageSlot`
-- ⚠ 远程模式请求里的 `pageSize` 默认是 100：后端若限制了 `pageSize` 上限，请用 `default-page-size` 或 `pageSizes` 调回来
+- 想用页码序列：`:pagination="{ simple: false }"`（此时走官方 `showSizePicker` / `pageSizes`）；`simple` 下官方不渲染 `showQuickJumper` / `pageSlot`
+- ⚠ 远程模式请求里的 `pageSize` 默认是 100：后端若限制了 `pageSize` 上限，请用 `default-page-size` 或 `pageSizes` 调小
 - 改每页条数后回到第 1 页（远程、静态数据模式都一样）
 - 远程请求失败（翻页 / 改每页条数 / 搜索）时，页码和每页条数还原到表里实际展示的那一页，分页条不会停在没拿到数据的页上；`error` 事件照常触发
 - 不开 `fill-height` 时，翻页 / 改每页条数后若卡片顶部已滚出视口，页面会自动滚回卡片顶部；开了 `fill-height` 则表体在卡片内滚动、翻页后表体回顶
@@ -437,9 +434,9 @@ const columns: SmartTableColumn<Row>[] = [
 | 已生效条件 chips | `filter-chips`（表格下方、与分页同一行，点击重开面板、× 删一条） |
 | 批量栏 | 有 `{ type: 'selection' }` 列、绑了 `v-model:checked-row-keys`、写了 `#batch="{ checkedRowKeys, clear }"` 插槽，勾选后工具栏换成「本页全选 + 已选 N 项 + 你的按钮 + 取消选择」 |
 | 放大 | `:toolbar="{ maximize: true }"`：表格在页面内铺满视口（不调用浏览器全屏 API，默认层级 1999，宿主顶栏更高时 `maximize: { zIndex }`；Esc 先收浮层、再还原；挂载后不要运行时切换这个开关） |
-| 可编辑表格 | `editable` + `@save="({ changes, done, fail }) => ..."`。**一个布尔值就够用**：选中格再点 / Enter / F2 / 直接打字进入编辑，Enter / Tab / Shift+Enter 移动，Esc 放弃；改动留在草稿里（改过的格左上角小三角），工具栏出现「放弃修改」和「保存修改(N)」；新增行、删除所选（可恢复）也是待保存。控件按「列上写的 `editor` → `editorProps` 里有 `columns` + `data` / `fetcher`（外部 / 主数据）→ 下拉表格 → `options` / `format` → 数据值 → 输入框」自动推断（含数组值 + `options` → 多选；选项 > 8 个自动可搜索）；写了 `render` / `#cell-*` 的列不可编辑；`rules.required` 的列表头自动带红 `*`。Excel 粘贴 / 复制（Ctrl+V 多格块、Ctrl+C）、Ctrl+Z 撤销最近一次提交。保存前统一校验（含异步 `rules.validator`），第一个不合法的格被选中并滚进视口。行级只读：`editable: { rowReadonly: (row) => boolean }` 或列的 `readonly: (row, index) => boolean`。拖拽重排：序号列 `{ type: 'index' }` 自己跟着位置变、不产生脏标记（`@row-drag-sort` 里即时保存顺序，草稿按行主键跟着行走）；真要把排序号写进数据字段，用实例的 `setCell(rowKey, field, value)` 逐行改（走草稿，有脏标记、进 `@save`）。`editable: { save: 'cell' }` = 每提交一个格就立刻 `@save`（失败回滚该格）。点「放弃修改」先弹确认气泡（点「放弃」才还原）；翻页 / 搜索 / 排序不拦截，草稿跨页保留（被挡住的已改行在「保存修改(N)」旁标出「含 M 条当前不可见」）；有未保存修改时离开页面有浏览器提示，宿主路由守卫用实例的 `isDirty`。窄档（`card-on-narrow`）点卡片开底部抽屉表单、整行即时保存。**默认关，不开时行为完全不变**；必须监听 `@save`（宿主提交后调 `done()`，失败 `fail()` 保留草稿） |
+| 可编辑表格 | `editable` + `@save="({ changes, done, fail }) => ..."`。**一个布尔值就够用**：选中格再点 / Enter / F2 / 直接打字进入编辑，Enter / Tab / Shift+Enter 移动，Esc 放弃；改动留在草稿里（改过的格左上角小三角），工具栏出现「放弃修改」和「保存修改(N)」；新增行、删除所选（可恢复）也是待保存。控件按「列上写的 `editor` → `editorProps` 里有 `columns` + `data` / `fetcher`（外部 / 主数据）→ 下拉表格 → `options` / `format` → 数据值 → 输入框」自动推断（含数组值 + `options` → 多选；选项 > 8 个自动可搜索）；写了 `render` / `#cell-*` 的列不可编辑；`rules.required` 的列表头自动带红 `*`。Excel 粘贴 / 复制（Ctrl+V 多格块、Ctrl+C）、Ctrl+Z 撤销最近一次提交。保存前统一校验（含异步 `rules.validator`），第一个不合法的格被选中并滚进视口。行级只读：`editable: { rowReadonly: (row) => boolean }` 或列的 `readonly: (row, index) => boolean`。拖拽重排：序号列 `{ type: 'index' }` 自己跟着位置变、不产生脏标记（`@row-drag-sort` 里即时保存顺序，草稿按行主键跟着行走）；真要把排序号写进数据字段，用实例的 `setCell(rowKey, field, value)` 逐行改（走草稿，有脏标记、进 `@save`）。`editable: { save: 'cell' }` = 每提交一个格就立刻 `@save`（失败回滚该格）。点「放弃修改」先弹确认气泡（点「放弃」才还原）；翻页 / 搜索 / 排序不拦截，草稿跨页保留（被挡住的已改行在「保存修改(N)」旁标出「含 M 条当前不可见」）；有未保存修改时离开页面有浏览器提示，宿主路由守卫用实例的 `isDirty`。窄档（`card-on-narrow`）点卡片开底部抽屉表单、整行即时保存。**默认关，不开时没有任何编辑相关的行为**；必须监听 `@save`（宿主提交后调 `done()`，失败 `fail()` 保留草稿） |
 | 工具栏「更多」菜单 | `:toolbar="{ more: [{ label: '导出', key: 'export' }] }"` + `@more-select="(key) => ..."`（选项即官方 `NDropdown` 的 `options`；库不内置导出 / 导入） |
-| 单元格竖线 | 默认开启(内部 `single-line: false`);想回单线样式写 `:single-line="true"` |
+| 单元格竖线 | 默认画竖线(内部 `single-line: false`);想用单线样式写 `:single-line="true"` |
 | 虚拟滚动 | `virtual-scroll` + `max-height` |
 | 合计行 | `:summary="(pageData) => ..."` |
 | 其它表格属性 | 直接写在 SmartTable 上，原样传给 `n-data-table`（如 `striped`、`bordered`） |
@@ -514,7 +511,7 @@ async function onSave({ changes, done, fail }: EditSavePayload<Row>) {
 - **保存**：保存前统一校验（草稿格的同步规则 + 新增行全部格 + 异步校验的结果），不通过就不发 `@save`、选中第一个不合法的格并发 `@invalid`。异步 `rules.validator`：提交后单元格显示加载态、结果落定为不通过则标红（悬停看原因）、过期结果丢弃，「保存」会等它。
 - **翻页 / 搜索 / 排序**：不拦截；草稿叠在数据上，翻页 / 重新请求都保留（被筛选条件或翻页挡住的已改行看不见，但仍计入 N、仍会被保存，工具栏在「保存修改(N)」旁标出「含 M 条当前不可见」）。**离开页面**：有未保存修改时注册 `beforeunload` 提示（`editable: { beforeunload: false }` 可关）；宿主的路由守卫用实例的 `isDirty` / `dirtyCount`，再配合 `save()` / `discard()`。
 - **fillHeight / 虚拟滚动**：可用。草稿在仓库里不在 DOM 里，编辑中的格滚出窗口再滚回来内容还在；方向键 / Tab 走到还没渲染的行会自动滚进视口。
-- **下拉表格（`select-table`）**：外部 / 主数据（几十行以上、或来自接口）用它，小的静态枚举仍用 `options`（> 8 项自动可搜索）。`editorProps: { columns, data | fetcher, valueKey?, labelKey?, searchKeys?, fill? }`，单元格的值 = 选中行的 `labelKey` 字段（缺省 = 本列 key）；`fill(picked, row)` 返回 `{ 其它列 key: 值 }`，随选中一并写入（普通草稿编辑：各自脏标记、一次 Ctrl+Z 全部撤销、同样校验，任何一格不合法则整次不应用并标红）。粘贴的文本在有本地 `data` 时必须是已有的名称或 `valueKey` 编码（命中同样 `fill`），只给 `fetcher` 时照收文本。单元格内只支持单选（小枚举的多选用 `multiselect`）；窄档抽屉里它是一个触发框，点开贴底选择面板。
+- **下拉表格（`select-table`）**：外部 / 主数据（几十行以上、或来自接口）用它，小的静态枚举用 `options`（> 8 项自动可搜索）。`editorProps: { columns, data | fetcher, valueKey?, labelKey?, searchKeys?, fill? }`，单元格的值 = 选中行的 `labelKey` 字段（缺省 = 本列 key）；`fill(picked, row)` 返回 `{ 其它列 key: 值 }`，随选中一并写入（普通草稿编辑：各自脏标记、一次 Ctrl+Z 全部撤销、同样校验，任何一格不合法则整次不应用并标红）。粘贴的文本在有本地 `data` 时必须是已有的名称或 `valueKey` 编码（命中同样 `fill`），只给 `fetcher` 时照收文本。单元格内只支持单选（小枚举的多选用 `multiselect`）；窄档抽屉里它是一个触发框，点开贴底选择面板。
 - **新增行**：默认放第 1 行；`editable: { add: { position: 'bottom' } }` 追加到列表末尾（有顺序的数据，如工艺路线）。新增后自动进入编辑的是第一个「必填且为空」的格。`add: false` 隐藏工具栏按钮。
 - **行级只读**：`rowReadonly` 锁住的行里，列上写 `readonly: false` 的格不受影响（如「状态」，否则停用的行没法再启用）；窄档抽屉里被锁的字段置灰，标签列宽用 `editable: { labelWidth }`（缺省 72px）调。
 - **序号列与拖拽**：`{ type: 'index' }` 声明在某个数据列（如拖拽手柄列）之后时，就排在那一列后面；窄档 + `row-draggable` 的卡片会在标题行末尾显示行号（同「行拖拽排序」示例）。窄档卡片列表末尾，宿主给了 naive 的 `summary`（合计行）时多一张「合计」卡。
@@ -538,8 +535,8 @@ async function onSave({ changes, done, fail }: EditSavePayload<Row>) {
 
 - **属性**：`columns`（SmartTable 的列）· `data`（本地）/ `fetcher`（远程，同 `SmartTableFetcher`，多一个原样的 `keyword`）· `valueKey`（默认 `'id'`，`v-model:value` 的值）· `labelKey`（触发器显示，默认第一列）· `renderLabel(row)` · `multiple`（值是数组；面板带勾选列与「已选 N 项 / 清空 / 确定」，跨页跨搜索保留）· `maxTagCount`（默认 2，其余 +N）· `placeholder` / `clearable` / `disabled` / `size` / `title`（窄屏面板标题）· `panelWidth`（默认 640，受视口限制）· `pageSize`（默认 100）/ `pageSizes`（不传 = 库内置 `[100, 1000, 10000]`）· `searchKeys` / `searchPlaceholder` · `label`（远程且有初始值时触发器显示的文字）· `labels`。事件：`update:value`、`pick`（单选 = 行，多选 = 点「确定」时的行数组）、`close`（面板关闭）。实例：`open()` / `close()` / `focus()`。
 - **搜索**：面板顶部只有一个搜索框（自动聚焦、带放大镜与清除 ×），占位符由搜索列的标题自动拼（如「物料编号/物料名称/规格」）。本地 `data` 实时模糊过滤（大于 2000 行防抖 120ms）：忽略大小写与全半角，空白切词、所有词都要命中，每个词可命中任一搜索字段（默认 = 有 key、不是序号 / 勾选、没有自定义 `render` 的列，`searchKeys` 可限定），不做拼音；远程 `fetcher` 回车或停手 300ms 后请求。改搜索词回第 1 页、表体回顶部。
-- **键盘**：Esc 先清空搜索再关闭；↓ ↑ 在行间移动高亮（滚进视口，虚拟列表里没渲染的行也行）；Enter 选中高亮行（搜索框里只剩一行时直接选它；多选 = 确定）；多选下 Space 勾选高亮行。再次打开时已选行高亮并滚进视口（本地数据会翻到它所在的页）。
-- **已知限制**：可编辑表格的单元格里只支持单选；还没接进 `SearchForm`（搜索表单里的下拉表格字段另行规划）。
+- **键盘**：Esc 先清空搜索再关闭；↓ ↑ 在行间移动高亮（滚进视口，虚拟列表里没渲染的行也行）；Enter 选中高亮行（搜索框里只剩一行时直接选它；多选 = 确定）；多选下 Space 勾选高亮行。单选再次打开时已选行高亮并滚进视口（本地数据会翻到它所在的页，远程数据不翻页）。
+- **限制**：可编辑表格的单元格里只支持单选；`SearchForm`（搜索表单）里没有下拉表格控件。
 
 ### 增删改弹窗
 
@@ -587,7 +584,7 @@ app.provide(
   SMART_TABLE_DEFAULTS,
   createSmartTableDefaults({
     labels: zhCNLabels, // 想改个别词：{ ...zhCNLabels, search: '查找' }
-    pageSizes: [50, 100, 500], // 显式给了就不再按 fill-height 区分
+    pageSizes: [50, 100, 500], // 显式给了就不按 fill-height 区分
   }),
 )
 
@@ -658,6 +655,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | `span` | `number` | 占几格，默认 1 |
 | `props` | `object` | 透传给对应的 Naive 控件 |
 | `render` | `(ctx) => VNodeChild` | 完全自定义控件；`ctx` 含 `value`、`setValue`、`params`、`search` |
+| `actions` | `FilterAction[]` | 仅模式 2（`search.container: 'table'`）：该字段可选的比较符；缺省取 `filter.actions`，再缺省取按类型的推荐集合 |
 
 ### FilterConfig
 
@@ -674,7 +672,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | `render` | `(ctx) => VNodeChild` | — | 自定义整个面板；`ctx` 含 `value`、`setValue`、`close` |
 | `filter` | `(value, row) => boolean` | 内置条件求值 | 静态 `data` 模式的自定义匹配（远程模式无效） |
 
-- **FilterAction**（15 个）：`'equal'`（等于）、`'notEqual'`、`'contains'`（包含）、`'notContains'`、`'gt'`（大于）、`'gte'`、`'lt'`（小于）、`'lte'`，以及 `'isNull'` / `'isNotNull'`（为空 / 不为空，不需要值）、`'like'`（SQL `LIKE`：`%` 任意长度、`_` 单个字符，整串匹配、忽略大小写）、`'startsWith'` / `'endsWith'`（忽略大小写）、`'in'` / `'notIn'`（值是数组）。**列头面板的默认可选操作符仍是前 8 个，其余需在列上 `filter.actions` 显式开启**；未知操作符一律按不匹配处理
+- **FilterAction**（15 个）：`'equal'`（等于）、`'notEqual'`、`'contains'`（包含）、`'notContains'`、`'gt'`（大于）、`'gte'`、`'lt'`（小于）、`'lte'`，以及 `'isNull'` / `'isNotNull'`（为空 / 不为空，不需要值）、`'like'`（SQL `LIKE`：`%` 任意长度、`_` 单个字符，整串匹配、忽略大小写）、`'startsWith'` / `'endsWith'`（忽略大小写）、`'in'` / `'notIn'`（值是数组）。**列头面板的默认可选操作符是前 8 个，其余需在列上 `filter.actions` 显式开启**；未知操作符一律按不匹配处理
 - **FilterValue**：`{ logic: 'and' | 'or', conditions: { action, value }[] }`；值为空（`null` / `''` / `[]`）的条件不参与求值（`isNull` / `isNotNull` 除外），全空即未过滤
 - 各列之间恒为「与」，列内部由 `logic` 决定
 - 内置面板一列最多编辑 5 条条件（≥ 2 条时可选「且 / 或」），勾选式产出若干 `equal` 取「或」；一条 `in` 经勾选面板回写会变成若干 `equal` 取「或」（语义相同、序列化形状不同）。编程式 `setFilter` / `defaultValue` 不限条数
@@ -690,14 +688,14 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | `params` | `object` | — | 附加请求参数，变化后回到第 1 页重查 |
 | `immediate` | `boolean` | `true` | 挂载后立即请求 |
 | `default-page-size` | `number` | `100` | 默认每页条数；宿主给了 `pageSizes` 时缺省取它的第一项（解析优先级见「分页」） |
-| `pagination` | `false \| PaginationProps` | — | `false` 隐藏分页；传对象与内置配置合并；默认官方 `simple`，`{ simple: false }` 回到页码序列 |
+| `pagination` | `false \| PaginationProps` | — | `false` 隐藏分页；传对象与内置配置合并；默认官方 `simple`，`{ simple: false }` 改用页码序列 |
 | `search` | `false \| SearchFormConfig` | — | 搜索区配置（见下表）；`false` 隐藏 |
 | `filter` | `boolean` | `true` | `false` 关掉全部表头过滤（即使列上写了 `filter`） |
 | `filter-chips` | `boolean` | `false` | 在表格下方、与分页同一行显示已生效条件 chips（没有分页时自成一行；窄档单独一行放在分页上方） |
 | `toolbar` | `false \| { refresh, density, columnSettings, more, maximize }` | 刷新（仅远程）、列设置；`density` / `maximize` 默认 `false` | 工具栏按钮开关；`more` 是「更多」菜单的选项（官方 `NDropdown` 的 `options`），选中发 `more-select`；`maximize: true` 或 `{ zIndex }` 打开「放大」（页面内铺满视口，层级默认 1999） |
 | `title` | `string` | — | 表格标题，也可用 `#title` 插槽 |
 | `card-props` | `Partial<CardProps>` | — | 库渲染的卡片（表格卡片、搜索卡片）的官方 `NCard` 属性，合并在默认 `size="small"` + 四边 16px 内边距之后；想用 Naive 默认的卡片内边距可传 `{ size: 'medium' }` |
-| `card-on-narrow` | `boolean` | `false` | 窄档卡片模式：容器宽 < 600 时表格换成卡片列表（列映射见列的 `card`；点卡片 = `@row-click`，勾选框在右上角，宿主绑的 `checked-row-keys` / `expanded-row-keys` 照常生效；树表的 `children` 按先序拍平、标题带层级缩进与展开箭头）、业务按钮折叠成「操作 ▾」（点开原位展开一行）、工具栏控件放大到触控尺寸；分页仍是官方 `simple` 分页（项 40px，不画每页条数）。有可排序列时工具栏最下面多一行「排序」按钮（点开底部抽屉，每列「无 / 升序 / 降序」，只能启停、不改优先级）；窄档下列头**筛选**暂无入口，请用 `search: { container: 'table' }`。不开则窄容器与宽容器是同一套表格与工具栏。卡片列表不做虚拟滚动（窄档不能改每页条数，默认每页 100） |
+| `card-on-narrow` | `boolean` | `false` | 窄档卡片模式：容器宽 < 600 时表格换成卡片列表（列映射见列的 `card`；点卡片 = `@row-click`，勾选框在右上角，宿主绑的 `checked-row-keys` / `expanded-row-keys` 照常生效；树表的 `children` 按先序拍平、标题带层级缩进与展开箭头）、业务按钮折叠成「操作 ▾」（点开原位展开一行）、工具栏控件放大到触控尺寸；分页仍是官方 `simple` 分页（项 40px，不画每页条数）。有可排序列时工具栏最下面多一行「排序」按钮（点开底部抽屉，每列「无 / 升序 / 降序」，只能启停、不改优先级）；窄档下列头**筛选**没有入口，请用 `search: { container: 'table' }`。不开则窄容器与宽容器是同一套表格与工具栏。卡片列表不做虚拟滚动（窄档不能改每页条数，默认每页 100） |
 | `editable` | `boolean \| { rowReadonly?, newRow?, add?, remove?, save?, beforeunload?, labelWidth? }` | `false` | 可编辑表格，见「更多场景」与下面的「可编辑表格」小节。`rowReadonly(row)`：整行锁定；`newRow()`：新增行的初值；`add`：`false` 关掉工具栏「新增行」、`{ position: 'bottom' }` 追加到末尾；`remove`：关掉批量栏「删除所选」；`labelWidth`：窄档抽屉的标签列宽（缺省 72）；`save`：`'batch'`（默认）/ `'cell'`（即时保存）；`beforeunload: false`：不要离开页面提示 |
 | `fill-height` | `boolean` | `false` | 铺满父容器：表体在卡片内滚动（官方 `flex-height` + 虚拟滚动）、分页条贴底；**父容器须定高**；开启时忽略 `max-height` |
 | `storage-key` | `string` | — | 设置后,列设置(显隐 / 顺序 / 固定 / 列宽)保存到 localStorage;**密度只在开了 `toolbar: { density: true }`(密度按钮)时才读写存储**,否则以 `default-density` 为准 |
@@ -727,7 +725,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 
 | 事件 | 参数 | 触发时机 |
 |---|---|---|
-| `search` | `params` | 点击查询（参数已清洗） |
+| `search` | `params` | 点击查询（模式 1 是清洗后的扁平参数；模式 2 是 `filterSerializer` 序列化后的条件） |
 | `reset` | — | 点击重置 |
 | `loaded` | `rows, total` | 远程数据加载成功 |
 | `error` | `err` | 请求失败（组件不弹提示，由你处理） |
@@ -748,7 +746,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | `title` | — | 表格标题 |
 | `toolbar` | — | 工具栏左侧，适合放新增、批量操作按钮 |
 | `toolbar-right` | — | 工具栏右侧，位于内置按钮之前 |
-| `batch` | `{ checkedRowKeys, clear }` | 批量栏：有勾选列且勾选了行时替换工具栏（本页全选复选框 + 「已选 N 项」+ 本插槽内容 + 取消选择） |
+| `batch` | `{ checkedRowKeys, clear }` | 批量栏：有勾选列、宿主绑了 `checked-row-keys` 且至少勾了一行时替换工具栏（本页全选复选框 + 「已选 N 项」+ 本插槽内容 + 取消选择） |
 | `cell-{key}` | `{ row, index }` | 自定义某列的单元格 |
 | `header-{key}` | `{ column }` | 自定义某列的表头 |
 | `empty` | — | 无数据时显示的内容 |
@@ -821,7 +819,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | 用途 | 键 |
 |---|---|
 | 搜索 / 工具栏 | `search`、`reset`、`refresh`、`density`、`densityComfortable`、`densityCompact`、`columnSettings`、`columnSettingsReset`、`fixedLeft`、`fixedRight`、`fixedNone`、`expand`、`collapse`、`more`、`maximize`、`restore` |
-| 表头过滤 | `filter`、`filterConfirm`、`filterReset`、`filterSelectAll`、各操作符文案（`filterEqual`、`filterContains`、`filterGt`、`filterLike`、`filterIn` 等）、`filterNoValue`、`filterAddCondition`、`filterRemoveCondition`、`filterLogicAnd`、`filterLogicOr`、`filterAdvanced`、`filterSimple`、`filterClearAll`、`filterRestoreDefault`、`filterActiveCount` |
+| 表头过滤 | `filter`、`filterConfirm`、`filterReset`、`filterSelectAll`、各操作符文案（`filterEqual`、`filterContains`、`filterGt`、`filterLike`、`filterIn` 等）、`filterNoValue`、`filterAddCondition`、`filterRemoveCondition`、`filterLogicAnd`、`filterLogicOr`、`filterAdvanced`、`filterSimple`、`filterClearAll`、`filterRestoreDefault`、`filterActiveCount`、`filterConditionLead`、`filterCannotCollapse` |
 | 条件构造器 | `searchBy`、`searchMoreConditions`、`searchConditionN` |
 | 批量栏 | `selectedCount`（含 `{n}`）、`clearSelection` |
 | 窄档 | `operations`、`sort`、`sortNone`、`sortAscend`、`sortDescend`、`treeExpand`、`treeCollapse` |
@@ -840,6 +838,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 - 过滤值是纯日期串（`YYYY-MM-DD`）时按「整天」比较，`等于 2024-03-05` 能命中当天任意时刻
 - 列宽写入 localStorage 做了防抖;存储结构版本为 `v2`;存储里的密度**只在开了密度按钮(`toolbar: { density: true }`)时生效**,否则以 `default-density` 为准
 - 列设置至少保留一列：只剩一列可见时，它的勾选框禁用
+
 ## 浏览器与版本支持
 
 | 项 | 说明 |
@@ -847,46 +846,31 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | Vue | `>= 3.3`（`peerDependencies: ^3.3.0`；本仓库开发环境 3.5） |
 | Naive UI | `>= 2.44`（`peerDependencies: ^2.44.0`）。**单测与浏览器验证在 2.45.3 上做**，2.44.0 ~ 2.45.2 之间的版本没有单独测，建议锁定验证过的版本 |
 | 模块格式 | 仅 ESM，自带类型声明。`exports` 有 `node` 与 `import` 两个条件、指向同内容的两份构建：浏览器 / 打包工具走带样式导入的 `dist/index.js`，纯 Node 走不带样式导入的 `dist/index.node.js` |
-| 纯 Node / 服务端 | 在 vitest 等纯 Node 环境、或打包时把本包外部化的服务端构建里，直接 `import` 不再报 `.css` 不认识。**服务端渲染 `SmartTable` 目前不支持**：组件渲染时会用到 `document` 等浏览器 API；`dist/index.node.js` 也不含样式 |
+| 纯 Node / 服务端 | 在 vitest 等纯 Node 环境、或打包时把本包外部化的服务端构建里，直接 `import` 不会报 `.css` 不认识。**服务端渲染 `SmartTable` 不支持**：组件渲染时会用到 `document` 等浏览器 API；`dist/index.node.js` 也不含样式 |
 | 浏览器 | **只在 Chromium 内核（Chrome / Edge）上验证过**，包括 390 × 844 的窄档（触屏用 CDP 设备模拟）。Firefox / Safari、真实手指触屏、屏幕阅读器**没有测过** |
 | Node（开发 / CI） | 24 |
 
-## 里程碑
+## 已知限制
 
-这一节是**版本路线图与当前进度**，不是变更日志；逐项变更见 [CHANGELOG.md](./CHANGELOG.md)，升级步骤见 [MIGRATION.md](./MIGRATION.md)。
-
-**当前阶段：`3.2.0`（npm `latest`）。** 3.0 是 major 升级，升级步骤见 [MIGRATION.md](./MIGRATION.md)。下面「已知未完成 / 限制」是 3.0.0 里仍没做的部分，之后的版本再补。
-
-**3.0 已具备的能力范围**（对应 [规格](./docs/smart-naive-table-spec.md) 的 P0 / P1 / P2）：
-
-- **P0 基础**：默认值与外观调整（默认每页 100、默认紧凑密度、官方 `simple` 分页等）、多列排序与 `sort()` / `clearSorter()`、15 个过滤操作符、已生效条件 chips、`toolbar.more`、`fill-height`、`zhCNLabels`、`cardProps`、全局 `defaultPageSize`。
-- **P1**：条件构造器（`search.container: 'table'`）、批量栏 `#batch`、页面内放大 `toolbar.maximize`。
-- **P2**：窄档卡片列表 `card-on-narrow` 与排序抽屉。
-- **在 P0–P2 之外**：可编辑表格 `editable`、`select-table` 编辑器与 `SmartSelectTable`。设计见设计稿「可编辑表格」一节（其中「取舍与待定问题」里仍有 3 条待定），库里已有实现。
-- **组件预览**：14 个模块（`/prototype.html`）用真实库复刻设计稿，与设计稿用 `tools/parity` 逐项读数对照。
-
-**已知未完成 / 限制**（均可在仓库里核实）：
-
-| 项 | 现状 | 出处 |
-|---|---|---|
-| 窄档列头筛选抽屉 | 未做：卡片模式下列头漏斗没有入口，窄档筛选请用条件构造器（`search: { container: 'table' }`） | 规格 §5.8、CHANGELOG `3.0.0` |
-| 可编辑表格里的 `select-table` | 单元格内只支持单选（多选小枚举用 `multiselect`） | `src/types.ts` 的 `SelectTableProps` |
-| `SmartSelectTable` 远程数据 | 再次打开时不会翻到已选行所在的页（本地 `data` 会） | `src/SmartSelectTable.vue` 的 `activeIndex` 只在本地数据时计算 |
-| `SmartSelectTable` 进搜索表单 | 还没接进 `SearchForm`，搜索表单里的下拉表格字段另行规划 | 本文「下拉表格选择」一节 |
-| 可编辑表格保存校验 | 定位并选中第一个不合法的格，但只在当前页内定位；不合法的格在别的页时只发 `@invalid`，不会自动翻页 | `src/useEditable.ts` 的 `firstInvalid` / `save` |
-| 行拖拽 | 组件自带的拖拽没有键盘操作；远程分页下拖拽排序不跨页 | 设计稿 §12.6（预览模块 10 的 ↑ ↓ 是宿主自己写的） |
-| 浏览器验证范围 | 只测了 Chromium；Firefox / Safari、真实触屏、屏幕阅读器未测 | 规格 §9、设计稿 §9.5 |
-| 宿主后端 | 默认 `pageSize` 是 100，后端是否接受只能由各宿主自己确认 | 规格 §9 |
+| 项 | 现状 |
+|---|---|
+| 窄档列头筛选 | 卡片模式没有表头，列头漏斗没有入口；窄档筛选请用条件构造器（`search: { container: 'table' }`） |
+| 可编辑表格里的 `select-table` | 单元格内只支持单选（多选小枚举用 `multiselect`） |
+| `SmartSelectTable` 远程数据 | 再次打开时不会翻到已选行所在的页（本地 `data` 会） |
+| `SmartSelectTable` 与搜索表单 | `SearchForm` 的搜索字段没有下拉表格控件 |
+| 可编辑表格保存校验 | 选中并定位第一个不合法的格，但只在当前页内定位；不合法的格在别的页时只发 `@invalid`，不会自动翻页 |
+| 行拖拽 | 组件自带的拖拽没有键盘操作；远程分页下拖拽排序只作用于当前页、不跨页（组件只调整顺序，保存由宿主负责） |
+| 浏览器验证范围 | 只在 Chromium 内核（Chrome / Edge）上验证过；Firefox / Safari、真实触屏、屏幕阅读器没有测过 |
+| 宿主后端 | 远程请求的 `pageSize` 默认是 100，后端是否接受由各宿主自己确认；后端有上限时用 `default-page-size` 或 `pageSizes` 调整 |
 
 ## 文档索引
 
 | 文档 | 内容 |
 |---|---|
-| [docs/smart-naive-table-design.html](./docs/smart-naive-table-design.html) | 设计原型：离线单文件，14 个模块、明暗两套、宽 / 中 / 窄三档，是「看」的依据 |
-| [docs/smart-naive-table-design.md](./docs/smart-naive-table-design.md) | 设计方案：每条决定的结论、理由、代价，以及 2.1.1 → 3.0.0 的变更总览 |
-| [docs/smart-naive-table-spec.md](./docs/smart-naive-table-spec.md) | 3.0.0 现状规格：API、默认值、落地要求、验证状态与未验证清单 |
+| [docs/smart-naive-table-design.html](./docs/smart-naive-table-design.html) | 设计原型：离线单文件，15 个模块、明暗两套、宽 / 中 / 窄三档，是「看」的依据 |
+| [docs/smart-naive-table-design.md](./docs/smart-naive-table-design.md) | 设计方案：每条决定的结论、理由、代价 |
+| [docs/smart-naive-table-spec.md](./docs/smart-naive-table-spec.md) | 现状规格：API、默认值、落地要求、验证状态与未验证清单 |
 | [CHANGELOG.md](./CHANGELOG.md) | 按版本的逐项变更 |
-| [MIGRATION.md](./MIGRATION.md) | 2.x → 3.0.0 升级指南（破坏性变更、回退方式、升级前检查清单） |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | 分支规则与提交 PR 前的检查 |
 | [docs/baseline/](./docs/baseline/README.md) | 设计原型的截图基线：14 个模块 × 明 / 暗 × 1440 / 390 两种视口，共 56 张（不随包发布） |
 | [tools/parity](./tools/parity/README.md) | 原型与组件预览的并排读数对照脚本；README 配图的拍摄脚本 `readme-shots.mjs` 也在这里 |

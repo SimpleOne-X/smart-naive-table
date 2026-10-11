@@ -44,13 +44,9 @@ Search, filters, sorting, pagination, dict tags, column settings and editing all
   <a href="#quick-start">Quick start</a> ·
   <a href="#recipes">Recipes</a> ·
   <a href="#api-reference">API</a> ·
-  <a href="#milestones">Milestones</a> ·
+  <a href="#known-limitations">Limitations</a> ·
   <a href="#documentation">Docs</a>
 </p>
-
-> **Version status**: the current version is `3.2.0` (npm `latest`). 3.0 is a major upgrade: some behavior changes even if you change no code. See [MIGRATION.md](./MIGRATION.md) for the upgrade steps. This page describes the current 3.0 implementation; progress and unfinished items are in [Milestones](#milestones).
->
-> **Upgrading from 2.x?** 3.0.0 has breaking changes relative to 2.x (defaults and looks, e.g. the default page size and the pager style). Read the [migration guide MIGRATION.md](./MIGRATION.md) first.
 
 ## Highlights
 
@@ -75,7 +71,7 @@ Search, filters, sorting, pagination, dict tags, column settings and editing all
 
 ## Feature list
 
-The table follows the 14 modules of the component preview (sidebar groups Query / Columns / Rows / Data / Layout). The **Preview** column is the module number: after `npm run dev`, open `http://localhost:5173/prototype.html?m=<module>` (add `&theme=dark` for dark) to see the feature working for real; to see the narrow tier, shrink the window to about 400px wide. A "—" means the preview has no dedicated module but the library implements it. The ones marked ★ are worth trying first.
+The table follows the 15 modules of the component preview (sidebar groups Query / Columns / Rows / Data / Layout). The **Preview** column is the module number: after `npm run dev`, open `http://localhost:5173/prototype.html?m=<module>` (add `&theme=dark` for dark) to see the feature working for real; to see the narrow tier, shrink the window to about 400px wide. A "—" means the preview has no dedicated module but the library implements it. The ones marked ★ are worth trying first.
 
 | Group | Feature | How to turn it on | Preview |
 |---|---|---|---|
@@ -88,9 +84,10 @@ The table follows the 14 modules of the component preview (sidebar groups Query 
 | | Multi-column sorting: local / server, default sort order, `sort()` / `clearSorter()` | `sorter: { multiple: n }` | m4 |
 | **Columns** | ★ Dicts, tags and formats: status to colored tag, date / money formats, async dicts deduped, empty-value placeholder | `options` + `tag` / `format` | m6 |
 | | ★ Column settings: show / hide, drag to reorder, pin left / right, remembered per user, restore defaults; column resize | `storage-key`, `resizable` | m7, m6 |
-| **Narrow tier (mobile)** | Card list, "Actions ▾" fold, touch sizes, filter drawer, sort drawer, summary card, in-card selection / expand / drag handle; see [Mobile responsive](#mobile-responsive) | `card-on-narrow` | m2–m14 (at 390px) |
+| **Narrow tier (mobile)** | Card list, "Actions ▾" fold, touch sizes, filter drawer, sort drawer, summary card, in-card selection / expand / drag handle; see [Mobile responsive](#mobile-responsive) | `card-on-narrow` | m2–m15 (at 390px) |
 | **Rows** | Row drag sorting: whole row or a handle, `@row-drag-sort` on drop, cards keep dragging on the narrow tier | `row-draggable`, `drag-handle` | m10, m14 |
 | | Master-detail: external filter (`params`), active-row highlight, click a row to drive details | `params`, `active-row-key`, `@row-click` | m11 |
+| | Tree table: rows with `children` render as the official tree table; on the narrow tier they become indented cards with expand arrows and cascading selection | `children-key` (default `children`), `card-on-narrow` | m15 |
 | **Data & editing** | Create / edit / delete dialogs: `useTableCrud` manages open / submit / delete state; the dialog and form are your own `n-modal` + `n-form` (the preview uses a bottom drawer on the narrow tier) | `useTableCrud()` | m9 |
 | | ★ Editable grid: Excel-style cell editing, editors inferred from the data type, Excel paste, undo, row-level read-only, async validation, batch save + dirty marks + discard, optional per-cell save; on the narrow tier a card tap opens a bottom drawer | `editable` + `@save` | m14 |
 | | Table picker: the standalone `SmartSelectTable`, also the engine behind the grid's `select-table` editor (picking one row fills other columns too) | `SmartSelectTable` / `editorProps` | m14 (as the editor); standalone usage in `/playground.html` |
@@ -151,7 +148,7 @@ Turn on `card-on-narrow` and the same `columns` serve both desktop and phones �
 ```
 
 - **Tiers follow the container width** (not the viewport): a library root narrower than 600 is the narrow tier, under 1280 the mid tier, otherwise the wide tier. The root is measured with `ResizeObserver`, so tables inside side panels / dialogs / the maximized layer are judged by their own width. The mid and wide tiers share one toolbar layout for the condition search bar: the head, the condition bar and the actions sit on one row when they fit, and the condition bar wraps to the next row when they do not. The value input in that bar is capped at 320px; set the CSS variable `--smart-table-cond-value-max-width` to change the cap.
-- **Off by default**: without `card-on-narrow`, narrow and wide containers use the same table and toolbar (in a narrow container the pager still omits the page-size picker).
+- **Off by default**: without `card-on-narrow`, narrow and wide containers use the same table and toolbar (in a narrow container the pager omits the page-size picker either way).
 - **Card list**: the first data column is the card title, the rest are two-column "label: value" pairs, and the action column (`card: 'action'`, default the last `fixed: 'right'` column) sits at the bottom of the card. Set `card: 'title' | 'meta' | 'action' | 'handle' | false` on a column to override; columns hidden in column settings are hidden on cards too. Tapping a card = `@row-click`, the checkbox sits at the top right, and your own `checked-row-keys` / `expanded-row-keys` bindings keep working.
 - **Touch sizes**: toolbar buttons, inputs and pager items grow to 40px (the official `large`); the narrow tier omits the page-size picker and uses the official `simple` pager.
 - **Toolbar fold**: business buttons (`#toolbar-right` + "More") fold into "Actions ▾", which expands one extra row in place. When the host passes `#toolbar`, the head (title + `#toolbar`) takes the whole first row and wraps if it does not fit; "Actions ▾" sits at the left and the built-in icons at the right on the second row (without `#toolbar` it stays a single row).
@@ -160,16 +157,16 @@ Turn on `card-on-narrow` and the same `columns` serve both desktop and phones �
 - **Bottom sheets**: in an editable grid (`editable`) tapping a card opens a bottom-drawer form (whole-row, saved immediately; a `select-table` field in it opens a bottom-anchored picker); `SmartSelectTable` also uses a bottom sheet when the viewport is narrower than 600 or the popover would not fit.
 - **Row dragging**: cards keep dragging; put `card: 'handle'` on the handle column and it renders at the far left of the title row; cards with `row-draggable` show the row number at the end of the title row.
 - **Summary card**: when you give Naive's `summary` (summary row), the narrow card list ends with a "Summary" card.
-- **Tree tables**: a table with `children-key` is flattened pre-order in the card list; titles are indented per level (`indent`, default 16px) and cards with children get an expand / collapse arrow before the title. It reads the official `NDataTable` props (`children-key`, `indent`, `expanded-row-keys`, `default-expanded-row-keys`, `default-expand-all`, `cascade`) — **no new props**. Paging / sorting act on root rows only (as in the official table), selection cascades per `cascade` and a parent card shows the indeterminate state. Without `expanded-row-keys` the library keeps the expanded state itself (it is not shared when switching between table and cards; bind it to share). Not done: lazy loading (`on-load`), `check-strategy`, `row-draggable` / `editable` together with a tree.
+- **Tree tables**: rows carrying `children` (the key is `children-key`, default `children`) are flattened pre-order in the card list; titles are indented per level (`indent`, default 16px) and cards with children get an expand / collapse arrow before the title. The card list reads the official `NDataTable` props (`children-key`, `indent`, `expanded-row-keys`, `default-expanded-row-keys`, `default-expand-all`, `cascade`); the library adds no props of its own for trees. Paging / sorting act on root rows only (as in the official table), selection cascades per `cascade` and a parent card shows the indeterminate state. Without `expanded-row-keys` the library keeps the expanded state itself (it is not shared when switching between table and cards; bind it to share). Not supported: lazy loading (`on-load`), `check-strategy`, `row-draggable` / `editable` together with a tree.
 - **Chips and pager**: active-condition chips take their own row above the pager on the narrow tier.
-- **Not done**: a narrow-tier drawer for column-header filters (card mode has no header, so the funnel has no entry; use the query builder to filter); the card list has no virtual scrolling (the narrow tier cannot change the page size, default 100 per page). Column settings are still a popover on the narrow tier, not a drawer.
+- **Not supported on the narrow tier**: a drawer for column-header filters (card mode has no header, so the funnel has no entry; use the query builder to filter), and virtual scrolling in the card list (the narrow tier cannot change the page size, default 100 per page). Column settings stay a popover on the narrow tier, not a drawer.
 
 > In the preview, the main table of all 15 modules has `card-on-narrow` (shrink the window to about 400px wide, or use browser device emulation at 390 × 844): modules 2 / 3 / 4 show the query-builder filter drawer and the sort drawer, module 10 shows the drag handle on a card, module 14 shows the bottom-drawer form opened from a card, and module 15 shows the tree cards (expand / collapse, cascading selection).
 
 ## Install
 
 ```bash
-npm i smart-naive-table   # 3.2.0; to stay on 2.x install smart-naive-table@2
+npm i smart-naive-table
 ```
 
 Requires `vue >= 3.3` and `naive-ui >= 2.44` in your project (`peerDependencies` are `vue ^3.3.0` and `naive-ui ^2.44.0`; the verified version is naive-ui 2.45.3). ESM output, TypeScript types included.
@@ -223,7 +220,7 @@ That gives you a complete list page:
 
 - **Search area**: "Account" and "Name" inputs, a "Status" select (options from `options`), plus Search / Reset buttons
 - **Table**: row numbers, status tags, formatted time, pagination at the bottom
-- **Toolbar**: refresh (remote mode only), column settings; the density toggle is hidden by default (`toolbar: { density: true }` brings it back)
+- **Toolbar**: refresh (remote mode only), column settings; the density toggle is off by default (`toolbar: { density: true }` turns it on)
 
 When you click Search, `fetcher` receives (empty values already stripped):
 
@@ -413,7 +410,7 @@ Pagination defaults to the official `simple` mode (page input / total pages), 10
 - In the narrow tier (table root narrower than 600px) the page-size picker is not drawn, so the pagination bar never wraps
 - Initial page size, in order of precedence: the instance `default-page-size` > the instance `pagination.pageSize` / `pagination.defaultPageSize` > the global `defaultPageSize` > the first entry of `pageSizes` given explicitly by the host (instance or global) > 100
 - To go back to the page-number list: `:pagination="{ simple: false }"` (the official `showSizePicker` / `pageSizes` then apply); in `simple` mode Naive doesn't render `showQuickJumper` / `pageSlot`
-- ⚠ In remote mode the request now carries `pageSize: 100` by default: if your backend caps `pageSize`, set `default-page-size` or `pageSizes` accordingly
+- ⚠ In remote mode the request carries `pageSize: 100` by default: if your backend caps `pageSize`, set `default-page-size` or `pageSizes` accordingly
 - Changing the page size goes back to page 1 (remote and static-data modes alike)
 - When a remote request fails (page change / page size change / search), the page and page size revert to what the table is actually showing, so the pager never rests on a page whose data never arrived; the `error` event still fires
 - Without `fill-height`, after changing pages / page size the page scrolls back to the top of the card if that top has scrolled out of view; with `fill-height` the table body scrolls inside the card and resets to its top instead
@@ -437,7 +434,7 @@ Pagination defaults to the official `simple` mode (page input / total pages), 10
 | Active-filter chips | `filter-chips` (below the table, on the pagination row; click to reopen the panel, × removes one condition) |
 | Batch bar | a `{ type: 'selection' }` column, `v-model:checked-row-keys`, and a `#batch="{ checkedRowKeys, clear }"` slot: once rows are checked the toolbar turns into "select-page checkbox + N selected + your buttons + clear" |
 | Maximize | `:toolbar="{ maximize: true }"`: the table fills the viewport inside the page (no browser Fullscreen API; z-index 1999 by default, `maximize: { zIndex }` when the host header is higher; Esc closes floating layers first, then restores; don't toggle this switch at runtime after mount) |
-| Editable grid | `editable` + `@save="({ changes, done, fail }) => ..."`. **One boolean is enough**: select a cell then click again / Enter / F2 / just type to edit; Enter / Tab / Shift+Enter move, Esc cancels; edits stay in a draft (a small triangle marks changed cells) and the toolbar shows "Discard changes" and "Save changes (N)"; adding rows and deleting selected rows (restorable) are pending too. Editors are inferred from "column `editor` → `editorProps` with `columns` + `data` / `fetcher` (external / master data) → table picker → `options` / `format` → data values → input" (array values + `options` → multi-select; > 8 options → searchable); columns with `render` / `#cell-*` are not editable; columns with `rules.required` get a red `*` in the header. Excel paste / copy (Ctrl+V multi-cell blocks, Ctrl+C), Ctrl+Z undoes the last commit. Everything is validated before saving (async `rules.validator` included) and the first invalid cell is selected and scrolled into view. Row-level read-only: `editable: { rowReadonly: (row) => boolean }` or a column's `readonly: (row, index) => boolean`. After drag-reordering the index column `{ type: 'index' }` follows the position by itself without dirty marks (save the order in `@row-drag-sort`; drafts follow their rows by row key); to write a sort number into a data field use the instance's `setCell(rowKey, field, value)` (goes through the draft: dirty marks, part of `@save`). `editable: { save: 'cell' }` fires `@save` for every committed cell (a failure rolls that cell back). "Discard changes" first opens a confirmation popover (the changes are only dropped when "Discard" is clicked); paging / search / sorting are never blocked and drafts survive them (a changed row they hide is flagged next to "Save changes (N)" as "Includes M not currently visible"); unsaved changes trigger the browser's leave prompt, and route guards can read the instance's `isDirty`. On narrow containers (`card-on-narrow`) tapping a card opens a bottom drawer form with immediate per-row save. **Off by default; nothing changes unless you turn it on**; you must listen to `@save` (call `done()` after your request, `fail()` keeps the draft). `changes.rows` flattens created / updated / deleted into one list with a `type` per item |
+| Editable grid | `editable` + `@save="({ changes, done, fail }) => ..."`. **One boolean is enough**: select a cell then click again / Enter / F2 / just type to edit; Enter / Tab / Shift+Enter move, Esc cancels; edits stay in a draft (a small triangle marks changed cells) and the toolbar shows "Discard changes" and "Save changes (N)"; adding rows and deleting selected rows (restorable) are pending too. Editors are inferred from "column `editor` → `editorProps` with `columns` + `data` / `fetcher` (external / master data) → table picker → `options` / `format` → data values → input" (array values + `options` → multi-select; > 8 options → searchable); columns with `render` / `#cell-*` are not editable; columns with `rules.required` get a red `*` in the header. Excel paste / copy (Ctrl+V multi-cell blocks, Ctrl+C), Ctrl+Z undoes the last commit. Everything is validated before saving (async `rules.validator` included) and the first invalid cell is selected and scrolled into view. Row-level read-only: `editable: { rowReadonly: (row) => boolean }` or a column's `readonly: (row, index) => boolean`. After drag-reordering the index column `{ type: 'index' }` follows the position by itself without dirty marks (save the order in `@row-drag-sort`; drafts follow their rows by row key); to write a sort number into a data field use the instance's `setCell(rowKey, field, value)` (goes through the draft: dirty marks, part of `@save`). `editable: { save: 'cell' }` fires `@save` for every committed cell (a failure rolls that cell back). "Discard changes" first opens a confirmation popover (the changes are only dropped when "Discard" is clicked); paging / search / sorting are never blocked and drafts survive them (a changed row they hide is flagged next to "Save changes (N)" as "Includes M not currently visible"); unsaved changes trigger the browser's leave prompt, and route guards can read the instance's `isDirty`. On narrow containers (`card-on-narrow`) tapping a card opens a bottom drawer form with immediate per-row save. **Off by default**; you must listen to `@save` (call `done()` after your request, `fail()` keeps the draft). `changes.rows` flattens created / updated / deleted into one list with a `type` per item |
 | Toolbar "More" menu | `:toolbar="{ more: [{ label: 'Export', key: 'export' }] }"` + `@more-select="(key) => ..."` (the options are the official `NDropdown` `options`; no built-in export / import) |
 | Cell grid lines | on by default (internal `single-line: false`); pass `:single-line="true"` for the single-line look |
 | Virtual scroll | `virtual-scroll` + `max-height` |
@@ -540,7 +537,7 @@ A standalone component (no editable grid needed) used like `NSelect`: the trigge
 - **Props**: `columns` (SmartTable columns) · `data` (local) / `fetcher` (remote, same as `SmartTableFetcher` plus the raw `keyword`) · `valueKey` (default `'id'`, the `v-model:value` value) · `labelKey` (trigger text, default the first column) · `renderLabel(row)` · `multiple` (array value; the panel gets a checkbox column and "N selected / Clear / OK", kept across pages and searches) · `maxTagCount` (default 2, the rest as +N) · `placeholder` / `clearable` / `disabled` / `size` / `title` (narrow sheet title) · `panelWidth` (default 640, clamped to the viewport) · `pageSize` (default 100) / `pageSizes` (omitted = the library's built-in `[100, 1000, 10000]`) · `searchKeys` / `searchPlaceholder` · `label` (trigger text for an initial remote value) · `labels`. Events: `update:value`, `pick` (single = the row, multiple = the row array on "OK"), `close` (panel closed). Instance: `open()` / `close()` / `focus()`.
 - **Search**: one search box at the top (auto-focused, with a magnifier and a clear ×); the placeholder is built from the searched columns' titles (e.g. "Code/Name/Spec"). Local `data` is filtered live (120ms debounce above 2000 rows): case- and full/half-width-insensitive, whitespace-separated tokens must all match, each token may match any searched field (default = columns with a key that are not index / selection and have no custom `render`; limit with `searchKeys`), no pinyin; a remote `fetcher` is called on Enter or after 300ms idle. Changing the keyword returns to page 1 and scrolls to the top.
 - **Keyboard**: Esc clears the search first, then closes; ↓ ↑ move the highlight (scrolled into view, also for rows the virtual list has not rendered); Enter picks the highlighted row (a single remaining match is picked directly; multiple = OK); in multiple mode Space ticks the highlighted row. Reopening highlights the picked row and scrolls it into view (local data jumps to its page).
-- **Known limits**: single-select only inside editable cells; not wired into `SearchForm` yet (table-picker fields in the search form are planned separately).
+- **Known limits**: single-select only inside editable cells; not available as a search-form control.
 
 ### Create / edit / delete dialogs
 
@@ -641,7 +638,7 @@ Data columns accept every Naive UI column prop (`width`, `minWidth`, `fixed`, `a
 | `hideInTable` | `boolean` | Search-only field, never rendered as a column |
 | `card` | `'title' \| 'meta' \| 'action' \| 'handle' \| false` | Where the column goes in the narrow card (`card-on-narrow`): `title` the card title (default: the first data column), `meta` a "label: value" pair (default), `action` the bottom action row (default: the last `fixed: 'right'` column), `handle` the drag handle (leftmost in the title row with `row-draggable`), `false` hidden. Columns hidden in column settings are hidden in the card too |
 | `hideInSetting` | `boolean` | Rendered, but not listed in column settings (typical: actions) |
-| `editor` | `'input' \| 'textarea' \| 'number' \| 'select' \| 'multiselect' \| 'date' \| 'datetime' \| 'checkbox' \| false` | Editor of this column in an `editable` table, highest priority; `false` = not editable. Inferred from `options` / `format` / data values otherwise (see `inferEditor`); a column with `render` or a `#cell-*` slot is not editable unless `editor` is explicit |
+| `editor` | `'input' \| 'textarea' \| 'number' \| 'select' \| 'multiselect' \| 'select-table' \| 'date' \| 'datetime' \| 'checkbox' \| false` | Editor of this column in an `editable` table, highest priority; `false` = not editable. Inferred from `options` / `format` / data values otherwise (see `inferEditor`); a column with `render` or a `#cell-*` slot is not editable unless `editor` is explicit |
 | `readonly` | `boolean \| (row, index) => boolean` | Read-only in an editable table (display only, secondary text color); the function form locks cells per row (e.g. approved rows): locked cells can be selected / copied but not edited, paste skips them; `false` = not affected by `editable.rowReadonly` (e.g. a "Status" column) |
 | `rules` | `{ required?, min?, max?, int?, minLength?, maxLength?, pattern?, validator?(value, row, rows) }` | Validation for an editable table; invalid cells get a red frame + tooltip and cannot be submitted; messages come from `labels`; `validator` returns `true` / a message, or a Promise (async); its third argument is every row currently in the table (drafts included) for cross-row / cross-field checks; a `required` column gets a red `*` in its header |
 | `editorProps` | `Record<string, unknown>` | Official props forwarded to the editor (`NInput` / `NInputNumber` / `NSelect` / `NDatePicker`); for `select-table` (explicit, or inferred when it has `columns` + `data` / `fetcher`) it is `{ columns, data \| fetcher, valueKey?, labelKey?, searchKeys?, searchPlaceholder?, panelWidth?, pageSize?, pageSizes?, title?, fill? }` |
@@ -663,6 +660,7 @@ Data columns accept every Naive UI column prop (`width`, `minWidth`, `fixed`, `a
 | `span` | `number` | Grid span, default 1 |
 | `props` | `object` | Forwarded to the underlying Naive control |
 | `render` | `(ctx) => VNodeChild` | Fully custom control; `ctx` has `value`, `setValue`, `params`, `search` |
+| `actions` | `FilterAction[]` | Query builder only (`search.container: 'table'`): the operators offered for this field; defaults to `filter.actions`, then the per-type recommended set |
 
 ### FilterConfig
 
@@ -679,7 +677,7 @@ Data columns accept every Naive UI column prop (`width`, `minWidth`, `fixed`, `a
 | `render` | `(ctx) => VNodeChild` | — | Replace the whole panel; `ctx` has `value`, `setValue`, `close` |
 | `filter` | `(value, row) => boolean` | built-in evaluation | Custom matching in static `data` mode (ignored in remote mode) |
 
-- **FilterAction** (15): `'equal'`, `'notEqual'`, `'contains'`, `'notContains'`, `'gt'`, `'gte'`, `'lt'`, `'lte'`, plus `'isNull'` / `'isNotNull'` (empty / not empty, no value needed), `'like'` (SQL `LIKE`: `%` any run, `_` one character, whole-string, case-insensitive), `'startsWith'` / `'endsWith'` (case-insensitive) and `'in'` / `'notIn'` (the value is an array). **The header panel still offers only the first 8 by default; the others must be enabled explicitly with `filter.actions` on the column**; unknown actions never match
+- **FilterAction** (15): `'equal'`, `'notEqual'`, `'contains'`, `'notContains'`, `'gt'`, `'gte'`, `'lt'`, `'lte'`, plus `'isNull'` / `'isNotNull'` (empty / not empty, no value needed), `'like'` (SQL `LIKE`: `%` any run, `_` one character, whole-string, case-insensitive), `'startsWith'` / `'endsWith'` (case-insensitive) and `'in'` / `'notIn'` (the value is an array). **The header panel offers only the first 8 by default; the others must be enabled explicitly with `filter.actions` on the column**; unknown actions never match
 - **FilterValue**: `{ logic: 'and' | 'or', conditions: { action, value }[] }`; conditions whose value is empty (`null` / `''` / `[]`) are ignored (except `isNull` / `isNotNull`), and an all-empty value means "not filtered"
 - Columns are always combined with **and**; `logic` only applies within one column
 - The built-in panel edits up to 5 conditions per column (AND / OR once there are 2 or more); checkbox mode produces several `equal`s joined by **or**, and a single `in` written back through the checkboxes becomes several `equal`s joined by **or** (same meaning, different serialized shape). A programmatic `setFilter` / `defaultValue` has no limit
@@ -702,7 +700,7 @@ Data columns accept every Naive UI column prop (`width`, `minWidth`, `fixed`, `a
 | `toolbar` | `false \| { refresh, density, columnSettings, more, maximize }` | refresh (remote only) and column settings; `density` / `maximize` default to `false` | Toolbar button switches; `more` holds the "More" menu options (the official `NDropdown` `options`), selecting one emits `more-select`; `maximize: true` or `{ zIndex }` turns on the "maximize" button (fills the viewport inside the page, z-index 1999 by default) |
 | `title` | `string` | — | Table title, or use the `#title` slot |
 | `card-props` | `Partial<CardProps>` | — | Official `NCard` props for the cards the library renders (table card, search card), merged over the default `size="small"` + 16px padding on all sides; pass `{ size: 'medium' }` for Naive's default card padding |
-| `card-on-narrow` | `boolean` | `false` | Narrow card mode: when the container is < 600 wide the table becomes a card list (columns map via `card`; tapping a card = `@row-click`, the checkbox sits top-right, the host's `checked-row-keys` / `expanded-row-keys` keep working; a tree's `children` are flattened pre-order with level indent and an expand arrow), business buttons fold into an "Actions ▾" button that opens in place, and toolbar controls grow to touch size; pagination stays the official `simple` one (40px items, no page-size picker). With sortable columns the toolbar gets a bottom "Sort" button (opens a bottom drawer: None / Ascending / Descending per column, on/off only, priority is not editable); column-header **filters** have no entry on narrow yet, use `search: { container: 'table' }`. Off = narrow containers use the same table and toolbar as wide ones. The card list is not virtualized (narrow mode cannot change the page size; the default is 100) |
+| `card-on-narrow` | `boolean` | `false` | Narrow card mode: when the container is < 600 wide the table becomes a card list (columns map via `card`; tapping a card = `@row-click`, the checkbox sits top-right, the host's `checked-row-keys` / `expanded-row-keys` keep working; a tree's `children` are flattened pre-order with level indent and an expand arrow), business buttons fold into an "Actions ▾" button that opens in place, and toolbar controls grow to touch size; pagination stays the official `simple` one (40px items, no page-size picker). With sortable columns the toolbar gets a bottom "Sort" button (opens a bottom drawer: None / Ascending / Descending per column, on/off only, priority is not editable); column-header **filters** have no entry on the narrow tier, use `search: { container: 'table' }`. Off = narrow containers use the same table and toolbar as wide ones. The card list is not virtualized (narrow mode cannot change the page size; the default is 100) |
 | `editable` | `boolean \| { rowReadonly?, newRow?, add?, remove?, save?, beforeunload?, labelWidth? }` | `false` | Editable grid, see "More scenarios". `rowReadonly(row)` locks a row; `newRow()` gives the initial values of an added row; `add: false` hides the toolbar "Add row", `{ position: 'bottom' }` appends at the end; `remove` hides the batch-bar "Delete selected"; `labelWidth` is the narrow drawer's label column (default 72); `save` is `'batch'` (default) or `'cell'`; `beforeunload: false` drops the leave prompt |
 | `fill-height` | `boolean` | `false` | Fill the parent: the body scrolls inside the card (official `flex-height` + virtual scroll) and pagination sticks to the bottom; **the parent needs a definite height**; `max-height` is ignored while on |
 | `storage-key` | `string` | — | Persist column settings (visibility / order / pinning / widths) to localStorage; **density is only read from / written to storage when `toolbar: { density: true }` (the density button) is on** — otherwise `default-density` decides |
@@ -732,7 +730,7 @@ Anything not listed (e.g. `striped`, `max-height`, `checked-row-keys`, `virtual-
 
 | Event | Payload | When |
 |---|---|---|
-| `search` | `params` | Search clicked (params already cleaned) |
+| `search` | `params` | Search clicked (mode 1: the cleaned flat params; mode 2: the conditions serialized by `filterSerializer`) |
 | `reset` | — | Reset clicked |
 | `loaded` | `rows, total` | Remote data loaded |
 | `error` | `err` | Request failed (the table shows no message; handle it yourself) |
@@ -753,7 +751,7 @@ Anything not listed (e.g. `striped`, `max-height`, `checked-row-keys`, `virtual-
 | `title` | — | Table title |
 | `toolbar` | — | Left side of the toolbar, e.g. Create / batch buttons |
 | `toolbar-right` | — | Right side of the toolbar, before the built-in buttons |
-| `batch` | `{ checkedRowKeys, clear }` | Batch bar: replaces the toolbar while rows are checked (needs a selection column): select-page checkbox + "N selected" + this slot + clear |
+| `batch` | `{ checkedRowKeys, clear }` | Batch bar: replaces the toolbar while rows are checked (needs a selection column and a bound `checked-row-keys`): select-page checkbox + "N selected" + this slot + clear |
 | `cell-{key}` | `{ row, index }` | Custom cell for a column |
 | `header-{key}` | `{ column }` | Custom header for a column |
 | `empty` | — | Content when there is no data |
@@ -826,7 +824,7 @@ All `labels` keys are optional; missing keys fall back to the English defaults (
 | Purpose | Keys |
 |---|---|
 | Search / toolbar | `search`, `reset`, `refresh`, `density`, `densityComfortable`, `densityCompact`, `columnSettings`, `columnSettingsReset`, `fixedLeft`, `fixedRight`, `fixedNone`, `expand`, `collapse`, `more`, `maximize`, `restore` |
-| Header filters | `filter`, `filterConfirm`, `filterReset`, `filterSelectAll`, the operator labels (`filterEqual`, `filterContains`, `filterGt`, `filterLike`, `filterIn`, ...), `filterNoValue`, `filterAddCondition`, `filterRemoveCondition`, `filterLogicAnd`, `filterLogicOr`, `filterAdvanced`, `filterSimple`, `filterClearAll`, `filterRestoreDefault`, `filterActiveCount` |
+| Header filters | `filter`, `filterConfirm`, `filterReset`, `filterSelectAll`, the operator labels (`filterEqual`, `filterContains`, `filterGt`, `filterLike`, `filterIn`, ...), `filterNoValue`, `filterAddCondition`, `filterRemoveCondition`, `filterLogicAnd`, `filterLogicOr`, `filterAdvanced`, `filterSimple`, `filterConditionLead`, `filterCannotCollapse`, `filterClearAll`, `filterRestoreDefault`, `filterActiveCount` |
 | Query builder | `searchBy`, `searchMoreConditions`, `searchConditionN` |
 | Batch bar | `selectedCount` (with `{n}`), `clearSelection` |
 | Narrow tier | `operations`, `sort`, `sortNone`, `sortAscend`, `sortDescend`, `treeExpand`, `treeCollapse` |
@@ -853,48 +851,33 @@ All `labels` keys are optional; missing keys fall back to the English defaults (
 | Vue | `>= 3.3` (`peerDependencies: ^3.3.0`; the repo is developed on 3.5) |
 | Naive UI | `>= 2.44` (`peerDependencies: ^2.44.0`). **Unit tests and browser verification run on 2.45.3**; versions between 2.44.0 and 2.45.2 were not tested individually, so pin the verified version |
 | Module format | ESM only, type declarations included. `exports` has two conditions, `node` and `import`, pointing at two builds with the same code: browsers / bundlers use `dist/index.js`, which imports its stylesheet; plain Node uses `dist/index.node.js`, which does not |
-| Plain Node / server | In plain-Node environments such as vitest, or in server builds that externalize this package, a bare `import` no longer fails on `.css`. **Server-side rendering of `SmartTable` is not supported yet**: the component uses browser APIs such as `document` while rendering, and `dist/index.node.js` carries no styles |
+| Plain Node / server | In plain-Node environments such as vitest, or in server builds that externalize this package, a bare `import` does not fail on `.css`. **Server-side rendering of `SmartTable` is not supported**: the component uses browser APIs such as `document` while rendering, and `dist/index.node.js` carries no styles |
 | Browsers | **Verified on Chromium only (Chrome / Edge)**, including the 390 × 844 narrow tier (touch via CDP device emulation). Firefox / Safari, real finger touch and screen readers are **not tested** |
 | Node (dev / CI) | 24 |
 
-## Milestones
+## Known limitations
 
-This section is the **version roadmap and current progress**, not a changelog; per-item changes are in [CHANGELOG.md](./CHANGELOG.md) and upgrade steps in [MIGRATION.md](./MIGRATION.md).
-
-**Current stage: `3.2.0` (npm `latest`).** 3.0 is a major upgrade; see [MIGRATION.md](./MIGRATION.md) for the upgrade steps. The "Known gaps / limits" table below lists what 3.0.0 still does not do; later versions will cover it.
-
-**What 3.0 already has** (matching P0 / P1 / P2 of the [spec](./docs/smart-naive-table-spec.md)):
-
-- **P0 baseline**: default value and look adjustments (100 per page, compact density by default, the official `simple` pager, ...), multi-column sorting with `sort()` / `clearSorter()`, 15 filter operators, active-condition chips, `toolbar.more`, `fill-height`, `zhCNLabels`, `cardProps`, global `defaultPageSize`.
-- **P1**: the query builder (`search.container: 'table'`), the `#batch` batch bar, in-page maximize `toolbar.maximize`.
-- **P2**: the narrow-tier card list `card-on-narrow` and the sort drawer.
-- **Beyond P0–P2**: the editable grid `editable`, the `select-table` editor and `SmartSelectTable`. The design status of this part is still "proposal" in the design doc (open questions are in its "Editable grid" section); the library already implements it.
-- **Component preview**: 14 modules (`/prototype.html`) rebuild the design mockup with the real library and are compared item by item with the mockup using `tools/parity`.
-
-**Known unfinished items / limits** (all verifiable in the repo):
-
-| Item | Current state | Where |
-|---|---|---|
-| Narrow-tier header-filter drawer | Not done: in card mode the header funnel has no entry; filter on the narrow tier with the query builder (`search: { container: 'table' }`) | Spec §5.8, CHANGELOG `3.0.0` |
-| `select-table` inside the editable grid | Single selection only inside a cell (use `multiselect` for small multi-value enums) | `SelectTableProps` in `src/types.ts` |
-| `SmartSelectTable` with remote data | Re-opening does not jump to the page of the selected row (local `data` does) | `activeIndex` in `src/SmartSelectTable.vue` is only computed for local data |
-| `SmartSelectTable` in the search form | Not wired into `SearchForm` yet; table-picker fields in the search form are planned separately | The "Table picker" section on this page |
-| Save-time validation in the editable grid | Selects the first invalid cell, but only locates within the current page; an invalid cell on another page only fires `@invalid`, it does not auto-page | `firstInvalid` / `save` in `src/useEditable.ts` |
-| Row dragging | The built-in dragging has no keyboard support; with remote pagination, drag sorting does not cross pages | Design doc §12.6 (the ↑ ↓ keys in preview module 10 are host code) |
-| Browser verification scope | Chromium only; Firefox / Safari, real touch and screen readers are untested | Spec §9, design doc §9.5 |
-| Host backends | The default `pageSize` is 100; whether your backend accepts it is for each host to confirm | Spec §9 |
+| Area | Limitation |
+|---|---|
+| Narrow-tier header filters | There is no drawer for column-header filters: in card mode the header funnel has no entry; filter on the narrow tier with the query builder (`search: { container: 'table' }`) |
+| `select-table` in the editable grid | Single selection only inside a cell (use `multiselect` for small multi-value enums) |
+| `SmartSelectTable` with remote data | Reopening does not jump to the page of the selected row (local `data` does) |
+| `SmartSelectTable` in the search form | Not available as a search-form control |
+| Save-time validation in the editable grid | Selects the first invalid cell, but only locates it within the current page; an invalid cell on another page only fires `@invalid`, it does not turn the page |
+| Row dragging | The built-in dragging has no keyboard support; with remote pagination, drag sorting does not cross pages |
+| Browser coverage | Verified on Chromium only; Firefox / Safari, real touch and screen readers are untested |
+| Host backends | The default `pageSize` is 100; whether your backend accepts it is for each host to confirm (set `default-page-size` or `pageSizes` otherwise) |
 
 ## Documentation
 
 | Document | Contents |
 |---|---|
-| [docs/smart-naive-table-design.html](./docs/smart-naive-table-design.html) | The design mockup: one offline file, 14 modules, light / dark, wide / mid / narrow tiers — the reference for how it should look |
-| [docs/smart-naive-table-design.md](./docs/smart-naive-table-design.md) | The design doc: the conclusion, reasons and cost of every decision, plus the 2.1.1 → 3.0.0 change overview |
-| [docs/smart-naive-table-spec.md](./docs/smart-naive-table-spec.md) | The 3.0.0 spec as implemented: API, defaults, requirements, verification status and the unverified list |
+| [docs/smart-naive-table-design.html](./docs/smart-naive-table-design.html) | The design mockup: one offline file, 15 modules, light / dark, wide / mid / narrow tiers — the reference for how it should look |
+| [docs/smart-naive-table-design.md](./docs/smart-naive-table-design.md) | The design doc: the conclusion, reasons and cost of every decision |
+| [docs/smart-naive-table-spec.md](./docs/smart-naive-table-spec.md) | The spec as implemented: API, defaults, requirements, verification status and the unverified list |
 | [CHANGELOG.md](./CHANGELOG.md) | Per-version changes |
-| [MIGRATION.md](./MIGRATION.md) | 2.x → 3.0.0 upgrade guide (breaking changes, how to revert, pre-upgrade checklist) |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Branch rules and checks before opening a PR |
-| [docs/baseline/](./docs/baseline/README.md) | Screenshot baseline of the design mockup: 14 modules × light / dark × 1440 / 390 viewports, 56 images (not published with the package) |
+| [docs/baseline/](./docs/baseline/README.md) | Screenshot baseline of the design mockup: modules 1–14 × light / dark × 1440 / 390 viewports, 56 images (not published with the package) |
 | [tools/parity](./tools/parity/README.md) | Scripts that read the mockup and the component preview side by side; the README screenshot script `readme-shots.mjs` lives here too |
 | [docs/spike](./docs/spike/README.md) | Verification code against real naive-ui (one-off, not published) |
 | `playground/` | The component preview (`/prototype.html`, source in `playground/prototype/`) and the feature demo (`/playground.html`) |
