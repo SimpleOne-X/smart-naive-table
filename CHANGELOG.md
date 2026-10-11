@@ -1,5 +1,30 @@
 # Changelog
 
+## 未发布
+
+### 修复
+
+- **窄档折叠(`card-on-narrow`)下,`#toolbar` 槽被右侧的「操作 ▾」和内置图标挤成一格窄条,放进去的范围类控件被压坏、定宽控件互相重叠(issue #17)**:窄档折叠的工具栏是三列网格 `头部 | 操作 ▾ | 图标`,后两列是 `auto`,先拿走自己的宽度,头部只剩「整行 − 操作 − 图标」(issue 实测:336px 宽的工具栏三列 114.875 / 71.125 / 126px,头部格 115px)。现在宿主传了 `#toolbar` 时,头部(标题 + `#toolbar`)独占第一行、放不下就换行,「操作 ▾」靠左、内置图标靠右落到第二行;没传 `#toolbar`(只有标题)、第二行没有东西可放(没有业务按钮也没有内置图标)、批量栏出现时,仍是原来的排法。真实浏览器(Chromium,容器宽 390)实测:往 `#toolbar` 放 200px + 150px 两个定宽控件,旧排布头部只有 141px、两个控件压在「操作」和图标上、工具栏横向溢出 104px;新排布头部 356px 通栏、控件自动换行、无重叠无溢出。设计 §2.16。
+- **本地模式下实例方法 `goPage(n)` 之后,窄档卡片列表不翻页、批量栏的「本页全选」勾到旧页的行**:官方 `NDataTable` 的实例方法 `page(n)` 只改表格自己的页码、转发表格级回调,不经过分页组件的 `onUpdatePage`;而库自己记的页码 `localPage` 只在那里更新,于是 `goPage` 之后表格翻页了、`localPage` 还停在旧页。卡片列表(自己按 `localPage` 切页)因此不动,批量栏的「本页」(同样读 `localPage`)是旧页的行:第 2 页上点「本页全选」并入的是第 1 页的键。现在 `goPage` 本地模式同步 `localPage`(越界页码仍由读它的地方夹到最后一页);远程模式不受影响(本来就走 `onPage` 重查)。点分页按钮翻页一直是对的。
+
+### 新增
+
+- **窄档卡片(`card-on-narrow`)认树表的 `children`(issue #16)**:带 `children-key` 的树表切成卡片后不再只剩根节点。每个节点一张卡,按先序拍平,标题按层级缩进(每层 `indent`,默认 16px),有子级的卡片标题前有展开 / 折叠箭头(44×44 触控热区,带 `aria-expanded`,无障碍名走新增的 `labels.treeExpand` / `treeCollapse`),叶子留同宽空位让同层标题对齐。**没有新增属性**,读的都是透传给 `NDataTable` 的官方属性,语义对齐官方 2.45.3:
+  - **展开**:`children-key`(默认 `children`)、`indent`、`expanded-row-keys`、`default-expanded-row-keys`、`default-expand-all`。受控(绑了 `expanded-row-keys`)时只通知宿主、按官方形状调 `onUpdate:expandedRowKeys(keys)` / `onUpdateExpandedRowKeys(keys)`;没绑时库内部持有。已知限制:没绑 `expanded-row-keys` 时,表格 ↔ 卡片切档(如旋转屏幕)展开态不互通(同未绑 `checked-row-keys` 的勾选);绑上就互通。
+  - **分页 / 排序只作用于根行**,子级跟着父级、保持原序(官方如此);分页条「共 N 条」数的是根节点,一页的卡片数因此不固定。
+  - **勾选按 `cascade`(默认 true)级联**:勾父 = 勾上全部后代(跳过 `disabled` 行),子全勾则父自动勾上,部分勾则父半选,取消反之;`cascade: false` 时各卡独立。`checked-row-keys` 与表格形态互通。级联是自写的纯函数(`src/cardTree.ts`),并与真实 `NDataTable` 逐步对拍(`tests/cardTree.parity.test.ts`:勾 / 取消、`disabled`、`cascade: false`);没有新增 `treemate` 依赖。
+  - **没有行带 `children` 的表格,卡片 DOM 与此前逐字一致**(没有箭头、占位、缩进外壳)。
+  - **没做**:懒加载(`on-load` + `isLeaf: false`,卡片里不画箭头)、`check-strategy` 非 `all`、`row-draggable` / `editable` 与树同用。
+  - 设计 §2.17;设计稿与对照页新增第 15 页「树形表格」。
+
+### 外观变化
+
+- **传了 `#toolbar` 的页面,窄档工具栏多一行**:不传任何属性,升级后开了 `card-on-narrow` 且传了 `#toolbar` 的表格,窄档工具栏由「标题 | 操作 ▾ | 图标」一行变成「标题 + `#toolbar`」一行、「操作 ▾ … 图标」一行(高度多 50px = 40 + 行距 10),「操作 ▾」由紧贴图标改为靠左。没传 `#toolbar` 的页面零变化,没有回退开关(此前那里就是被挤坏的)。原本在窄档用 CSS 隐藏 `#toolbar` 的内容、另在 `#toolbar-right` 里放一份的宿主,升级后头部那一行是空的(多 10px 行距),建议删掉那段绕行。
+
+### 行为变化
+
+- **窄档 + `card-on-narrow` + 行带 `children` 的表格,卡片列表里会出现子级**(此前被丢弃,只剩根节点)。已经自己拍平(`flattenTree`)再喂给卡片的宿主(下游 SmartAdmin 内核的机构 / 菜单管理、SmartMOM 的 4 个页面):拍平后的行对象若仍带 `children` 字段,会被再展开一次、出现重复。删掉拍平绕行、直接传原树(推荐),或拍平时去掉 `children`。
+
 ## 3.1.3 - 2026-10-10
 
 ### 修复

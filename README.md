@@ -154,16 +154,17 @@
 - **默认关闭**：不开 `card-on-narrow` 时，窄容器与宽容器是同一套表格与工具栏（窄容器下分页仍不画每页条数选择器）。
 - **卡片列表**：第一个数据列作卡片标题，其余列是两列「标签：值」，操作列（`card: 'action'`，缺省取最后一个 `fixed: 'right'` 的列）放在卡片底部；列上写 `card: 'title' | 'meta' | 'action' | 'handle' | false` 可覆盖；列设置里隐藏的列卡片里同样隐藏。点卡片 = `@row-click`，勾选框在卡片右上角，宿主绑的 `checked-row-keys` / `expanded-row-keys` 照常生效。
 - **触控尺寸**：工具栏按钮、输入框、分页项统一放大到 40px（官方 `large`）；窄档不画每页条数选择器，分页用官方 `simple`。
-- **工具栏折叠**：业务按钮（`#toolbar-right` + 「更多」）收成「操作 ▾」，点开在原位多出一行。
+- **工具栏折叠**：业务按钮（`#toolbar-right` + 「更多」）收成「操作 ▾」，点开在原位多出一行。宿主传了 `#toolbar` 时，头部（标题 + `#toolbar`）独占第一行、放不下就换行，「操作 ▾」靠左、内置图标靠右落到第二行（不传 `#toolbar` 仍是单行）。
 - **搜索收成「输入框 + 筛选」**：用条件构造器（`search: { container: 'table' }`）时，窄档只留一个输入框和「筛选」按钮，点「筛选」从底部抽屉展开同一份多条件面板。
 - **排序抽屉**：有可排序列时，工具栏最下面多一行「排序」按钮，点开底部抽屉，每列「无 / 升序 / 降序」（只能启停，不改优先级）。
 - **底部面板**：可编辑表格（`editable`）在窄档点卡片 = 底部抽屉表单（整行即时保存，其中的 `select-table` 字段点开贴底选择面板）；`SmartSelectTable` 在视口 < 600 或放不下浮层时也改用底部面板。
 - **行拖拽**：卡片保留拖拽，手柄列写 `card: 'handle'`，放在标题行最左；开了 `row-draggable` 的卡片在标题行末尾显示行号。
 - **合计卡**：宿主给了 naive 的 `summary`（合计行）时，窄档卡片列表末尾多一张「合计」卡。
+- **树表**：带 `children-key` 的树表在卡片里按先序拍平，标题按层级缩进（每层 `indent`，默认 16px），有子级的卡片标题前有展开 / 折叠箭头。读的都是 `NDataTable` 的官方属性（`children-key`、`indent`、`expanded-row-keys`、`default-expanded-row-keys`、`default-expand-all`、`cascade`），**没有新增属性**；分页 / 排序只作用于根行（同官方），勾选按 `cascade` 级联、父卡片半选。没绑 `expanded-row-keys` 时展开态由库持有（表格 ↔ 卡片切档不互通，绑上就互通）。没做：懒加载（`on-load`）、`check-strategy`、`row-draggable` / `editable` 与树同用。
 - **chips 与分页**：已生效条件 chips 在窄档单独占一行、放在分页上方。
 - **没做的**：列头漏斗的窄档抽屉（卡片模式没有表头，漏斗没有入口；需要筛选请用条件构造器）；卡片列表不做虚拟滚动（窄档不能改每页条数，默认每页 100）。列设置在窄档仍是气泡，不是抽屉。
 
-> 预览里 14 个模块的主表都带 `card-on-narrow`（窗口缩到 400 宽左右，或用浏览器的设备模拟 390 × 844）：模块 2 / 3 / 4 看条件搜索、筛选抽屉与排序抽屉，模块 10 看卡片里的拖拽手柄，模块 14 看卡片点开的底部抽屉表单。
+> 预览里 15 个模块的主表都带 `card-on-narrow`（窗口缩到 400 宽左右，或用浏览器的设备模拟 390 × 844）：模块 2 / 3 / 4 看条件搜索、筛选抽屉与排序抽屉，模块 10 看卡片里的拖拽手柄，模块 14 看卡片点开的底部抽屉表单，模块 15 看树表卡片（展开 / 折叠、级联勾选）。
 
 ## 安装
 
@@ -696,7 +697,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | `toolbar` | `false \| { refresh, density, columnSettings, more, maximize }` | 刷新（仅远程）、列设置；`density` / `maximize` 默认 `false` | 工具栏按钮开关；`more` 是「更多」菜单的选项（官方 `NDropdown` 的 `options`），选中发 `more-select`；`maximize: true` 或 `{ zIndex }` 打开「放大」（页面内铺满视口，层级默认 1999） |
 | `title` | `string` | — | 表格标题，也可用 `#title` 插槽 |
 | `card-props` | `Partial<CardProps>` | — | 库渲染的卡片（表格卡片、搜索卡片）的官方 `NCard` 属性，合并在默认 `size="small"` + 四边 16px 内边距之后；想用 Naive 默认的卡片内边距可传 `{ size: 'medium' }` |
-| `card-on-narrow` | `boolean` | `false` | 窄档卡片模式：容器宽 < 600 时表格换成卡片列表（列映射见列的 `card`；点卡片 = `@row-click`，勾选框在右上角，宿主绑的 `checked-row-keys` / `expanded-row-keys` 照常生效）、业务按钮折叠成「操作 ▾」（点开原位展开一行）、工具栏控件放大到触控尺寸；分页仍是官方 `simple` 分页（项 40px，不画每页条数）。有可排序列时工具栏最下面多一行「排序」按钮（点开底部抽屉，每列「无 / 升序 / 降序」，只能启停、不改优先级）；窄档下列头**筛选**暂无入口，请用 `search: { container: 'table' }`。不开则窄容器与宽容器是同一套表格与工具栏。卡片列表不做虚拟滚动（窄档不能改每页条数，默认每页 100） |
+| `card-on-narrow` | `boolean` | `false` | 窄档卡片模式：容器宽 < 600 时表格换成卡片列表（列映射见列的 `card`；点卡片 = `@row-click`，勾选框在右上角，宿主绑的 `checked-row-keys` / `expanded-row-keys` 照常生效；树表的 `children` 按先序拍平、标题带层级缩进与展开箭头）、业务按钮折叠成「操作 ▾」（点开原位展开一行）、工具栏控件放大到触控尺寸；分页仍是官方 `simple` 分页（项 40px，不画每页条数）。有可排序列时工具栏最下面多一行「排序」按钮（点开底部抽屉，每列「无 / 升序 / 降序」，只能启停、不改优先级）；窄档下列头**筛选**暂无入口，请用 `search: { container: 'table' }`。不开则窄容器与宽容器是同一套表格与工具栏。卡片列表不做虚拟滚动（窄档不能改每页条数，默认每页 100） |
 | `editable` | `boolean \| { rowReadonly?, newRow?, add?, remove?, save?, beforeunload?, labelWidth? }` | `false` | 可编辑表格，见「更多场景」与下面的「可编辑表格」小节。`rowReadonly(row)`：整行锁定；`newRow()`：新增行的初值；`add`：`false` 关掉工具栏「新增行」、`{ position: 'bottom' }` 追加到末尾；`remove`：关掉批量栏「删除所选」；`labelWidth`：窄档抽屉的标签列宽（缺省 72）；`save`：`'batch'`（默认）/ `'cell'`（即时保存）；`beforeunload: false`：不要离开页面提示 |
 | `fill-height` | `boolean` | `false` | 铺满父容器：表体在卡片内滚动（官方 `flex-height` + 虚拟滚动）、分页条贴底；**父容器须定高**；开启时忽略 `max-height` |
 | `storage-key` | `string` | — | 设置后,列设置(显隐 / 顺序 / 固定 / 列宽)保存到 localStorage;**密度只在开了 `toolbar: { density: true }`(密度按钮)时才读写存储**,否则以 `default-density` 为准 |
@@ -823,7 +824,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | 表头过滤 | `filter`、`filterConfirm`、`filterReset`、`filterSelectAll`、各操作符文案（`filterEqual`、`filterContains`、`filterGt`、`filterLike`、`filterIn` 等）、`filterNoValue`、`filterAddCondition`、`filterRemoveCondition`、`filterLogicAnd`、`filterLogicOr`、`filterAdvanced`、`filterSimple`、`filterClearAll`、`filterRestoreDefault`、`filterActiveCount` |
 | 条件构造器 | `searchBy`、`searchMoreConditions`、`searchConditionN` |
 | 批量栏 | `selectedCount`（含 `{n}`）、`clearSelection` |
-| 窄档 | `operations`、`sort`、`sortNone`、`sortAscend`、`sortDescend` |
+| 窄档 | `operations`、`sort`、`sortNone`、`sortAscend`、`sortDescend`、`treeExpand`、`treeCollapse` |
 | 可编辑表格 | `editSave`（含 `{n}`）、`editDiscard`、`editDiscardConfirm`（含 `{n}`，放弃确认气泡的正文）、`editDiscardOk`、`editHiddenDirty`（含 `{n}`，「含 M 条当前不可见」）、`editAddRow`、`editDeleteSelected`、`editNewTitle`、`editEditTitle` 等（完整列表见 `SmartTableLabels`） |
 | 下拉表格选择 | `pickTotal`、`pickSelected`、`pickClearSel`、`pickOk` |
 
