@@ -135,6 +135,16 @@
 - **叠加顺序**:底色用 `background-image`(一层单色渐变)叠在 td 原有的 `background-color` 之上、不改写底色,所以固定列的实底(滚动时不透出下面的文字)、斑马纹、行悬停色都照常。选中(`data-xsel`)、校验错误(`xerr`)、编辑中(`xed`)的格不加底也不加悬停描边,由各自的 2px 内描边 / 编辑控件独占;新增行(`xnew`)自己的 7% 主色底与首格 3px 主色条优先,行内的格不再叠这层底(悬停描边与 3px 条合成,条保留);脏标记小三角是 `::before`,画在底色之上,不受影响。
 - **已知限制**:新增行内部不再区分可填 / 不可填(整行是新增行的主色底);新增行的 7% 与可填格的 6% 相差不大,新增行主要靠首格的 3px 主色条认出来。
 
+**锁定格灰底(`editable.lockedFill`,默认关闭;与 `fillHint` 是两种取向,推荐二选一)**:`fillHint` 给「能填」的格加色,大表里整片淡蓝,观感杂;另一种取向反过来——**可填格保持白色(行原有的底色,不加任何底),不能填的格灰一点**,与同一界面里「禁用输入框 = 灰底、可填输入框 = 白底」是同一套语言。原型在侧栏「模块选项」里有「锁定格灰底」开关(关 / 开 / 宿主灰,默认关;「开」用 Naive 默认主题的 `inputColorDisabled`,「宿主灰」是宿主把它设成半透明灰的示例)。不开时单元格的类名与样式与没有这个开关时完全一致。打开后:
+
+- **灰格** = 锁定的格(带 `smart-table-xlk`:`rowReadonly` 或列 `readonly` 函数锁住的格)与没有编辑器的数据列(带 `smart-table-xro`:`readonly: true`、`editor: false`、有 `render` / `#cell-*` 而没声明 `editor` 的列),多带一个标记类 `smart-table-xgray`;可填格不加任何底色。**不上灰**的有三类:勾选 / 序号 / 展开这类特殊列(不走 `cellProps`,本来就没有 `xro`);拖拽手柄、操作列这类只是控件、不是数据的列(列的 `card` 是 `'handle'` / `'action'`,或标题为空);待删行的格(整行已淡化 + 删除线,不再区分灰与不灰)。不符合上面特征的这类列(有标题、没写 `card`),在列上写 `lockedFill: false` 退出;写 `true` 则强制上灰;列上的写法优先于自动判断。
+- **色值** = 宿主主题的 `inputColorDisabled`(Naive 的「禁用输入框底色」),经根元素 `--smart-table-xl-lock` 下发,明暗跟随主题,宿主用 `themeOverrides.common.inputColorDisabled` 决定灰多深。按宿主给的原样用,不再套比例,库不另造一个灰:这样表里的锁定格与同界面里的禁用输入框是同一个灰。Naive 默认主题:亮 `rgb(250,250,252)`(不透明,在白底上只差 2%,很淡)、暗 `rgba(255,255,255,.06)`(叠在 `rgb(24,24,28)` 上得 `rgb(38,38,42)`);要更明显,宿主把它设成半透明的灰,例如亮 `rgba(100,116,150,.12)`(白底上得 `rgb(236,238,242)`)、暗 `rgba(140,170,255,.05)`(卡片底上得 `rgb(30,31,39)`)。
+- **文字**仍是 `--smart-table-xl-ro`(`textColor3`),不降到更淡的 `textColorDisabled`:锁定格里的值(比较符、目标值、上下限)是要读的数据。`textColor3` 对格底的对比度(WCAG):Naive 默认亮 4.05:1(白底上 4.22:1)、暗 5.17:1(无灰时 5.56:1);半透明灰的亮色示例 3.64:1。亮色略低于 4.5:1,锁定格的值是次要信息,宿主要更高对比度时把 `textColor3` 调深或把灰调浅。
+- **叠加办法**:灰画成一层 `inset box-shadow`(`inset 0 0 0 9999px <灰>`),不改 `background-color`、也不占 `background-image`。① 固定列(sticky)的 td 是实底,灰画在这层实底之上,`background-color` 保持不透明,滚到固定列下面的列的字不会透出来;② 行悬停色、斑马纹、排序列底色是 `background-color`,当前行(`activeRowKey`)的高亮是库自己的 `background-image`,宿主叠勾选行高亮也常用 `background-image`,灰画在这些之上——半透明的灰与它们合成,而不是顶掉它们;用 `background-image` 画灰的话,同一个属性只有一方生效(实测:选择器压不过库自己的当前行规则,灰就没了;压过它,当前行的高亮就没了),锁定格会在高亮行里漏成没有高亮或没有灰的一块;③ 宿主给不透明的灰(Naive 默认亮色)时,灰盖住行悬停色的一点差异(`rgb(247,247,250)` 对 `rgb(250,250,252)`),可以接受。代价:`box-shadow` 同时是选中框、校验错误框、新增行首格 3px 色条的载体,这三种状态下灰要与它们合成(样式表里逐条写出),所以选中的锁定格是「2px 主色内描边 + 灰底」,校验错误同理,新增行里的灰格是灰叠在新增行的 7% 主色底上(新增行仍靠首格色条和整行淡主色认出来)。脏标记小三角是 `::before`,画在灰之上,不受影响。
+- **悬停**:可填格(有编辑器、未锁定)悬停时有一圈 1px、主色 40% 的内描边,与 `fillHint` 的是同一条规则,暗示「点一下就能填」;灰格没有。不开 `fillHint` 时这圈描边也在(可填格多带 `smart-table-xring`);选中、校验错误、编辑中的格不加。
+- **与 `fillHint` 同开**:可填格既有 6% 淡蓝底又有悬停描边,灰格是灰,整表蓝灰相间,各自的规则互不影响。两者并存意义不大,推荐只开其一。
+- **不变**:窄档卡片(`cardOnNarrow`)没有逐格编辑,不加灰底;不加每格常驻输入框。
+
 **鼠标**
 
 - 单击 = 选中单元格(2px 主色内描边,焦点框);再次单击已选中的格 = 进入编辑。
@@ -207,6 +217,7 @@
 | select-table 面板 | 640 × 454:外内边距 8;搜索框 34(占 624 宽);间距 8;表格盒 624 × 360(1px `--n-border` 描边、圆角 3px、36 行共 1300 高内部滚动、表头吸顶);间距 8;页脚 28(无边框);下内边距 8。箭头:8.484px 旋转方块(`arrowHeight 6 × 1.414`),官方原生位置,固定在面板起始侧(`arrowOffset` 10 + 方块半宽 4.242 = 距面板左缘 14.242,不跟触发格走;起始对齐放不下时翻到末端对齐,箭头跟到右缘 14.242;起始对齐、末端对齐都放不下时改用底部面板(同窄档面板,无箭头)),面板与触发格间距 10(`spaceArrow`,从单元格内框下沿算起,行更高时同样),在格子上方时 `data-side=above`、箭头翻到面板下缘。窄档面板:内边距 12、无箭头,表格盒同样 1px 描边 + 圆角 3px / 最大高 360。选中行字色 primary,键盘高亮行同悬停底色 |
 | 已修改标记 | `::before` 6 × 6 三角,`--warn` 亮 `rgb(217,119,6)`,贴 td 左上 |
 | 可填格提示(`fillHint` 开,见 本节 4) | 可填格 `background-image: linear-gradient(主色 6%, 主色 6%)`(亮 `color(srgb .094 .627 .345 / .06)`、暗 `color(srgb .388 .886 .718 / .06)`),`background-color` 不变;悬停 `inset 0 0 0 1px` 主色 40%;选中 / 校验错误的格 `background-image` 为 `none`;锁定格无底无描边;td 高不变 |
+| 锁定格灰底(`lockedFill` 开,见 本节 4;库对照页实测,Chrome 2048×1018) | 灰格 `box-shadow: inset 0 0 0 9999px <灰>`,`background-color` 不变(固定列 `position: sticky`、`background-color` 仍是不透明 `rgb(255,255,255)`);宿主灰(亮 `rgba(100,116,150,.12)`)的合成色:白底 `rgb(236,238,242)`、行悬停 `rgb(229,231,238)`、当前行(主色 9%)`rgb(218,231,229)`、勾选行(宿主叠主色 13% 的 `background-image`)`rgb(210,227,224)`、新增行(主色 7% 底)`rgb(222,232,231)`;暗(`rgba(140,170,255,.05)`)白底即卡片底 `rgb(30,32,40)`、行悬停 `rgb(43,45,53)`;选中的锁定格 `box-shadow` = 2px 主色内描边 + 灰;可填格 `box-shadow: none`、悬停 `inset 0 0 0 1px` 主色 40%;td 高不变 |
 | 数字框 −/+ 按钮 | 16 × 16(官方 18,单元格里收小) |
 | 下拉菜单 | 宽 = max(单元格宽, 120)(工作中心列 120),7 项高 246,选项高 34 |
 | 多行文本浮层 | 320 × 107.6(4 行) |
@@ -224,6 +235,7 @@
 - **草稿与查询解耦**:被搜索 / 翻页挡住的已改行看不见(本节 6)。
 - **推断会猜错**:靠数据值猜,第一行不典型时会错;宿主要为边界列写 `editor`。
 - **`fillHint` 打开后多一层底色**:违背「克制、少加底色」,所以默认关;新增行内部不再区分可填 / 不可填(本节 4)。
+- **`lockedFill` 打开后锁定格多一层灰底**:同样违背「克制、少加底色」,所以默认关;灰多深由宿主主题的 `inputColorDisabled` 决定,Naive 默认亮色主题下只差 2%、几乎看不出,要明显得宿主调主题;亮色半透明灰上 `textColor3` 的对比度低于 4.5:1;灰与选中框 / 校验框 / 新增行色条共用 `box-shadow`,三处要逐条合成(本节 4)。
 - **「放弃修改」要二次确认**(确认气泡 `NPopconfirm`,点「放弃」才还原,见 本节 5);**窄档逐格不可编辑**,手机上改多行要一行行开抽屉。
 - **BB 备选方案(每格常驻控件)的代价**:每页 100 行 × 11 列 ≈ 1100 个 `input` / `select` / `datepicker` 实例,首屏与滚动都明显变重,视觉上满屏边框;好处是「所见即可改」、不需要选中态与进入编辑的状态机,实现更简单。
 - **大数据量**:原型 12 行整页直出(不开虚拟滚动)。库侧若与虚拟滚动共用,**编辑中的行滚出窗口时控件会被卸载**,需约定「滚出窗口 = 提交」(原型没有这个问题,没做)。
@@ -240,10 +252,11 @@
 
 | 位置 | 设计 | 说明 |
 |---|---|---|
-| `SmartTableProps` | `editable?: boolean \| EditableConfig` | 默认 `false`;`EditableConfig`:`mode`(目前只有 `'cell'`)、`save`(`'batch'` 默认 = 本库的批量保存,`'cell'` = BB 式单元格即时保存,`@save` 里宿主自己落库)、`rowReadonly(row)`、`add`(`true` / `{ position: 'top' \| 'bottom' }`)、`remove`、`newRow`、`beforeunload`、`labelWidth`、`fillHint`(默认 `false`:可填格的淡底与悬停描边,本节 4) |
+| `SmartTableProps` | `editable?: boolean \| EditableConfig` | 默认 `false`;`EditableConfig`:`mode`(目前只有 `'cell'`)、`save`(`'batch'` 默认 = 本库的批量保存,`'cell'` = BB 式单元格即时保存,`@save` 里宿主自己落库)、`rowReadonly(row)`、`add`(`true` / `{ position: 'top' \| 'bottom' }`)、`remove`、`newRow`、`beforeunload`、`labelWidth`、`fillHint`(默认 `false`:可填格的淡底与悬停描边,本节 4)、`lockedFill`(默认 `false`:锁定格 / 无编辑器的列铺宿主主题的禁用灰、可填格悬停描边,本节 4) |
 | `SmartTableDataColumn` | `editor?: 'input' \| 'textarea' \| 'number' \| 'select' \| 'multiselect' \| 'select-table' \| 'date' \| 'datetime' \| 'checkbox' \| false` | 显式指定控件,优先级最高;`false` = 不可编辑 |
 | | `editorProps`(`editor: 'select-table'` 时是 `SelectTableProps`) | `{ data?: Row[]; fetcher?: Fetcher; columns: Column[]; fill?: (picked, row) => Record<列key, 值> }`:数据源(静态数组或远程 fetcher,带搜索 + 分页)、面板里的列、选中后顺带填其它列的值(原型:名称 / 工作中心 / 工序类型 / 准备工时 / 单件工时) |
 | | `readonly?: boolean \| ((row) => boolean)`(`readonlyWhenAdd` / `readonlyWhenEdit` 对齐 BB,当前未做) | 只读;函数形式 = 行级只读(工艺路线示例:状态 = 停用的行) |
+| | `lockedFill?: boolean` | 只在 `editable.lockedFill` 打开时有意义:`false` = 这一列不上灰(拖拽手柄、操作列这类只是控件、不是数据的列);`true` = 强制上灰;缺省按列的 `card` / 标题自动判断(本节 4) |
 | | `rules?: { required?: boolean; min?: number; max?: number; int?: boolean; pattern?: RegExp; minLength?: number; maxLength?: number; validator?: (v, row, rows) => string \| true \| Promise<string \| true> }` | 校验;文案走 `labels`(渲染期求值);`validator` 可异步(如查重),未落定前「保存」会等它 |
 | | `editorProps?: Record<string, unknown>` | 透传官方控件的 props(`NInputNumber` 的 `precision`、`NDatePicker` 的 `type` 等),对齐现有 `search.props` / `filter.props` |
 | 事件 | `@cell-change(payload: { row, key, value, oldValue })` | 草稿变化时(宿主可据此联动其它列) |
@@ -268,6 +281,7 @@
 8. **取舍**:工序号 = 表格序号,**只读、不需要录入**:它就是行位置,拖动后自动变、不可编辑、不做唯一性校验。需要「可录入、不连续」的工序号(如 10、20、30 留空档)的业务,把它做成普通的必填、唯一的数字列,不用序号列。
 9. **取舍**:这套能力放进「数据」组(「设计模块重新分类与命名」的「扩展性」一条已预留「单元格编辑 → 数据」),不新开「编辑」组。
 10. **取舍**:「哪格能填」的提示做成 `editable.fillHint` 开关,默认关闭、不改默认外观;不取「默认开」(违背克制风格,且会改变所有已在使用的表格的外观),也不取「每格常驻输入框」(本节 4、9)。
+11. **取舍**:「哪格不能填」的提示做成另一个开关 `editable.lockedFill`(默认关闭),列上另有同名的可选退出 / 强制开关,不并进 `fillHint`、也不改它的行为:可填格白底、不能填的格灰底,色值交给宿主主题的 `inputColorDisabled`,不自造灰;灰画成 `inset box-shadow`,不与行高亮的 `background-image`、固定列的实底争同一个属性;特殊列、拖拽手柄 / 操作列、待删行不上灰(本节 4)。
 
 #### 12 原型实现的已知不完整之处
 

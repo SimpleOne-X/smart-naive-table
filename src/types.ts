@@ -229,6 +229,11 @@ export interface SmartTableDataColumn<T = any>
    * 显式写 `false` = 这一列不受 `editable.rowReadonly` 影响(如「状态」列,否则被锁定的行永远没法再启用)。
    */
   readonly?: boolean | ((row: T, index: number) => boolean)
+  /**
+   * `editable.lockedFill` 打开时这一列的锁定格是否铺灰:`false` = 不灰(拖拽手柄、操作列这类只是控件、不是数据的列);`true` = 强制灰。
+   * 缺省自动判断:没有编辑器的列里,`card` 为 `'handle'` / `'action'` 或标题为空的不灰,其余灰;有编辑器的列被锁住的格灰。
+   */
+  lockedFill?: boolean
   /** 可编辑表格的校验规则;不合法时单元格红框 + 提示,不允许提交。 */
   rules?: EditRules<T>
   /**
@@ -384,6 +389,13 @@ export interface EditableConfig<T = any> {
    * 一眼分出哪格能填(锁定格 / 无编辑器的列仍是无底灰字)。选中、校验错误、新增行的底色与描边优先;窄档卡片没有逐格编辑,不受影响。
    */
   fillHint?: boolean
+  /**
+   * 锁定格灰底,默认 false:true 时「可填格白、不能填的格灰」——锁定的格(`rowReadonly` / 列 `readonly` 函数)与没有编辑器的数据列铺一层宿主主题的禁用灰
+   * (Naive 主题变量 `inputColorDisabled`,宿主用 `themeOverrides.common.inputColorDisabled` 决定灰多深),可填格不加底色、悬停多一圈 1px 的内描边。
+   * 勾选 / 序号 / 展开列、拖拽手柄与操作列(`card` 为 `'handle'` / `'action'` 或标题为空)、待删行的格不上灰;灰与选中、校验错误、新增行色条合成,固定列仍是实底。
+   * 与 `fillHint` 可同开但意义不大,推荐只开其一;窄档卡片没有逐格编辑,不受影响。
+   */
+  lockedFill?: boolean
 }
 
 /** 草稿变化(@cell-change):row 是已带上这次改动的行。 */

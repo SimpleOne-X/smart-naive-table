@@ -516,6 +516,7 @@ async function onSave({ changes, done, fail }: EditSavePayload<Row>) {
 - **新增行**：默认放第 1 行；`editable: { add: { position: 'bottom' } }` 追加到列表末尾（有顺序的数据，如工艺路线）。新增后自动进入编辑的是第一个「必填且为空」的格。`add: false` 隐藏工具栏按钮。
 - **行级只读**：`rowReadonly` 锁住的行里，列上写 `readonly: false` 的格不受影响（如「状态」，否则停用的行没法再启用）；窄档抽屉里被锁的字段置灰，标签列宽用 `editable: { labelWidth }`（缺省 72px）调。
 - **可填格提示**：缺省时能填的格与展示格同底色，锁定格 / 无编辑器的列只是字色偏灰，大表里不易分辨。`editable: { fillHint: true }` 给「有编辑器且未锁定」的格铺一层极淡的主色底（主色的 6%），悬停多一圈 1px 的内描边；锁定格、无编辑器的列、待删行的格仍是无底灰字。选中、校验错误、新增行的底色与描边优先（新增行内不再叠这层底），固定列的实底不受影响；窄档卡片没有逐格编辑，不加提示。缺省关闭。
+- **锁定格灰底**：与可填格提示相反的取向——可填格保持白色（行原有的底色），不能填的格灰一点。`editable: { lockedFill: true }` 给锁定的格（`rowReadonly` / 列 `readonly` 函数锁住的）与没有编辑器的数据列铺一层宿主主题的「禁用输入框」灰（Naive 主题变量 `inputColorDisabled`，明暗跟随主题，字色仍是次要文字色）；可填格不加底色，悬停多一圈 1px 的内描边，提示「点一下就能填」。灰多深由宿主主题决定：Naive 默认亮色主题的 `inputColorDisabled` 是不透明的 `rgb(250, 250, 252)`，只比白底深约 2%，很淡；要更明显，在宿主的 `themeOverrides.common.inputColorDisabled` 里设成半透明的灰，例如亮 `rgba(100, 116, 150, .12)`、暗 `rgba(140, 170, 255, .05)`。勾选 / 序号 / 展开列、`card` 为 `'handle'` / `'action'` 或标题为空的列（拖拽手柄、操作列）、待删行的格不上灰；其它「只是控件、不是数据」的列在列上写 `lockedFill: false` 退出（写 `true` 强制上灰）。灰画成 `inset box-shadow`，与选中框、校验错误框、新增行色条合成，行悬停色、斑马纹、勾选行 / 当前行的高亮和固定列的实底都不受影响；窄档卡片没有逐格编辑，不加灰。可与 `fillHint` 同开但意义不大，推荐只开其一。缺省关闭。
 - **序号列与拖拽**：`{ type: 'index' }` 声明在某个数据列（如拖拽手柄列）之后时，就排在那一列后面；窄档 + `row-draggable` 的卡片会在标题行末尾显示行号（同「行拖拽排序」示例）。窄档卡片列表末尾，宿主给了 naive 的 `summary`（合计行）时多一张「合计」卡。
 - **不做**：填充柄、区域选择、合并单元格 / 公式、查找替换、右键菜单、跨结构变更的撤销、粘贴追加新行、复制行。
 
@@ -637,6 +638,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | `hideInSetting` | `boolean` | 显示在表格中，但不出现在列设置里（常用于操作列） |
 | `editor` | `'input' \| 'textarea' \| 'number' \| 'select' \| 'multiselect' \| 'select-table' \| 'date' \| 'datetime' \| 'checkbox' \| false` | 可编辑表格（`editable`）里这一列的编辑控件，优先级最高；`false` = 不可编辑。缺省按 `options` / `format` / 数据值推断（见 `inferEditor`）；写了 `render` 或 `#cell-*` 的列没有显式 `editor` 时不可编辑 |
 | `readonly` | `boolean \| (row, index) => boolean` | 可编辑表格里只读（纯展示、次要文字色）；函数形式按行锁定（如已审核的行）：锁定的格可选中 / 复制、不能编辑，粘贴跳过；写 `false` = 不受 `editable.rowReadonly` 影响（如「状态」列） |
+| `lockedFill` | `boolean` | 开了 `editable.lockedFill` 时，这一列的锁定格是否铺灰：`false` = 不灰（拖拽手柄、操作列这类只是控件、不是数据的列），`true` = 强制灰；缺省自动判断（没有编辑器的列里 `card` 为 `'handle'` / `'action'` 或标题为空的不灰，其余灰） |
 | `rules` | `{ required?, min?, max?, int?, minLength?, maxLength?, pattern?, validator?(value, row, rows) }` | 可编辑表格的校验规则，不合法红框 + 提示、不允许提交；文案走 `labels`；`validator` 同步返回 `true` / 提示串，或返回 Promise（异步）；第三个参数是表里当前所有行（含草稿），可做跨行 / 跨字段校验；`required` 的列表头自动带红 `*` |
 | `editorProps` | `Record<string, unknown>` | 透传给编辑控件（`NInput` / `NInputNumber` / `NSelect` / `NDatePicker`）的官方属性；`select-table`（显式或有 `columns` + `data` / `fetcher` 时自动推断）时是 `{ columns, data \| fetcher, valueKey?, labelKey?, searchKeys?, searchPlaceholder?, panelWidth?, pageSize?, pageSizes?, title?, fill? }` |
 | `children` | `SmartTableDataColumn[]` | 多级表头 |
@@ -698,7 +700,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | `title` | `string` | — | 表格标题，也可用 `#title` 插槽 |
 | `card-props` | `Partial<CardProps>` | — | 库渲染的卡片（表格卡片、搜索卡片）的官方 `NCard` 属性，合并在默认 `size="small"` + 四边 16px 内边距之后；想用 Naive 默认的卡片内边距可传 `{ size: 'medium' }` |
 | `card-on-narrow` | `boolean` | `false` | 窄档卡片模式：容器宽 < 600 时表格换成卡片列表（列映射见列的 `card`；点卡片 = `@row-click`，勾选框在右上角，宿主绑的 `checked-row-keys` / `expanded-row-keys` 照常生效；树表的 `children` 按先序拍平、标题带层级缩进与展开箭头）、业务按钮折叠成「操作 ▾」（点开原位展开一行）、工具栏控件放大到触控尺寸；分页仍是官方 `simple` 分页（项 40px，不画每页条数）。有可排序列时工具栏最下面多一行「排序」按钮（点开底部抽屉，每列「无 / 升序 / 降序」，只能启停、不改优先级）；窄档下列头**筛选**没有入口，请用 `search: { container: 'table' }`。不开则窄容器与宽容器是同一套表格与工具栏。卡片列表不做虚拟滚动（窄档不能改每页条数，默认每页 100） |
-| `editable` | `boolean \| { rowReadonly?, newRow?, add?, remove?, save?, beforeunload?, labelWidth?, fillHint? }` | `false` | 可编辑表格，见「更多场景」与下面的「可编辑表格」小节。`rowReadonly(row)`：整行锁定；`newRow()`：新增行的初值；`add`：`false` 关掉工具栏「新增行」、`{ position: 'bottom' }` 追加到末尾；`remove`：关掉批量栏「删除所选」；`labelWidth`：窄档抽屉的标签列宽（缺省 72）；`save`：`'batch'`（默认）/ `'cell'`（即时保存）；`beforeunload: false`：不要离开页面提示；`fillHint: true`：可填格铺淡底、悬停描边（缺省关） |
+| `editable` | `boolean \| { rowReadonly?, newRow?, add?, remove?, save?, beforeunload?, labelWidth?, fillHint?, lockedFill? }` | `false` | 可编辑表格，见「更多场景」与下面的「可编辑表格」小节。`rowReadonly(row)`：整行锁定；`newRow()`：新增行的初值；`add`：`false` 关掉工具栏「新增行」、`{ position: 'bottom' }` 追加到末尾；`remove`：关掉批量栏「删除所选」；`labelWidth`：窄档抽屉的标签列宽（缺省 72）；`save`：`'batch'`（默认）/ `'cell'`（即时保存）；`beforeunload: false`：不要离开页面提示；`fillHint: true`：可填格铺淡底、悬停描边（缺省关）；`lockedFill: true`：锁定格 / 无编辑器的列铺宿主主题的禁用灰、可填格悬停描边（缺省关） |
 | `fill-height` | `boolean` | `false` | 铺满父容器：表体在卡片内滚动（官方 `flex-height` + 虚拟滚动）、分页条贴底；**父容器须定高**；开启时忽略 `max-height` |
 | `storage-key` | `string` | — | 设置后,列设置(显隐 / 顺序 / 固定 / 列宽)保存到 localStorage;**密度只在开了 `toolbar: { density: true }`(密度按钮)时才读写存储**,否则以 `default-density` 为准 |
 | `default-density` | `'comfortable' \| 'compact'` | `'compact'` | 默认密度（响应式：宿主改了它，已挂载的表格跟着变） |

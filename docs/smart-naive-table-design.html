@@ -1811,6 +1811,20 @@ html[data-theme="dark"] { --n-td-striped: rgb(36, 36, 39); }   /* dark:composite
 [data-xl][data-xhint] table.n-table tbody tr:not(.xnew) > td.xc:not(.xlk):not(.xsel):not(.xerr):not(.xed) { background-image: linear-gradient(var(--xh-fill), var(--xh-fill)); }
 [data-xl][data-xhint] table.n-table tbody td.xc:not(.xlk):not(.xsel):not(.xerr):not(.xed):hover { box-shadow: inset 0 0 0 1px var(--xh-ring); }
 [data-xl][data-xhint] table.n-table tbody tr.xnew > td.xc:first-child:not(.xlk):not(.xsel):not(.xerr):not(.xed):hover { box-shadow: inset 3px 0 0 var(--n-primary), inset 0 0 0 1px var(--xh-ring); }
+/* 锁定格灰底(editable.lockedFill,默认关;原型侧栏「模块选项」里的「锁定格灰底」开关 = 容器上的 data-xlock:on = Naive 默认主题的 inputColorDisabled,host = 宿主把它设成半透明灰的示例)。可填格不加底色(白,即行原有的底),不能填的格灰一点。
+   · 灰格 = 锁定的格 td.xlk 与无编辑器的数据列 td.xro;待删行(tr.xdel)整行已淡化 + 删除线,不上灰。特殊列(展开 / 勾选 / 手柄 / 序号 / 操作)不是数据格,原型里它们不带 xro / xlk,自然不上灰。
+   · 灰画成 inset box-shadow(9999px 铺满单元格),不改 background-color、不占 background-image:固定列 td 的实底、行悬停色、当前行 / 勾选行的高亮都留在下面,半透明的灰与它们合成而不是顶掉它们。
+   · box-shadow 同时是选中框(xsel)/ 校验框(xerr)/ 新增行首格 3px 色条的载体,这三种状态下灰与它们合成(2px 描边 / 3px 条 + 灰)。
+   · 可填格悬停:1px 主色 40% 内描边,不依赖 data-xhint(单开 lockedFill 时也有);选中 / 校验未过 / 编辑中的格不加。 */
+[data-xl][data-xlock] { --xl-lock: var(--n-input-bg-disabled); --xh-ring: color-mix(in srgb, var(--n-primary) 40%, transparent); }
+[data-xl][data-xlock="host"] { --xl-lock: rgba(100, 116, 150, .12); }
+html[data-theme="dark"] [data-xl][data-xlock="host"] { --xl-lock: rgba(140, 170, 255, .05); }
+[data-xl][data-xlock] table.n-table tbody tr:not(.xdel) > td:is(.xro, .xlk) { box-shadow: inset 0 0 0 9999px var(--xl-lock); }
+[data-xl][data-xlock] table.n-table tbody tr:not(.xdel) > td:is(.xro, .xlk).xsel { box-shadow: inset 0 0 0 2px var(--n-primary), inset 0 0 0 9999px var(--xl-lock); }
+[data-xl][data-xlock] table.n-table tbody tr:not(.xdel) > td:is(.xro, .xlk).xerr { box-shadow: inset 0 0 0 2px var(--n-error), inset 0 0 0 9999px var(--xl-lock); }
+[data-xl][data-xlock] table.n-table tbody tr.xnew > td:first-child:is(.xro, .xlk) { box-shadow: inset 3px 0 0 var(--n-primary), inset 0 0 0 9999px var(--xl-lock); }
+[data-xl][data-xlock] table.n-table tbody td.xc:not(.xlk):not(.xsel):not(.xerr):not(.xed):hover { box-shadow: inset 0 0 0 1px var(--xh-ring); }
+[data-xl][data-xlock] table.n-table tbody tr.xnew > td.xc:first-child:not(.xlk):not(.xsel):not(.xerr):not(.xed):hover { box-shadow: inset 3px 0 0 var(--n-primary), inset 0 0 0 1px var(--xh-ring); }
 /* 「含 M 条当前不可见」:带草稿、但被搜索挡住的行数,放在「保存修改(N)」旁(次要文字色,12px) */
 .xl-hid { align-self: center; font-size: 12px; color: var(--n-text-2); white-space: nowrap; }
 [data-xl] td.xd::before {
@@ -4368,7 +4382,7 @@ function schemeAHtml() {
 
 /* 模式 2 页面 = 一张卡片:工具栏(含条件构造器)+ chips + 表格件 */
 function schemeEHtml(o = {}) {
-  return `<div class="smart-table" data-density="${state.compact ? 'compact' : 'normal'}"${state.max ? ' data-max' : ''}${MCx().excel ? ' data-xl' : ''}${MCx().excel && state.xl.hint ? ' data-xhint' : ''}>
+  return `<div class="smart-table" data-density="${state.compact ? 'compact' : 'normal'}"${state.max ? ' data-max' : ''}${MCx().excel ? ' data-xl' : ''}${MCx().excel && state.xl.hint ? ' data-xhint' : ''}${MCx().excel && state.xl.lock !== 'off' ? ` data-xlock="${state.xl.lock}"` : ''}>
     ${tbCardHtml(o)}
   </div>`;
 }
@@ -5457,7 +5471,8 @@ renderSidePanel = function () {
     <div class="shell-row"><span class="sr-l">页面底色</span>${seg('pageBg', state.pageBg, [['gray', '灰'], ['white', '白']])}</div>
     <div class="shell-row"><span class="sr-l">密度</span>${seg('density', state.compact ? 'compact' : 'comfortable', [['compact', '紧凑'], ['comfortable', '舒适']])}</div>`
     + (state.mod === 'excel' ? `<div class="group-title">模块选项</div>
-    <div class="shell-row"><span class="sr-l">可填格提示</span>${seg('xhint', state.xl.hint ? 'on' : 'off', [['off', '关'], ['on', '开']])}</div>` : '');
+    <div class="shell-row"><span class="sr-l">可填格提示</span>${seg('xhint', state.xl.hint ? 'on' : 'off', [['off', '关'], ['on', '开']])}</div>
+    <div class="shell-row"><span class="sr-l">锁定格灰底</span>${seg('xlock', state.xl.lock, [['off', '关'], ['on', '开'], ['host', '宿主灰']])}</div>` : '');
 };
 
 /* ---- 数据 ---- */
@@ -5844,6 +5859,7 @@ function b3Act(act, v) {
     case 'pageBg': state.pageBg = v; document.documentElement.dataset.bg = v; renderSidePanel(); return true;
     case 'density': state.compact = v === 'compact'; render(); return true;
     case 'xhint': state.xl.hint = v === 'on'; render(); return true;
+    case 'xlock': state.xl.lock = v; render(); return true;
     case 'ttTog': case 'ttCk': case 'ttAll': case 'ttPrev': case 'ttNext': return treeAct(act, v);
     case 'tnSel': state.ms.sel = v; state.activeRow = null; state.drawer = null; state.open = null; firstPage('ms'); renderPreview(); requery(); return true;
     case 'tnTog': state.ms.exp[v] = !state.ms.exp[v]; renderPreview(); return true;
@@ -5942,7 +5958,7 @@ findFid = function (fid) { return fid.startsWith('pin:') ? document.querySelecto
    新增行 = state.xl.news(待保存),删除 = state.xl.dels(待保存,行划线淡化)。「保存修改(N)」的 N = 改过的格 + 新增行 + 待删行(新增 / 待删行里改的格不重复计)。
    宽 / 中档:表格逐格编辑;窄档(< 600):不逐格编辑,点卡片 → 底部抽屉表单(控件按同一套推断生成),抽屉里的「保存」是整行的即时保存。
    ============================================================ */
-state.xl = { sel: null, edit: null, err: null, orig: {}, news: new Set(), dels: new Set(), saving: false, form: null, focusSel: false, pendingEdit: null, errShow: false, st: null, hint: false };   // st:工序库选择器(select-table)的状态:搜索词 / 页码 / 每页条数
+state.xl = { sel: null, edit: null, err: null, orig: {}, news: new Set(), dels: new Set(), saving: false, form: null, focusSel: false, pendingEdit: null, errShow: false, st: null, hint: false, lock: 'off' };   // st:工序库选择器(select-table)的状态:搜索词 / 页码 / 每页条数
 const xlRow = (no) => XL_DATA.find((r) => r.no === no);
 const xlNorm = (v) => (v === null || v === undefined ? '' : v);
 const xlEq = (a, b) => xlNorm(a) === xlNorm(b);

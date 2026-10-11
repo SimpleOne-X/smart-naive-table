@@ -249,19 +249,44 @@ onBeforeUnmount(() => {
   background-image: linear-gradient(var(--smart-table-xl-fill), var(--smart-table-xl-fill));
 }
 .smart-table--editable
-  .n-data-table-td.smart-table-xfill:not([data-xsel]):not(.smart-table-xerr):not(
-    .smart-table-xed
-  ):hover {
+  .n-data-table-td:is(.smart-table-xfill, .smart-table-xring):not([data-xsel]):not(
+    .smart-table-xerr
+  ):not(.smart-table-xed):hover {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--smart-table-xl-primary) 40%, transparent);
 }
 .smart-table--editable
   .n-data-table-tr.smart-table-xnew
-  > .n-data-table-td.smart-table-xfill:first-child:not([data-xsel]):not(.smart-table-xerr):not(
-    .smart-table-xed
-  ):hover {
+  > .n-data-table-td:is(.smart-table-xfill, .smart-table-xring):first-child:not([data-xsel]):not(
+    .smart-table-xerr
+  ):not(.smart-table-xed):hover {
   box-shadow:
     inset 3px 0 0 var(--smart-table-xl-primary),
     inset 0 0 0 1px color-mix(in srgb, var(--smart-table-xl-primary) 40%, transparent);
+}
+/* 锁定格灰底(editable.lockedFill,默认关;关时 td 不带 smart-table-xgray / xring,上面与下面的规则不命中):可填格不加底色(行原有的底),锁定的格(xlk)与无编辑器的数据列(xro)铺
+   宿主主题的禁用输入框底色(inputColorDisabled,经 --smart-table-xl-lock 下发,多深由宿主主题决定)。可填格(xring)只在悬停时描一圈,与 fillHint 共用上面那两条规则。
+   灰画成 inset box-shadow,不碰 background-color / background-image:固定列(sticky)的 td 是不透明实底,灰画在它之上、下面滚过的字不会透出来;行悬停 / 斑马纹 / 排序列底色是 background-color,
+   当前行与勾选行的高亮常用 background-image,灰在这些之上与它们合成而不是顶掉它们(背景属性只有一方生效,用 background-image 画灰会让锁定格在高亮行里漏成没有高亮的一块)。
+   box-shadow 同时是选中框、校验错误框、新增行首格色条的载体,这三种状态下灰与它们写进同一个 box-shadow(后三条);校验错误排在选中之后,同一格两者都有时红框优先,与不带灰时一致。 */
+.smart-table--editable .n-data-table-td.smart-table-xgray {
+  box-shadow: inset 0 0 0 9999px var(--smart-table-xl-lock);
+}
+.smart-table--editable .n-data-table-td.smart-table-xgray[data-xsel] {
+  box-shadow:
+    inset 0 0 0 2px var(--smart-table-xl-primary),
+    inset 0 0 0 9999px var(--smart-table-xl-lock);
+}
+.smart-table--editable .n-data-table-td.smart-table-xgray.smart-table-xerr {
+  box-shadow:
+    inset 0 0 0 2px var(--smart-table-xl-error),
+    inset 0 0 0 9999px var(--smart-table-xl-lock);
+}
+.smart-table--editable
+  .n-data-table-tr.smart-table-xnew
+  > .n-data-table-td.smart-table-xgray:first-child {
+  box-shadow:
+    inset 3px 0 0 var(--smart-table-xl-primary),
+    inset 0 0 0 9999px var(--smart-table-xl-lock);
 }
 /* 编辑态:控件撑满单元格(绝对定位铺满 td,不参与行高计算) */
 .smart-table--editable .n-data-table-td.smart-table-xed:not(.smart-table-xed--ta) {
