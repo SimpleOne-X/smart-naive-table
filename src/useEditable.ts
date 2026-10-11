@@ -115,6 +115,9 @@ export interface UseEditableOpts<T extends object> {
 let activeOwner: symbol | null = null
 
 const q = (s: string): string => s.replace(/["\\]/g, '\\$&')
+/** 拖拽手柄 / 操作列这类纯展示列(card 为 handle / action,或标题为空):不是数据格,锁定格灰底(lockedFill)不给它们上灰。 */
+const isUtilityColumn = <T>(col: SmartTableDataColumn<T>): boolean =>
+  col.card === 'handle' || col.card === 'action' || col.title === ''
 const NL = /\r\n?|\n/
 const TRUE_TEXT = /^(true|1|yes|y|是|√|✓|x)$/i
 
@@ -157,6 +160,7 @@ export function useEditable<T extends object>(opts: UseEditableOpts<T>) {
    * 选中框 / 编辑框 / 脏标记 / 校验框 / 窄档卡片底色(库自己的根元素上取不到 var(--n-*),经 CSS 变量下发,明暗跟随主题)。
    * td 内部(编辑器、新增行底色)不走这里:直接用 NDataTable 根上的 var(--n-merged-td-color),放进 modal / drawer / popover 时跟随官方换色。
    * 脏标记取设计原型 --warn:亮 #d97706 / 暗 #fbbf24(白底 / 卡片底上对比度够;官方 warningColor 在白底上偏浅)。
+   * 锁定格灰底(lockedFill)的灰取 inputColorDisabled 原值,让宿主主题决定多深;只在开着时下发,不开时根元素样式与没有这个开关时一致。
    */
   const noVars: Record<string, string> = {}
   const styleVars = computed<Record<string, string>>(() => {
@@ -169,6 +173,7 @@ export function useEditable<T extends object>(opts: UseEditableOpts<T>) {
       '--smart-table-xl-warn': dark ? '#fbbf24' : '#d97706',
       '--smart-table-xl-bg': v.cardColor,
       '--smart-table-xl-ro': v.textColor3,
+      ...(opts.config().lockedFill ? { '--smart-table-xl-lock': v.inputColorDisabled } : {}),
     }
   })
 
@@ -698,18 +703,31 @@ export function useEditable<T extends object>(opts: UseEditableOpts<T>) {
     const kind = kindAt(col, row, index)
     const cls: unknown[] = [base.class]
     const attrs: Attrs = { ...base, 'data-xk': colKind ?? '' }
+    const cfg = opts.config()
     if (!colKind) {
       cls.push('smart-table-xro')
+      // 锁定格灰底(lockedFill)是可选的:不开时类名与没有这个开关时一致。待删行整行已淡化 + 删除线,不再分灰与不灰;窄档卡片没有逐格编辑;
+      // 拖拽手柄 / 操作列这类纯展示列(card 为 handle / action 或标题为空)不是数据格
+      if (
+        cfg.lockedFill &&
+        !store.isDeleted(id) &&
+        !opts.cardMode() &&
+        (col.lockedFill ?? !isUtilityColumn(col))
+      )
+        cls.push('smart-table-xgray')
       attrs['aria-readonly'] = 'true'
     } else if (!store.isDeleted(id) && !opts.cardMode()) {
       // 锁定的格:可选中 / 复制,灰显(xlk),不能编辑
       if (!kind) {
         cls.push('smart-table-xlk')
+        if (cfg.lockedFill && col.lockedFill !== false) cls.push('smart-table-xgray')
         attrs['aria-readonly'] = 'true'
       }
       cls.push('smart-table-xc')
       // 可填格提示是可选的:不开时类名与没有这个开关时一致
-      if (kind && opts.config().fillHint) cls.push('smart-table-xfill')
+      if (kind && cfg.fillHint) cls.push('smart-table-xfill')
+      // lockedFill 下可填格不加底色,只在悬停时描一圈,提示「点一下就能填」
+      if (kind && cfg.lockedFill) cls.push('smart-table-xring')
       attrs['data-xc'] = `${id}|${col.key}`
       const hostClick = base.onClick as ((e: MouseEvent) => void) | undefined
       attrs.onClick = (e: MouseEvent) => {

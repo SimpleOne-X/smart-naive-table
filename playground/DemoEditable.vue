@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // 可编辑表格场景页(浏览器验证用):300 行本地数据 + fillHeight 虚拟滚动 + 固定列 + 多选标签 + 行级只读 + 异步查重;
-// 开关:即时保存(save: 'cell')/ 紧凑密度 / 可填格提示(fillHint)。保存模拟 400ms,宿主把改动写回自己的数据再 done()。
+// 开关:即时保存(save: 'cell')/ 紧凑密度 / 可填格提示(fillHint)/ 锁定格灰底(lockedFill)/ 宿主灰(把 inputColorDisabled 设成半透明灰,内核主题同款)。保存模拟 400ms,宿主把改动写回自己的数据再 done()。
 import { computed, ref } from 'vue'
-import { NSpace, NSwitch, useMessage } from 'naive-ui'
+import { NConfigProvider, NSpace, NSwitch, useMessage, useThemeVars } from 'naive-ui'
 import {
   SmartTable,
   type EditChanges,
@@ -42,6 +42,24 @@ const tableRef = ref<SmartTableInst<Row> | null>(null)
 const cellMode = ref(false)
 const dense = ref(true)
 const fillHint = ref(false)
+const lockedFill = ref(false)
+const hostGray = ref(false)
+const activeKey = ref<number | null>(null)
+const checked = ref<Array<string | number>>([])
+// 宿主灰:Naive 默认主题的 inputColorDisabled 在亮色下是不透明的 rgb(250,250,252),白底上只差 2%;宿主通常把它设成半透明的灰(叠在行底色上)
+const outerVars = useThemeVars()
+const themeOverrides = computed(() =>
+  hostGray.value
+    ? {
+        common: {
+          inputColorDisabled:
+            outerVars.value.baseColor.toLowerCase() === '#000'
+              ? 'rgba(140, 170, 255, 0.05)'
+              : 'rgba(100, 116, 150, 0.12)',
+        },
+      }
+    : undefined,
+)
 
 const columns: SmartTableColumn<Row>[] = [
   { type: 'selection', width: 40, fixed: 'left' },
@@ -73,6 +91,7 @@ const editable = computed(() => ({
   newRow: () => ({ code: '(新)', name: '', tags: [], qty: 0, done: false, due: '2026-10-31' }),
   rowReadonly: (r: Row) => r.locked,
   fillHint: fillHint.value,
+  lockedFill: lockedFill.value,
 }))
 
 async function onSave(p: {
@@ -107,22 +126,35 @@ async function onSave(p: {
         ><n-switch v-model:value="fillHint" size="small" data-testid="fill-hint" />
         可填格提示(fillHint)</label
       >
+      <label
+        ><n-switch v-model:value="lockedFill" size="small" data-testid="locked-fill" />
+        锁定格灰底(lockedFill)</label
+      >
+      <label
+        ><n-switch v-model:value="hostGray" size="small" data-testid="host-gray" />
+        宿主灰(半透明)</label
+      >
     </n-space>
     <div style="height: calc(100vh - 220px)" data-testid="edit-host">
-      <SmartTable
-        ref="tableRef"
-        :columns="columns"
-        :data="rows"
-        row-key="id"
-        :editable="editable"
-        fill-height
-        :search="false"
-        :default-density="dense ? 'compact' : 'comfortable'"
-        title="可编辑表格(虚拟滚动 + 固定列)"
-        @save="onSave"
-        @invalid="(e) => message.error(e.message)"
-        @error="(e) => message.error(String(e))"
-      />
+      <n-config-provider abstract :theme-overrides="themeOverrides">
+        <SmartTable
+          ref="tableRef"
+          :columns="columns"
+          :data="rows"
+          row-key="id"
+          :editable="editable"
+          v-model:checked-row-keys="checked"
+          :active-row-key="activeKey"
+          fill-height
+          :search="false"
+          :default-density="dense ? 'compact' : 'comfortable'"
+          title="可编辑表格(虚拟滚动 + 固定列)"
+          @row-click="(r) => (activeKey = r.id)"
+          @save="onSave"
+          @invalid="(e) => message.error(e.message)"
+          @error="(e) => message.error(String(e))"
+        />
+      </n-config-provider>
     </div>
   </div>
 </template>
