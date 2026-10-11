@@ -379,6 +379,11 @@ export interface EditableConfig<T = any> {
   beforeunload?: boolean
   /** 窄档抽屉表单的标签列宽(px),默认 72;标签较长(如「准备工时(分)」)时加宽,免得被截断。 */
   labelWidth?: number
+  /**
+   * 可填格提示,默认 false:true 时「有编辑器且未锁定」的格铺一层极淡的主色底(`--smart-table-xl-primary` 的 6%),悬停多一圈 1px 的内描边,
+   * 一眼分出哪格能填(锁定格 / 无编辑器的列仍是无底灰字)。选中、校验错误、新增行的底色与描边优先;窄档卡片没有逐格编辑,不受影响。
+   */
+  fillHint?: boolean
 }
 
 /** 草稿变化(@cell-change):row 是已带上这次改动的行。 */

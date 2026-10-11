@@ -708,6 +708,8 @@ export function useEditable<T extends object>(opts: UseEditableOpts<T>) {
         attrs['aria-readonly'] = 'true'
       }
       cls.push('smart-table-xc')
+      // 可填格提示是可选的:不开时类名与没有这个开关时一致
+      if (kind && opts.config().fillHint) cls.push('smart-table-xfill')
       attrs['data-xc'] = `${id}|${col.key}`
       const hostClick = base.onClick as ((e: MouseEvent) => void) | undefined
       attrs.onClick = (e: MouseEvent) => {
