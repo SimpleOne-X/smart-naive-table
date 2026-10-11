@@ -519,7 +519,7 @@ async function onSave({ changes, done, fail }: EditSavePayload<Row>) {
 
 ### 下拉表格选择 SmartSelectTable
 
-独立组件（不依赖可编辑表格），用法像 `NSelect`：触发器点开是浮层（窄屏 = 底部抽屉），里面一个搜索框 + 嵌套的 `SmartTable`（分页、虚拟滚动、表头吸顶）。选物料、选工序、选客户这类「列表很长、要看多列才认得出」的场景都用它；可编辑表格的 `select-table` 编辑器就是它的一层薄封装。
+独立组件（不依赖可编辑表格），用法像 `NSelect`：触发器点开是浮层（窄屏 = 底部抽屉），里面一个搜索框 + 嵌套的 `SmartTable`（分页、虚拟滚动、表头吸顶）；触发器右侧的箭头是放大镜（点开的是带搜索的选择面板，不是选项列表）。选物料、选工序、选客户这类「列表很长、要看多列才认得出」的场景都用它；可编辑表格的 `select-table` 编辑器就是它的一层薄封装。
 
 ```vue
 <SmartSelectTable

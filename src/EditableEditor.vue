@@ -257,6 +257,7 @@ onBeforeUnmount(() => {
   inset: 0;
   display: flex;
   background: var(--n-merged-td-color);
+  container-type: size;
 }
 .smart-table-xe::after {
   content: '';
@@ -274,7 +275,9 @@ onBeforeUnmount(() => {
   min-width: 0;
   height: 100%;
 }
-/* 控件高 = 单元格行高 - 1px 边线 = 行内边距 × 2 + 一行字 22.4px(紧凑 38.4 / 舒适 46.4,与原型实测一致);
+/* 控件高 = 单元格内框高:.smart-table-xe 是尺寸容器,100cqh 取它的实际高度,与控件嵌套多深无关。
+   行比一行字高(行内有更高的内容、字号 15px、舒适密度)时,文字仍垂直居中,下拉表格的浮层锚点也落在单元格下沿。
+   不认容器查询单位的浏览器退回 行内边距 × 2 + 一行字 22.4px(紧凑 38.4 / 舒适 46.4,= 默认行高 − 1px 边线;行更高时文字偏上)。
    文字左缘与显示态对齐(--n-td-padding 是 NDataTable 根上的变量,紧凑 8px / 舒适 12px)。官方控件的 --n-* 变量在它自己的根元素上以内联样式写入,这里用 !important 盖掉 */
 .smart-table-xe .n-input,
 .smart-table-xe .n-base-selection {
@@ -286,6 +289,16 @@ onBeforeUnmount(() => {
   --n-color-focus: var(--n-merged-td-color) !important;
   --n-color-active: var(--n-merged-td-color) !important;
   --n-color-focus-warning: var(--n-merged-td-color) !important;
+}
+@supports (height: 1cqh) {
+  .smart-table-xe .n-input,
+  .smart-table-xe .n-base-selection {
+    --n-height: 100cqh !important;
+  }
+}
+/* 下拉表格的触发器是浮层(面板 + 小箭头)的锚点:铺满单元格,面板才落在单元格下沿 + 间距,不压进单元格 */
+.smart-table-xe .smart-table-xpick-trigger {
+  height: 100%;
 }
 /* 数字框的 −/+ 按钮:单元格里收成 16px、右边留 6px(官方 18px;原型同款) */
 .smart-table-xe .n-input-number .n-input {

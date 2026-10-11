@@ -1808,7 +1808,7 @@ html[data-theme="dark"] { --n-td-striped: rgb(36, 36, 39); }   /* dark:composite
   content: ""; position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none;
   border-style: solid; border-width: 6px 6px 0 0; border-color: var(--warn) transparent transparent transparent;
 }
-/* 编辑态:单元格 padding 置 0,控件撑满(NInput / NSelect / NInputNumber / NDatePicker 的触发器,去掉自带边框,改画 2px 内描边);多行文本框的单元格仍显示文本,保留 padding */
+/* 编辑态:单元格 padding 置 0,控件撑满(NInput / NSelect / NInputNumber / NDatePicker 的触发器,去掉自带边框,改画 2px 内描边;控件高 = 单元格内框高 = 行高 − 1px,库里取 100cqh,行比一行字高时文字仍垂直居中);多行文本框的单元格仍显示文本,保留 padding */
 [data-xl] table.n-table td.xed:not([data-xk="textarea"]) { padding: 0; overflow: visible; }   /* 特异性要压过 .smart-table[data-density] table.n-table td 的 padding */
 [data-xl] td.xed .xe { width: 100%; height: calc(var(--vs-row-h) - 1px); border: 0; border-radius: 0; padding-left: 8px; padding-right: 6px; background: var(--n-card-bg); box-shadow: inset 0 0 0 2px var(--n-primary); }
 [data-xl][data-density="normal"] td.xed .xe { padding-left: 12px; }
@@ -3603,6 +3603,7 @@ function sheetHtml(enter) {
    ============================================================ */
 /* 分页组件图标:path 逐字取自 naive-ui es/_internal/icons/{Backward,Forward}.mjs */
 const I_CHEVD = `<svg viewBox="0 0 16 16" fill="none"><path fill="currentColor" d="M3.14645 5.64645C3.34171 5.45118 3.65829 5.45118 3.85355 5.64645L8 9.79289L12.1464 5.64645C12.3417 5.45118 12.6583 5.45118 12.8536 5.64645C13.0488 5.84171 13.0488 6.15829 12.8536 6.35355L8.35355 10.8536C8.15829 11.0488 7.84171 11.0488 7.64645 10.8536L3.14645 6.35355C2.95118 6.15829 2.95118 5.84171 3.14645 5.64645Z"/></svg>`;   // es/_internal/icons/ChevronDown.mjs
+const I_MAG   = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>`;   // 下拉表格触发框的箭头 = 放大镜(同 I_SEARCH 的几何,16px、笔画 1.35;点开的是带搜索的选择面板,不是选项列表;库里 MagnifierIcon)
 const PG_ICO = {
   prev: '<svg viewBox="0 0 20 20" fill="none"><path d="M12.2674 15.793C11.9675 16.0787 11.4927 16.0672 11.2071 15.7673L6.20572 10.5168C5.9298 10.2271 5.9298 9.7719 6.20572 9.48223L11.2071 4.23177C11.4927 3.93184 11.9675 3.92031 12.2674 4.206C12.5673 4.49169 12.5789 4.96642 12.2932 5.26634L7.78458 9.99952L12.2932 14.7327C12.5789 15.0326 12.5673 15.5074 12.2674 15.793Z" fill="currentColor"/></svg>',
   next: '<svg viewBox="0 0 20 20" fill="none"><path d="M7.73271 4.20694C8.03263 3.92125 8.50737 3.93279 8.79306 4.23271L13.7944 9.48318C14.0703 9.77285 14.0703 10.2281 13.7944 10.5178L8.79306 15.7682C8.50737 16.0681 8.03263 16.0797 7.73271 15.794C7.43279 15.5083 7.42125 15.0336 7.70694 14.7336L12.2155 10.0005L7.70694 5.26729C7.42125 4.96737 7.43279 4.49264 7.73271 4.20694Z" fill="currentColor"/></svg>',
@@ -6001,7 +6002,7 @@ function xlEditorHtml(c, r, e) {
   switch (e.kind) {
     case 'input': return `<div class="n-input xe${err}"><input type="text" data-xed data-xe="in" value="${esc(e.val)}" autocomplete="off" spellcheck="false" /></div>`;
     case 'number': return numCtl(id, e.val, '', false, { clear: false }).replace('class="n-input num"', `class="n-input num xe${err}"`).replace('<input ', '<input data-xed ');
-    case 'select-table': return `<div class="n-select open xe${err}" role="combobox" aria-haspopup="dialog" aria-expanded="true"><span class="val${e.val ? '' : ' ph'}">${esc(e.val || '请选择')}</span><span class="caret">${I_CHEVD}</span></div>`;   // 下拉面板在浮层里(xlStWrap)
+    case 'select-table': return `<div class="n-select open xe${err}" role="combobox" aria-haspopup="dialog" aria-expanded="true"><span class="val${e.val ? '' : ' ph'}">${esc(e.val || '请选择')}</span><span class="caret">${I_MAG}</span></div>`;   // 下拉面板在浮层里(xlStWrap)
     case 'select': return `<div class="n-select open xe${err}" tabindex="0" data-xed data-xe="sel" role="combobox" aria-expanded="true"><span class="val${e.val ? '' : ' ph'}">${esc(e.val || '请选择')}</span><span class="caret">${I_CHEVD}</span></div>`;
     case 'date': return dateCtl(id, e.val, {}).replace('class="n-input dp', `class="n-input dp xe${err}`).replace('<input ', '<input data-xed ');
     case 'datetime': return `<div class="n-input dp xe${err}${state.dp?.id === id ? ' open' : ''}" data-dp="${id}"><input type="text" data-xed data-xe="dt" value="${esc(e.val)}" placeholder="选择日期时间" autocomplete="off" /><span class="ico-r${e.val ? ' has-v' : ''}"><span class="ico-date">${I_DATE}</span><span class="ico-clear" data-dpclear="${id}">${I_CLEAR}</span></span></div>`;
@@ -6481,7 +6482,7 @@ function xfFieldHtml(c) {
     case 'input': ctl = `<div class="n-input${ec}"><input type="text" data-xfin="${c.key}" value="${esc(v ?? '')}" placeholder="${esc('请输入' + c.label)}" autocomplete="off" /></div>`; break;
     case 'textarea': ctl = `<div class="n-input ta${ec}"><textarea rows="4" data-xfin="${c.key}" placeholder="${esc('请输入' + c.label)}">\n${esc(v ?? '')}</textarea></div>`; break;
     case 'number': ctl = numCtl(id, v === null || v === undefined ? '' : String(v), '请输入数字', false, { clear: false }).replace('class="n-input num"', `class="n-input num${ec}"`); break;
-    case 'select-table': ctl = `<div class="n-select${ec}" tabindex="0" data-xst="fopen" role="combobox" aria-haspopup="dialog"><span class="val${v ? '' : ' ph'}">${esc(v || '请选择')}</span><span class="caret">${I_CHEVD}</span></div>`; break;
+    case 'select-table': ctl = `<div class="n-select${ec}" tabindex="0" data-xst="fopen" role="combobox" aria-haspopup="dialog"><span class="val${v ? '' : ' ph'}">${esc(v || '请选择')}</span><span class="caret">${I_MAG}</span></div>`; break;
     case 'select': ctl = `<div class="n-select${f.open === c.key ? ' open' : ''}${ec}" tabindex="0" data-xfsel="${c.key}" role="combobox" aria-expanded="${f.open === c.key}"><span class="val${v ? '' : ' ph'}">${esc(v || '请选择')}</span><span class="caret">${I_CHEVD}</span></div>`; break;
     case 'date': ctl = dateCtl(id, v, {}).replace('class="n-input dp', `class="n-input dp${ec}`); break;
     case 'datetime': ctl = `<div class="n-input dp${ec}${state.dp?.id === id ? ' open' : ''}" data-dp="${id}"><input type="text" data-xfin="${c.key}" value="${esc(v ?? '')}" placeholder="选择日期时间" autocomplete="off" /><span class="ico-r${v ? ' has-v' : ''}"><span class="ico-date">${I_DATE}</span><span class="ico-clear" data-dpclear="${id}">${I_CLEAR}</span></span></div>`; break;

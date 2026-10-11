@@ -5,6 +5,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { NDrawer, NDrawerContent, NPopover, NSelect } from 'naive-ui'
 import SelectTablePanel from './SelectTablePanel.vue'
+import { MagnifierIcon } from './icons'
 import { useSmartTableDefaults } from './config'
 import { mergeLabels } from './labels'
 import { matchKeyword } from './selectTable'
@@ -223,7 +224,10 @@ defineExpose({ open, close, focus, clearKeyword })
             :show-arrow="true"
             @update:value="onSelectUpdate"
             @update:show="(v: boolean) => v && open()"
-          />
+          >
+            <!-- 点开的是「搜索框 + 多列表 + 分页」的选择面板,不是选项列表:箭头用放大镜 -->
+            <template #arrow><MagnifierIcon /></template>
+          </n-select>
         </div>
       </template>
       <!-- 外宽 = panelW:气泡自带 8px 内边距,内容宽要扣掉两侧 -->
