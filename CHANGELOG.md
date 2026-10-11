@@ -1,5 +1,15 @@
 # Changelog
 
+## 未发布
+
+### 新增
+
+- **可编辑表格新增 `editable.lockedFill`:可填格白、不能填的格灰(issue #29)**:`fillHint` 给能填的格整片铺淡蓝,大表里观感杂,「能填」与「不能填」的差别仍不直观;使用方的反馈是「能编辑的格应该是白色,不能编辑的格灰一点」,与同一界面里禁用输入框(灰底)和可填输入框(白底)是同一套语言。现在 `EditableConfig` 多一个可选的 `lockedFill`(默认 `false`,不改 `fillHint` 的任何行为):打开后,锁定的格(`smart-table-xlk`:`rowReadonly` 或列 `readonly` 函数锁住的)与没有编辑器的数据列(`smart-table-xro`)多带一个标记类 `smart-table-xgray`,铺一层宿主主题的「禁用输入框」灰;可填格不加任何底色,多带 `smart-table-xring`,悬停时描一圈 1px、主色 40% 的内描边(与 `fillHint` 的悬停描边是同一条规则,不开 `fillHint` 时也有)。灰取 Naive 主题变量 `inputColorDisabled` 的原值,经根元素 `--smart-table-xl-lock` 下发(只在开关打开时下发),明暗跟随主题,多深由宿主主题决定:Naive 默认亮色主题是不透明的 `rgb(250, 250, 252)`,只比白底深约 2%,很淡;要更明显,在宿主的 `themeOverrides.common.inputColorDisabled` 里设成半透明的灰,例如亮 `rgba(100, 116, 150, .12)`、暗 `rgba(140, 170, 255, .05)`。字色仍是 `--smart-table-xl-ro`(`textColor3`)。灰画成一层 `inset box-shadow`(`inset 0 0 0 9999px`),不改写 `background-color`、也不占 `background-image`:固定列(sticky)的 td 保持不透明实底(滚到下面的列的字不透出来),行悬停色、斑马纹、排序列底色(`background-color`)与当前行 / 勾选行的高亮(`background-image`)都留在灰的下面、与半透明的灰合成,不会被顶掉;`box-shadow` 同时是选中框、校验错误框、新增行首格 3px 色条的载体,这三种状态下灰与它们写进同一个 `box-shadow`(选中的锁定格是 2px 主色内描边加灰)。不上灰的:勾选 / 序号 / 展开这类特殊列,`card` 为 `'handle'` / `'action'` 或标题为空的无编辑器列(拖拽手柄、操作列),待删行的格,窄档卡片。其它「只是控件、不是数据」的列在列上写新增的可选属性 `lockedFill: false` 退出,写 `true` 强制上灰,优先于自动判断。与 `fillHint` 可同开(可填格淡蓝、锁定格灰),但意义不大,推荐只开其一。设计 §4。
+
+### 外观变化
+
+- 默认外观不变:不写 `lockedFill`(或写 `false`)时,单元格的类名与根元素样式与升级前一致;只开 `fillHint` 的外观不变。
+
 ## 3.2.5 - 2026-10-11
 
 ### 新增
