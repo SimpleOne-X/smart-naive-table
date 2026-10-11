@@ -520,7 +520,7 @@ async function onSave({ changes, done, fail }: EditSavePayload<Row>) {
 
 ### Table picker: SmartSelectTable
 
-A standalone component (no editable grid needed) used like `NSelect`: the trigger opens a popover (a bottom sheet on narrow screens) with one search box and a nested `SmartTable` (paging, virtual scroll, sticky header). Use it to pick materials, operations or customers — long lists where you need several columns to recognise the item; the editable grid's `select-table` editor is a thin wrapper around it.
+A standalone component (no editable grid needed) used like `NSelect`: the trigger opens a popover (a bottom sheet on narrow screens) with one search box and a nested `SmartTable` (paging, virtual scroll, sticky header); the trigger's arrow is a magnifier, because it opens a searchable picker, not an option list. Use it to pick materials, operations or customers — long lists where you need several columns to recognise the item; the editable grid's `select-table` editor is a thin wrapper around it.
 
 ```vue
 <SmartSelectTable
