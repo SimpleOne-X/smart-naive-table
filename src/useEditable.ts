@@ -234,7 +234,8 @@ export function useEditable<T extends object>(opts: UseEditableOpts<T>) {
   /** 见过的原始行(按 id,最新的覆盖):草稿记原值 / 窄档抽屉 / 勾选跨页删除都要用到不在当前页的行。 */
   const known = new Map<string, T>()
   watch(
-    () => opts.baseRows(),
+    // 展开成新数组再比:宿主原地 push / splice 进出的行也要登记(只盯数组引用,这些行的单元格没有编辑接线)
+    () => [...opts.baseRows()],
     (rows) => {
       for (const r of rows) known.set(idOf(r), r)
     },
@@ -1504,12 +1505,17 @@ export function useEditable<T extends object>(opts: UseEditableOpts<T>) {
 
   /* ---- document 级:键盘 / 点到别处提交 ---- */
 
-  /** 事件落在编辑控件及它的浮层里(下拉菜单 / 日期面板 / 多行浮层 / 报错气泡)。 */
+  /** 事件落在编辑控件及它的浮层里(下拉菜单 / 日期面板 / 多行浮层 / 报错气泡 / 下拉表格放不下气泡时的底部面板,它是抽屉、不在 binder 浮层里)。 */
   function insideEditor(t: EventTarget | null): boolean {
     const el = t as Element | null
     const e = edit.value
     if (!el || !e || typeof el.closest !== 'function') return false
-    if (el.closest('.smart-table-xta, .v-binder-follower-content, .n-tooltip')) return true
+    if (
+      el.closest(
+        '.smart-table-xta, .smart-table-xpick-sheet, .v-binder-follower-content, .n-tooltip',
+      )
+    )
+      return true
     const td = el.closest('td[data-xc]')
     return !!td && td.getAttribute('data-xc') === `${e.id}|${e.key}`
   }

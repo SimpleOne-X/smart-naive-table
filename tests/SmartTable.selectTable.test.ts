@@ -177,6 +177,14 @@ describe('推断:外部数据 → select-table;小枚举仍是下拉', () => {
     })
   })
 
+  it('编辑态的触发器右侧是放大镜,不是 ▾', async () => {
+    const w = mountTable()
+    await open(w)
+    const icon = td(w, 1, 'name').find('.smart-table-xe .n-base-suffix__arrow')
+    expect(icon.exists()).toBe(true)
+    expect(icon.find('svg circle').exists()).toBe(true)
+  })
+
   it('表格里:单元格 data-xk 是 select-table', () => {
     const w = mountTable()
     expect(w.find('td[data-col-key="name"]').attributes('data-xk')).toBe('select-table')
@@ -439,6 +447,75 @@ describe('fetcher 数据源(远程)', () => {
     pRows()[0].click()
     await settle()
     expect(td(w, 1, 'name').text()).toBe('精车外圆')
+  })
+})
+
+describe('视口放不下气泡 → 底部面板(抽屉),面板里的点击仍属于编辑控件', () => {
+  /** 触发格在视口中间、视口高 600:上下都放不下 454 高的面板 → 底部面板。 */
+  async function withSheet(run: () => Promise<void>): Promise<void> {
+    Object.defineProperty(document.documentElement, 'clientHeight', {
+      configurable: true,
+      get: () => 600,
+    })
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      left: 100,
+      right: 520,
+      x: 100,
+      top: 300,
+      bottom: 334,
+      y: 300,
+      width: 420,
+      height: 34,
+    } as DOMRect)
+    try {
+      await run()
+    } finally {
+      rect.mockRestore()
+      delete (document.documentElement as { clientHeight?: number }).clientHeight
+    }
+  }
+  const sheet = () => document.body.querySelector('.smart-table-xpick-sheet .smart-table-xpick')
+
+  it('点一行 = 选中并提交,与气泡里一样:不被「点到编辑格之外」先提交掉', async () => {
+    await withSheet(async () => {
+      const onSave = vi.fn()
+      const w = mountTable(columns(), { onSave })
+      await open(w)
+      expect(sheet()).not.toBeNull()
+      pRows()[3].click()
+      await settle()
+      expect(td(w, 1, 'name').text()).toBe('精车外圆')
+      expect(td(w, 1, 'name').classes()).toContain('smart-table-xd')
+      expect(td(w, 1, 'center').text()).toBe('中心1') // fill 也生效
+    })
+  })
+
+  it('save: "cell":点一行 → 触发一次 @save,载荷是选中的值', async () => {
+    await withSheet(async () => {
+      let payload: { changes: { updated: { changes: Record<string, { value: unknown }> }[] } }
+      const w = mountTable(
+        columns(),
+        {
+          onSave: (p: typeof payload) => ((payload = p), (p as unknown as { done(): void }).done()),
+        },
+        { editable: { save: 'cell' } },
+      )
+      await open(w)
+      pRows()[3].click()
+      await settle()
+      expect(payload!.changes.updated[0].changes.name.value).toBe('精车外圆')
+    })
+  })
+
+  it('面板里敲字搜索也不会把编辑提交掉(点输入框属于编辑控件)', async () => {
+    await withSheet(async () => {
+      const w = mountTable()
+      await open(w)
+      panel()!.querySelector<HTMLInputElement>('.smart-table-xpick-search input')!.click()
+      await settle()
+      expect(sheet()).not.toBeNull()
+      expect(td(w, 1, 'name').classes()).toContain('smart-table-xed')
+    })
   })
 })
 

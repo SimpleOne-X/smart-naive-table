@@ -132,6 +132,21 @@ describe('matchKeyword / normalizeText', () => {
 })
 
 describe('触发器与单选', () => {
+  it('触发器右侧的箭头是放大镜(它点开的是带搜索的选择面板,不是普通下拉):画的是圆 + 手柄,不是 ▾', async () => {
+    const w = mountSel()
+    const icon = w.find('.smart-table-xpick-trigger .n-base-suffix__arrow')
+    expect(icon.exists()).toBe(true)
+    expect(icon.find('svg circle').exists()).toBe(true)
+    expect(icon.find('svg').attributes('width')).toBe('1em')
+  })
+
+  it('多选的触发器同样是放大镜', () => {
+    const w = mountSel({ multiple: true, value: [] })
+    expect(w.find('.smart-table-xpick-trigger .n-base-suffix__arrow svg circle').exists()).toBe(
+      true,
+    )
+  })
+
   it('v-model:value:点一行 = 选中并关闭,触发器显示 labelKey 的值,发 update:value 与 pick', async () => {
     const onPick = vi.fn()
     const w = mountSel({ onPick })
