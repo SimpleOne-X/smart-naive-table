@@ -507,6 +507,7 @@ async function onSave({ changes, done, fail }: EditSavePayload<Row>) {
 ```
 
 - **推断**：`editor`（显式）→ `readonly` / `editor: false` → 有 `render` / `#cell-*` → 不可编辑 → `editorProps` 里有 `columns` 且有 `data` 或 `fetcher` → **`select-table`**（外部 / 主数据：下拉里是一张带搜索 + 分页的表，见下面的 `SmartSelectTable`）→ `options`（下拉；值是数组 = 多选）→ `format: 'date' | 'datetime' | 'money'` → 数据值（前 20 行第一个非空值：boolean / number / 日期串 / 含换行或超过 30 字 → 多行 / 其余 → 输入框）→ 输入框。`inferEditor(column, rows)` 是公开的纯函数。
+- **下拉的值类型**：`options` 的 `value` 可以是数字或字符串。进入编辑后触发器显示选项文字（数字 id、枚举数值也一样：按 `String()` 双边比较对上选项，取该项自己的 `value`），提交写回的仍是选项自己的 `value`（数字不会变字符串）。单选的当前值对不上任何选项（空、`0` 而选项里没有 0、值已不在选项里）时触发器显示占位文字，不回显原始值；不选就离开按原有校验处理（必填的空、非空但不在选项里提示「请选择」并留在编辑态；非必填的空保持为空），Esc 放弃则格子保持原值。多选里对不上的项原样保留。`select-table` 的值按 `labelKey` 的文本比较，不受此影响。
 - **键盘与剪贴板**：↑ ↓ ← → / Tab / Shift+Tab 移动（只读列跳过；锁定的格可选中、可复制，只是不能编辑）；Enter / F2 进入编辑；直接打字替换原值；Space 切复选框；Delete 清空（必填列拒绝）；编辑中 Enter 提交下移、Shift+Enter 提交上移、Esc 放弃；Ctrl+C 复制选中格；Ctrl+V 粘贴 Excel 的单格或多格块（制表符分列、换行分行），从选中格起向右向下依次填充，按各列类型转换（数字去千分位、布尔认 TRUE / 是、选项按标签或值、日期补零）并校验，**任何一格不合法则整块不应用**；只读 / 锁定 / 待删的格跳过，超出当前列表的行忽略（不自动追加新行）；Ctrl+Z 撤销最近一次提交（栈 50，一次粘贴 = 一步，保存 / 放弃后清空，`save: 'cell'` 下不可用）。
 - **保存**：保存前统一校验（草稿格的同步规则 + 新增行全部格 + 异步校验的结果），不通过就不发 `@save`、选中第一个不合法的格并发 `@invalid`。异步 `rules.validator`：提交后单元格显示加载态、结果落定为不通过则标红（悬停看原因）、过期结果丢弃，「保存」会等它。
 - **翻页 / 搜索 / 排序**：不拦截；草稿叠在数据上，翻页 / 重新请求都保留（被筛选条件或翻页挡住的已改行看不见，但仍计入 N、仍会被保存，工具栏在「保存修改(N)」旁标出「含 M 条当前不可见」）。**离开页面**：有未保存修改时注册 `beforeunload` 提示（`editable: { beforeunload: false }` 可关）；宿主的路由守卫用实例的 `isDirty` / `dirtyCount`，再配合 `save()` / `discard()`。
