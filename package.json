@@ -27,8 +27,7 @@
     "crud"
   ],
   "files": [
-    "dist",
-    "MIGRATION.md"
+    "dist"
   ],
   "main": "./dist/index.js",
   "module": "./dist/index.js",
