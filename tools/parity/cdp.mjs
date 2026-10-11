@@ -37,6 +37,7 @@ export const KEY = {
   12: 'embed',
   13: 'i18n',
   14: 'excel',
+  15: 'tree',
 }
 /** 外壳开关的合法取值(原型 runAct('lang'|'pageBg'|'density', v) 与对照页 ?lang=&bg=&density= 同值) */
 export const SHELL_VALUES = {

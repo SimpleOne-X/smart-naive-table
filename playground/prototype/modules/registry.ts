@@ -24,6 +24,7 @@ export type ModKey =
   | 'embed'
   | 'i18n'
   | 'excel'
+  | 'tree'
 export type ModStatus = 'done' | 'doing' | 'todo'
 
 export interface ModMeta {
@@ -57,7 +58,7 @@ export interface GroupMeta {
   keys: ModKey[]
 }
 
-/** 键序 = 原型 MODULES 的声明序(= 编号 1..14)。 */
+/** 键序 = 原型 MODULES 的声明序(= 编号 1..15)。 */
 export const META: ModMeta[] = [
   { no: 1, key: 'search', name: '搜索表单', en: 'Search form', status: 'done' },
   { no: 2, key: 'toolbar', name: '条件搜索', en: 'Query builder', status: 'done', hl: true },
@@ -81,13 +82,15 @@ export const META: ModMeta[] = [
   { no: 13, key: 'i18n', name: '多语言与页面底色', en: 'Language & background', status: 'done' },
   // 可编辑表格(Excel 式单元格编辑 + 类型推断);侧栏「数据」组第 3 项,不加 ★;状态「已定」,不带徽标
   { no: 14, key: 'excel', name: '可编辑表格', en: 'Editable grid', status: 'done' },
+  // 树形表格(窄档卡片认 children-key,设计 2.17):侧栏「行」组第 3 项;自然高度页(整页在主区里滚动,同模块 10)
+  { no: 15, key: 'tree', name: '树形表格', en: 'Tree table', status: 'done', natural: true },
 ]
 
 /** 侧栏两级目录(原型 GROUPS)。i18n(m13)不在任何分组里,只能 ?m=13 进入。 */
 export const GROUPS: GroupMeta[] = [
   { name: '查询', en: 'Query', keys: ['search', 'toolbar', 'filter', 'sort'] },
   { name: '列', en: 'Columns', keys: ['wide', 'dict', 'persist'] },
-  { name: '行', en: 'Rows', keys: ['drag', 'ms'] },
+  { name: '行', en: 'Rows', keys: ['drag', 'ms', 'tree'] },
   { name: '数据', en: 'Data', keys: ['states', 'crud', 'excel'] },
   { name: '布局', en: 'Layout', keys: ['embed'] },
 ]
