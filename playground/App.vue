@@ -20,6 +20,7 @@ import DemoFill from './DemoFill.vue'
 import DemoMax from './DemoMax.vue'
 import DemoMode2 from './DemoMode2.vue'
 import DemoEditable from './DemoEditable.vue'
+import DemoEditableTheme from './DemoEditableTheme.vue'
 import DemoSelectTable from './DemoSelectTable.vue'
 import { locale, tt } from './locale'
 import { mockState } from './mock'
@@ -63,6 +64,9 @@ const naiveDateLocale = computed(() => (isZh.value ? dateZhCN : null))
           <n-tab-pane name="max" tab="批量 / 放大"><DemoMax /></n-tab-pane>
           <n-tab-pane name="mode2" tab="条件构造器"><DemoMode2 /></n-tab-pane>
           <n-tab-pane name="editable" tab="可编辑"><DemoEditable /></n-tab-pane>
+          <n-tab-pane name="editable-theme" tab="可编辑 · 宿主主题"
+            ><DemoEditableTheme
+          /></n-tab-pane>
           <n-tab-pane name="select-table" tab="下拉表格选择"><DemoSelectTable /></n-tab-pane>
         </n-tabs>
       </div>

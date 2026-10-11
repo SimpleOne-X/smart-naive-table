@@ -6,6 +6,7 @@
 // 键盘(Enter / Tab / Esc)由 useEditable 在 document 捕获阶段统一处理,这里只负责挂载聚焦、把值交回去。
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { NDatePicker, NInput, NInputNumber, NSelect } from 'naive-ui'
+import { measureCellPadding } from './cellPadding'
 import type { EditorCtrl } from './editable'
 import type { EditorKind, SmartTableLabels, SmartTableOption } from './types'
 import { optionLabel } from './useOptions'
@@ -36,6 +37,8 @@ const FILTERABLE_MIN = 8
 const root = ref<HTMLElement | null>(null)
 const control = ref<{ focus?: () => void } | null>(null)
 const pick = ref<{ clearKeyword: () => boolean } | null>(null)
+/** 显示态单元格实际的内边距(挂载时量出,写在根元素上);量不到时用样式里的缺省(--n-td-padding 为单值时与显示态一致)。 */
+const padVars = ref<Record<string, string>>()
 /** select-table:面板的 Esc 先清空搜索(useEditable 在 document 捕获阶段问一声)。 */
 const pickProps = computed<Record<string, any>>(() => {
   const {
@@ -68,6 +71,8 @@ const dateFormat = computed(() =>
 )
 
 onMounted(async () => {
+  const pad = root.value ? measureCellPadding(root.value) : null
+  if (pad) padVars.value = { '--smart-xe-pad-left': pad.left, '--smart-xe-pad-y': pad.y }
   if (props.kind === 'select-table') {
     props.ctrl.pickEsc = () => pick.value?.clearKeyword() ?? false
     return // 面板自己聚焦搜索框
@@ -108,6 +113,7 @@ onBeforeUnmount(() => {
     ref="root"
     class="smart-table-xe"
     :class="{ 'smart-table-xe--err': invalid }"
+    :style="padVars"
     :data-xe="kind"
     @click.stop
   >
@@ -252,12 +258,16 @@ onBeforeUnmount(() => {
 .smart-table--editable .smart-table-card-item.smart-table-xlk .n-tag {
   opacity: 0.55;
 }
+/* --smart-xe-pad-left / --smart-xe-pad-y:显示态单元格的左内边距、上下内边距之和。挂载后被 measureCellPadding 量出的实际值盖掉(行内样式);
+   这里是量不到时的缺省,--n-td-padding 为单值(Naive 默认主题)时与显示态一致 */
 .smart-table-xe {
   position: absolute;
   inset: 0;
   display: flex;
   background: var(--n-merged-td-color);
   container-type: size;
+  --smart-xe-pad-left: var(--n-td-padding);
+  --smart-xe-pad-y: calc(var(--n-td-padding) * 2);
 }
 .smart-table-xe::after {
   content: '';
@@ -277,14 +287,17 @@ onBeforeUnmount(() => {
 }
 /* 控件高 = 单元格内框高:.smart-table-xe 是尺寸容器,100cqh 取它的实际高度,与控件嵌套多深无关。
    行比一行字高(行内有更高的内容、字号 15px、舒适密度)时,文字仍垂直居中,下拉表格的浮层锚点也落在单元格下沿。
-   不认容器查询单位的浏览器退回 行内边距 × 2 + 一行字 22.4px(紧凑 38.4 / 舒适 46.4,= 默认行高 − 1px 边线;行更高时文字偏上)。
-   文字左缘与显示态对齐(--n-td-padding 是 NDataTable 根上的变量,紧凑 8px / 舒适 12px)。官方控件的 --n-* 变量在它自己的根元素上以内联样式写入,这里用 !important 盖掉 */
+   不认容器查询单位的浏览器退回 单元格上下内边距之和 + 一行字 22.4px(默认主题紧凑 38.4 / 舒适 46.4,= 默认行高 − 1px 边线;行更高时文字偏上)。
+   文字左缘与显示态对齐,取 --smart-xe-pad-left(默认主题紧凑 8px / 舒适 12px),不直接用 --n-td-padding:宿主主题可以把它写成 '4px 12px' 这样的两值,
+   代进「0 26px 0 …」得到五个值,整条声明失效、左内边距落回 0。单行(single)与多选(multiple)是官方两套独立的内边距变量,都要盖。
+   官方控件的 --n-* 变量在它自己的根元素上以内联样式写入,这里用 !important 盖掉 */
 .smart-table-xe .n-input,
 .smart-table-xe .n-base-selection {
-  --n-height: calc(var(--n-td-padding) * 2 + 22.4px) !important;
+  --n-height: calc(var(--smart-xe-pad-y) + 22.4px) !important;
   --n-line-height: 22.4px !important;
-  --n-padding-left: var(--n-td-padding) !important;
-  --n-padding-single: 0 26px 0 var(--n-td-padding) !important;
+  --n-padding-left: var(--smart-xe-pad-left) !important;
+  --n-padding-single: 0 26px 0 var(--smart-xe-pad-left) !important;
+  --n-padding-multiple: 3px 26px 0 var(--smart-xe-pad-left) !important;
   --n-color: var(--n-merged-td-color) !important;
   --n-color-focus: var(--n-merged-td-color) !important;
   --n-color-active: var(--n-merged-td-color) !important;
