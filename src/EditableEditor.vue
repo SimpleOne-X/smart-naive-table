@@ -58,11 +58,18 @@ const selectOptions = computed(() =>
   })),
 )
 const menuProps = computed(() => ({ style: `min-width: ${props.menuMinWidth}px` }))
-const selectValue = computed(() =>
-  props.kind === 'multiselect'
-    ? ((Array.isArray(props.value) ? props.value : []) as Array<string | number>)
-    : ((props.value as string | number | null | undefined) ?? null),
-)
+/** NSelect 按严格相等匹配选项,而草稿值常是字符串(行里的数字被 String 化):按 String() 双边比较(同提交校验)取选项自己的 value。 */
+const optionValueOf = (v: unknown): string | number | undefined =>
+  v == null ? undefined : selectOptions.value.find((o) => String(o.value) === String(v))?.value
+const selectValue = computed(() => {
+  if (props.kind !== 'multiselect') {
+    // 单选对不上选项时给 null:触发器显示占位文字,而不是 NSelect 默认回显的原始值(0 / 雪花 id)
+    return optionValueOf(props.value) ?? null
+  }
+  // 多选对不上的项原样保留(显示成原值标签,不悄悄丢掉)
+  const list = Array.isArray(props.value) ? props.value : []
+  return list.map((v) => optionValueOf(v) ?? v) as Array<string | number>
+})
 const textValue = computed(() => (props.value == null ? '' : String(props.value)))
 const numberValue = computed(() => (typeof props.value === 'number' ? props.value : null))
 const dateValue = computed(() => (props.value ? String(props.value) : null))
