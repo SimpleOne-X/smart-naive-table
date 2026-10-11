@@ -105,6 +105,14 @@ node tools/parity/zoom.mjs [--mod 3] [--theme light|dark]
 
 固定 1440x900 视口,对分页器、工具栏右侧、首行三块区域各截 3 倍放大图,原型与对照页各一张,输出 `out/z-<区域>-m<模块>-proto.png` / `-prev.png`,用于肉眼核对图标、箭头、文字的亚像素细节。区域坐标写死在脚本的 `CLIPS` 里,布局变了要同步改。
 
+## xe-pad.mjs — 可编辑表格编辑态的文字左缘
+
+```
+node tools/parity/xe-pad.mjs [--url http://localhost:5173/playground.html]
+```
+
+不比原型,比「编辑态文字左缘」与「显示态文字左缘」(都相对单元格左缘):打开 playground 的「可编辑 · 宿主主题」页,Naive 默认主题(`tdPadding` 单值 8px / 12px)与 SmartAdmin 内核同款的两值主题(`'4px 10px'` / `'4px 12px'`)× 紧凑 / 舒适 × 七种编辑控件(输入框、数字、下拉、多选、下拉表格、日期、日期时间)逐一读数,每行末尾附 `--n-td-padding` 与官方控件内边距变量的实际值。任何一格相差超过 0.5px 就以退出码 1 结束。`--url` 缺省 `http://localhost:5173/playground.html`(`npm run dev` 的缺省端口,vite 换了端口要传)。
+
 ## 已知的「预期差异」
 
 这些 `≠` 是已经评估过、不当作缺陷的,复跑时可以直接忽略(分级沿用设计文档的 P1/P2):
@@ -145,5 +153,5 @@ PARITY_PORT=9362 PARITY_PREVIEW=http://localhost:5194/prototype.html \
 - `cdp.mjs`:CDP 小工具(启动 Edge、`Page` 封装、路径/端口/参数配置、`KEY` 模块表、`previewUrl`),各脚本共用。
 - `modules.mjs`:每个模块的就绪 / 等待 / 额外元素读数配置。
 - `scenes/`:各模块的交互场景(`m*.mjs`)与格式说明。
-- `parity-all.mjs` / `interact.mjs` / `zoom.mjs`:见上。
+- `parity-all.mjs` / `interact.mjs` / `zoom.mjs` / `xe-pad.mjs`:见上。
 - `out/`:产物,已忽略。
