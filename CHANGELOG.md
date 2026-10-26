@@ -1,6 +1,10 @@
 # Changelog
 
-## 3.3.0 - 2026-10-26
+## 3.4.0 - 2026-10-26
+
+### 修复
+
+- **可编辑表格里列写了 `ellipsis: { tooltip: true }` 时,提交单元格后 Vue 报 `TypeError: Cannot read properties of undefined (reading 'value')`,整张表随后不再响应(issue #32)**:在这一列按 Enter / Tab 提交或点到别处时,控制台在 `invokeDirectiveHook` 里连报 2–3 条错,之后再提交的格不写回,宿主依赖重渲染的东西也跟着失效。原因是编辑器卸载时它的输入框仍有焦点:Chrome 移除带焦点的元素会同步补发 `change` / `blur`,这一步落在 NEllipsis 气泡的 vueuc `Target` 的 patch 里,NInput 处理函数读到的 `currentFocusedInputRef` 被记成 `Target` 的依赖;随后 blur 写这个 ref,`Target` 单独重渲染、复用旧的触发器 vnode,指令被重复叠加。现在结束编辑或换格时(提交、放弃、Tab、点到别处都一样),编辑器里仍有焦点的控件先在渲染之前失焦,卸载时不再补发事件;焦点照旧回到选中的单元格,键盘导航不变。与树形序号无关,3.2.6 及更早版本同样存在。
 
 ### 新增
 
