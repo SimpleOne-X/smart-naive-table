@@ -1526,9 +1526,8 @@ export function useEditable<T extends object>(opts: UseEditableOpts<T>) {
   /* ---- document 级:键盘 / 点到别处提交 ---- */
 
   /** 事件落在编辑控件及它的浮层里(下拉菜单 / 日期面板 / 多行浮层 / 报错气泡 / 下拉表格放不下气泡时的底部面板,它是抽屉、不在 binder 浮层里)。 */
-  function insideEditor(t: EventTarget | null): boolean {
+  function insideEditor(t: EventTarget | null, e = edit.value): boolean {
     const el = t as Element | null
-    const e = edit.value
     if (!el || !e || typeof el.closest !== 'function') return false
     if (
       el.closest(
@@ -1548,6 +1547,17 @@ export function useEditable<T extends object>(opts: UseEditableOpts<T>) {
     const td = el.closest('td[data-xc]')
     return !!td && td.getAttribute('data-xc') === `${e.id}|${e.key}`
   }
+
+  // 结束编辑 / 换格时先让编辑器失焦再卸载它:浏览器移除带焦点的元素会同步补发 change / blur,若落在外层组件
+  // (如 ellipsis 气泡的 vueuc Target)的 patch 里,控件读到的 ref 会被记成那个组件的依赖,它随后单独重渲染时指令叠加而报错。
+  watch(
+    edit,
+    (_, before) => {
+      const el = document.activeElement
+      if (before && el instanceof HTMLElement && insideEditor(el, before)) el.blur()
+    },
+    { flush: 'sync' },
+  )
 
   function onDocClick(e: MouseEvent) {
     if (!enabled.value || !edit.value || insideEditor(e.target)) return
