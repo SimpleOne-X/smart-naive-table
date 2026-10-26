@@ -88,6 +88,7 @@
 | **行** | 行拖拽排序：整行或手柄拖，松手发 `@row-drag-sort`，窄档卡片保留拖拽 | `row-draggable`、`drag-handle` | m10、m14 |
 | | 主从联动：外部条件联动（`params`）、当前行高亮、点击行联动详情 | `params`、`active-row-key`、`@row-click` | m11 |
 | | 树形表格：官方 `children-key` 树表；窄档卡片先序拍平、标题按层级缩进、带展开 / 折叠箭头，勾选按 `cascade` 级联 | `children-key`、`cascade`、`default-expanded-row-keys`（官方属性） | m15 |
+| | 序号列树形：展开钮是项次格里的方框，树线连到子级，项次编成 1 / 1.1 / 1.1.2；Alt + 点击整表展开 / 收起，同一个根的行悬停一起点亮；可编辑表格里子级同样可编辑 | `{ type: 'index', tree: true }` | `/playground.html`「树形序号」 |
 | **数据与编辑** | 增删改弹窗：`useTableCrud` 管理打开 / 提交 / 删除状态，弹窗和表单用你自己的 `n-modal` + `n-form`（预览里窄档改用底部抽屉） | `useTableCrud()` | m9 |
 | | ★ 可编辑表格：Excel 式单元格编辑，按数据类型推断控件，Excel 粘贴、撤销、行级只读、异步校验、批量保存 + 脏标记 + 放弃，可选即时保存；窄档点卡片开底部抽屉 | `editable` + `@save` | m14 |
 | | 下拉表格选择：独立组件 `SmartSelectTable`，也是可编辑表格 `select-table` 编辑器的内核（选一行同时填其它列） | `SmartSelectTable` / `editorProps` | m14（编辑器）；独立用法见 `/playground.html` |
@@ -645,6 +646,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 
 - **Option**：`{ label, value, tagType?, disabled?, children? }`，`tagType` 可选 `default` / `primary` / `info` / `success` / `warning` / `error`
 - **特殊列**：`{ type: 'index' }` 序号（跨页连续）、`{ type: 'selection' }` 多选、`{ type: 'expand', renderExpand }` 展开行
+- **序号列树形**：`{ type: 'index', tree: true }`，数据照官方树表写（行里带 `children`，字段名取 `children-key`）。展开钮换成项次格里的方框（只有带子级的行有），树线从方框连到子级，项次编成 `1 / 1.1 / 1.1.2`（新增行按根行计）。展开态读官方属性 `expanded-row-keys`（受控，变化经 `@update:expanded-row-keys` 通知）/ `default-expanded-row-keys` / `default-expand-all`，都没绑时由库持有；点方框不触发 `@row-click`，按住 Alt 点击按这一行要去的状态整表展开或收起。子级行铺一层淡底、项次字号小一号；悬停任一行，同一个根的整组行连同树线、方框一起点亮。**只读**时树照官方 NDataTable 画：按根分页 / 排序 / 过滤、勾选按 `cascade` 级联、`summary` 只拿根行都是官方的，库只把官方的箭头与缩进换成方框和树线。**开了 `editable`** 时可编辑层只认一层行，库把当前页的根行按展开态先序拍平再交给表格：子级的格同样可编辑，`summary` 仍只拿根行；勾选不级联，表头全选会选进子级。不支持 `row-draggable`（开了会被关掉并警告一次）。一页里没有任何行带子级时与普通序号列一样。窄档卡片仍是上面的卡片树表
 
 ### SearchConfig
 
@@ -827,6 +829,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | 条件构造器 | `searchBy`、`searchMoreConditions`、`searchConditionN` |
 | 批量栏 | `selectedCount`（含 `{n}`）、`clearSelection` |
 | 窄档 | `operations`、`sort`、`sortNone`、`sortAscend`、`sortDescend`、`treeExpand`、`treeCollapse` |
+| 序号列树形 | `treeExpand`、`treeCollapse`（方框的无障碍名，与窄档卡片的箭头共用）、`treeToggleAll`（方框的悬停提示） |
 | 可编辑表格 | `editSave`（含 `{n}`）、`editDiscard`、`editDiscardConfirm`（含 `{n}`，放弃确认气泡的正文）、`editDiscardOk`、`editHiddenDirty`（含 `{n}`，「含 M 条当前不可见」）、`editAddRow`、`editDeleteSelected`、`editNewTitle`、`editEditTitle` 等（完整列表见 `SmartTableLabels`） |
 | 下拉表格选择 | `pickTotal`、`pickSelected`、`pickClearSel`、`pickOk` |
 

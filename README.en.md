@@ -88,6 +88,7 @@ The table follows the 15 modules of the component preview (sidebar groups Query 
 | **Rows** | Row drag sorting: whole row or a handle, `@row-drag-sort` on drop, cards keep dragging on the narrow tier | `row-draggable`, `drag-handle` | m10, m14 |
 | | Master-detail: external filter (`params`), active-row highlight, click a row to drive details | `params`, `active-row-key`, `@row-click` | m11 |
 | | Tree table: rows with `children` render as the official tree table; on the narrow tier they become indented cards with expand arrows and cascading selection | `children-key` (default `children`), `card-on-narrow` | m15 |
+| | Tree index column: the expand toggle is a box inside the index cell, tree lines lead to the children, numbers read 1 / 1.1 / 1.1.2; Alt-click expands / collapses everything, rows under one root light up together on hover; child rows stay editable in the editable grid | `{ type: 'index', tree: true }` | `/playground.html` "树形序号" tab |
 | **Data & editing** | Create / edit / delete dialogs: `useTableCrud` manages open / submit / delete state; the dialog and form are your own `n-modal` + `n-form` (the preview uses a bottom drawer on the narrow tier) | `useTableCrud()` | m9 |
 | | ★ Editable grid: Excel-style cell editing, editors inferred from the data type, Excel paste, undo, row-level read-only, async validation, batch save + dirty marks + discard, optional per-cell save; on the narrow tier a card tap opens a bottom drawer | `editable` + `@save` | m14 |
 | | Table picker: the standalone `SmartSelectTable`, also the engine behind the grid's `select-table` editor (picking one row fills other columns too) | `SmartSelectTable` / `editorProps` | m14 (as the editor); standalone usage in `/playground.html` |
@@ -650,6 +651,7 @@ Data columns accept every Naive UI column prop (`width`, `minWidth`, `fixed`, `a
 
 - **Option**: `{ label, value, tagType?, disabled?, children? }`; `tagType` is one of `default` / `primary` / `info` / `success` / `warning` / `error`
 - **Special columns**: `{ type: 'index' }` row number (continues across pages), `{ type: 'selection' }` checkbox, `{ type: 'expand', renderExpand }` expandable row
+- **Tree index column**: `{ type: 'index', tree: true }`, with data shaped like an official tree table (rows carry `children`, field name from `children-key`). The toggle becomes a box inside the index cell (only on rows with children), tree lines run from the box to the children, and numbers read `1 / 1.1 / 1.1.2` (new rows count as roots). Expansion reads the official props `expanded-row-keys` (controlled, changes reported via `@update:expanded-row-keys`) / `default-expanded-row-keys` / `default-expand-all`; with none bound the table keeps it. Clicking the box does not fire `@row-click`; Alt-click expands or collapses the whole table to the state this row is going to. Child rows get a faint tint and a slightly smaller number; hovering any row lights up every row under the same root, tree lines and boxes included. **Read-only**, the tree is drawn by the official NDataTable: paging / sorting / filtering by root rows, `cascade` selection and root-only `summary` are all official, the table only swaps the official arrow and indentation for the box and tree lines. **With `editable`** the editing layer only knows one level of rows, so the table flattens the current page's root rows in pre-order by expansion state first: child cells are editable too and `summary` still receives root rows only; selection does not cascade and the header select-all includes children. `row-draggable` is not supported (it is switched off with a one-time warning). A page with no row carrying children looks like a plain index column. Narrow cards keep the card tree described above
 
 ### SearchConfig
 
@@ -832,6 +834,7 @@ All `labels` keys are optional; missing keys fall back to the English defaults (
 | Query builder | `searchBy`, `searchMoreConditions`, `searchConditionN` |
 | Batch bar | `selectedCount` (with `{n}`), `clearSelection` |
 | Narrow tier | `operations`, `sort`, `sortNone`, `sortAscend`, `sortDescend`, `treeExpand`, `treeCollapse` |
+| Tree index column | `treeExpand`, `treeCollapse` (accessible name of the box, shared with the narrow-card arrow), `treeToggleAll` (hover hint of the box) |
 | Editable grid | `editSave` (with `{n}`), `editDiscard`, `editDiscardConfirm` (with `{n}`: the popover text), `editDiscardOk`, `editHiddenDirty` (with `{n}`: "Includes M not currently visible"), `editAddRow`, `editDeleteSelected`, `editNewTitle`, `editEditTitle`, ... (full list in `SmartTableLabels`) |
 | Table picker | `pickTotal`, `pickSelected`, `pickClearSel`, `pickOk` |
 

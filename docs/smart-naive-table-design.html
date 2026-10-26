@@ -1525,6 +1525,34 @@ table.n-table td.ex, table.n-table th.ex { width: 40px; padding: 0; text-align: 
 .rc-tg svg { display: block; width: 16px; height: 16px; transition: transform .15s; }
 .rc-tg.open svg { transform: rotate(90deg); }
 .rc-tg-ph { display: inline-block; flex: none; width: 24px; height: 1px; }
+/* ---- 模块 16 树形项次(设计 2.18,已定):序号列 { type: 'index', tree: true } ----
+   与库 SmartTable.vue 的 .smart-table-tree-* 同一套:树线是项次格里绝对定位的 1px 线(bottom: -1px 盖过行的下边框,逐行连成一条;不用 td 的伪元素,固定列的阴影占着),
+   方框 15×15、白 → 浅灰渐变 + 0.5px 描边 + 细阴影,「+」的竖笔收成 0 就是「−」;子级行叠一层极淡的底、项次小一号;整组悬停叠主色 8%,线、方框、子级项次换成主色。
+   淡底与悬停都叠在 background-image 上,官方 hover 的底色照常;方框与树线明暗两套固定值,同库的 treeStyleVars。 */
+:root { --ti-line: rgba(88, 100, 121, .38); --ti-sub: rgba(70, 90, 130, .035); --ti-box-top: #fff; --ti-box-bot: #eef1f6; --ti-box-ring: rgba(16, 24, 40, .2); --ti-box-shadow: 0 1px 1.5px rgba(16, 24, 40, .14); --ti-hot: color-mix(in srgb, var(--n-primary) 8%, transparent); }
+html[data-theme="dark"] { --ti-line: rgba(152, 166, 196, .4); --ti-sub: rgba(130, 160, 255, .06); --ti-box-top: rgba(255, 255, 255, .16); --ti-box-bot: rgba(255, 255, 255, .08); --ti-box-ring: rgba(255, 255, 255, .22); --ti-box-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+.tbl-scroll table.n-table td.ti-cell { position: relative; overflow: visible; font-variant-numeric: tabular-nums; }   /* overflow 放开:树线要盖过本格的下边框 */
+.tbl-scroll table.n-table td.ti-cell--child { font-size: 12px; color: var(--n-text-2); transition: color .15s; }
+.ti-line { position: absolute; top: 0; bottom: -1px; width: 0; border-left: 1px solid var(--ti-line); pointer-events: none; transition: border-color .15s; }
+.ti-line--elbow { bottom: auto; height: 50%; border-bottom: 1px solid var(--ti-line); border-bottom-left-radius: 7px; }
+.ti-line--down { top: calc(50% + 7.5px); }
+.ti-box {
+  position: absolute; top: 50%; z-index: 1; display: grid; place-items: center; box-sizing: border-box; width: 15px; height: 15px; padding: 0; border: 0; border-radius: 4.5px;
+  background: linear-gradient(var(--ti-box-top), var(--ti-box-bot)); box-shadow: 0 0 0 .5px var(--ti-box-ring), var(--ti-box-shadow);
+  color: var(--n-text); cursor: pointer; transform: translateY(-50%); transition: color .15s, box-shadow .15s;
+}
+.ti-box:focus-visible { outline: 2px solid var(--n-primary); outline-offset: 1px; }
+.ti-box svg { display: block; overflow: visible; }
+.ti-box-v { transform-origin: 5px 5px; transition: transform .2s cubic-bezier(.2, .8, .2, 1); }
+.ti-box.open .ti-box-v { transform: scaleY(0); }
+.tbl-scroll table.n-table tbody tr.ti-child > td { background-image: linear-gradient(var(--ti-sub), var(--ti-sub)); }
+.tbl-scroll table.n-table tbody tr.ti-hot > td { background-image: linear-gradient(var(--ti-hot), var(--ti-hot)); }
+.ti-hot .ti-line { border-color: var(--n-primary); }
+.ti-hot .ti-box { color: var(--n-primary); box-shadow: 0 0 0 .5px var(--n-primary), var(--ti-box-shadow); }
+.tbl-scroll table.n-table tr.ti-hot > td.ti-cell--child { color: var(--n-primary); }
+/* 可编辑(库拍平):点进格子即改,Enter 提交、Esc 放弃;编辑中画 1px 主色内描边(不占布局,行高不变) */
+.tbl-scroll table.n-table td.ti-ed { cursor: text; }
+.tbl-scroll table.n-table td.ti-ed:focus { outline: none; box-shadow: inset 0 0 0 1px var(--n-primary); text-overflow: clip; }
 .tbl-scroll table.n-table tr.exp-row > td { height: auto; line-height: 1.6; padding: 0; white-space: normal; overflow: visible; background: var(--n-card-bg); }   /* overflow 必须 visible:td 一旦是滚动容器,里面的 sticky 就相对它而不是表体,内容会跟着横向滚走 */
 .exp-in { position: sticky; left: 0; width: var(--sc-w, 100%); box-sizing: border-box; padding: 12px 16px 14px 56px; }
 .exp-t { font-size: 13px; color: var(--n-text-2); margin-bottom: 8px; }
@@ -1982,6 +2010,7 @@ const MODULES = {
   i18n:    { no: 13, name: '多语言与页面底色',   en: 'Language & background',    status: 'done' },
   excel:   { no: 14, name: '可编辑表格',         en: 'Editable grid',            status: 'done' },   // Excel 式单元格编辑 + 按数据类型推断编辑控件(设计文档「可编辑表格」一节);示例场景 = 工艺路线设计(编辑 / 拖动重排并重编号 / 行级只读 / 合计)
   tree:    { no: 15, name: '树形表格',         en: 'Tree table',               status: 'done' },   // 窄档卡片的树表(设计 2.17,已确认):宽 / 中档是官方树形态的表格,窄档是先序拍平的卡片
+  treeno:  { no: 16, name: '树形项次',         en: 'Tree index column',        status: 'done' },   // 序号列 tree: true(设计 2.18,已定):项次格里的展开方框 + 树线、项次 1 / 1.1;示例场景 = 站位表(标准件 + 替代件),只读 / 可编辑两种画法
 };
 const STATUS_TXT = { done: '已定', doing: '提议', todo: '待议' };
 const STATUS_EN = { done: 'Final', doing: 'Proposed', todo: 'Open' };   // 侧栏是 data-raw(不走文本节点词典),状态徽标的英文要在这里直接出
@@ -1998,7 +2027,7 @@ const GROUPS = [
   { name: '查询', en: 'Query',   keys: ['search', 'toolbar', 'filter', 'sort'] },
   { name: '列',   en: 'Columns', keys: ['wide', 'dict', 'persist'] },
   { name: '行',   en: 'Rows',    keys: ['drag', 'ms', 'tree'] },
-  { name: '数据', en: 'Data',    keys: ['states', 'crud', 'excel'] },
+  { name: '数据', en: 'Data',    keys: ['states', 'crud', 'excel', 'treeno'] },
   { name: '布局', en: 'Layout',  keys: ['embed'] },
 ];
 const groupOf = (key) => GROUPS.find((g) => g.keys.includes(key));
@@ -2604,6 +2633,7 @@ const MC = {
   i18n:    { cols: 'i18n' },   // 模块 13 只用工具栏条件搜索,没有搜索卡(页面不在侧栏,避免出现两套搜索);不带默认条件
   excel:   { cols: 'excel', title: '工艺路线 · 变速箱壳体 GB-2201', excel: true, drag: true, summary: true, indexLabel: '工序号', indexW: 80, pagination: false, virtual: false, acts: false, batch: 'excel' },   // 可编辑表格(工艺路线示例)。12 行 → 整页直出、不分页(pagination:false);序号列 = 工序号(位置,拖动后跟着变、不可编辑);drag = 手柄列 + 行拖拽重排(松手即保存顺序);summary = 合计行;无操作列(删除走勾选 + 批量栏)
   tree:    { cols: 'material', page: 'tree', natural: true, immediate: false, actions: false },   // 设计 2.17:自带机构树数据与分页(5 个根、每页 3 个),整页自然高度(同模块 10)
+  treeno:  { cols: 'material', page: 'treeno', natural: true, immediate: false, actions: false },   // 设计 2.18:自带站位表数据,整页直出、不分页,整页自然高度(同模块 15)
 };
 const MCx = () => MC[state.mod];
 const colKind = (mod = state.mod) => MC[mod].cols;
@@ -2743,9 +2773,9 @@ function condsOfKey(k) {
   if (hasCond(k)) out.push(...(cmOf(k).applied ?? []));
   return out;
 }
-/* 工具栏带一行式条件搜索的模块:模块 2–9 与 11–14。不带的:模块 1(独立的搜索表单卡片)、模块 10(拖拽排序:过滤后按行号拖会改错行)、模块 15(树形表格:树的设计点在表体,没有工具栏)。
+/* 工具栏带一行式条件搜索的模块:模块 2–9 与 11–14。不带的:模块 1(独立的搜索表单卡片)、模块 10(拖拽排序:过滤后按行号拖会改错行)、模块 15(树形表格:树的设计点在表体,没有工具栏)、模块 16(树形项次:同模块 15)。
    模块 12 的「入库明细」子表与「选择物料」弹窗没有工具栏,不在此列;它的主表(物料单据大表)有。 */
-const COND_EXEMPT = new Set(['search', 'drag', 'tree']);
+const COND_EXEMPT = new Set(['search', 'drag', 'tree', 'treeno']);
 const hasCond = (m = state.mod) => !COND_EXEMPT.has(m);
 const hdrMod = () => state.mod === 'filter' || state.mod === 'sort';   // 模块 3 / 4:列头过滤 + 排序的宿主页面
 const HS = () => state.h[state.mod];
@@ -5354,10 +5384,13 @@ const EN_PAIRS = [
   ['报工', 'Reporting'], ['质检', 'QC'], ['工艺说明', 'Process notes'], ['自制', 'In-house'], ['外协', 'Outsourced'], ['检验', 'Inspection'], ['状态', 'Status'], ['工序编码/名称/工作中心', 'Code / name / work center'], ['工序编码', 'Code'], ['标准准备(分)', 'Std. setup (min)'], ['标准单件(分)', 'Std. per piece (min)'], ['暂无数据', 'No Data'], ['选择工序', 'Select operation'], ['放弃修改', 'Discard changes'], ['删除所选', 'Delete selected'], ['已放弃修改', 'Changes discarded'], ['启用', 'Enabled'], ['停用', 'Disabled'],
   ['是', 'Yes'], ['否', 'No'], ['选择时间', 'Select Time'], ['选择日期时间', 'Select Date and Time'],
   ['请输入有效数字', 'Please enter a valid number'], ['日期格式应为 YYYY-MM-DD', 'Date format must be YYYY-MM-DD'], ['日期时间格式应为 YYYY-MM-DD HH:mm:ss', 'Date-time format must be YYYY-MM-DD HH:mm:ss'],
+  // 模块 16(树形项次)
+  ['项次', 'Item'], ['站位', 'Slot'], ['规格', 'Spec'], ['物料类型', 'Material type'], ['标准件', 'Standard'], ['替代件', 'Substitute'], ['用量', 'Qty'], ['可编辑', 'Editable'],
+  ['按住 Alt 点击:全部展开 / 收起', 'Alt-click to expand / collapse all'],
 ];
 const EN_MAP = new Map(EN_PAIRS);
 /* 侧栏分组 / 子页 / 面包屑 / 页头标题的英文名不走本词典:MODULES / GROUPS 自带 en,renderMods / renderStage 按语言直接出(外层 data-raw)。 */
-const EN_EXACT = new Set(['状态', '报工', '质检', '自制', '外协', '检验']);   // 模块 14 的列标题 / 标签:只整段匹配,不做子串替换(否则「检验室」「质检中心」这类业务数据会被译成「Inspection室」「QC中心」)
+const EN_EXACT = new Set(['状态', '报工', '质检', '自制', '外协', '检验', '项次', '站位', '规格', '用量', '物料类型', '标准件', '替代件', '可编辑']);   // 模块 14、16 的列标题 / 标签:只整段匹配,不做子串替换(否则「检验室」「质检中心」这类业务数据会被译成「Inspection室」「QC中心」)
 const EN_SUB = EN_PAIRS.filter(([k]) => k.length >= 2 && !EN_EXACT.has(k)).map(([k]) => k).sort((a, b) => b.length - a.length);
 const EN_SUB_RX = new RegExp(EN_SUB.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
 const EN_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -5472,7 +5505,9 @@ renderSidePanel = function () {
     <div class="shell-row"><span class="sr-l">密度</span>${seg('density', state.compact ? 'compact' : 'comfortable', [['compact', '紧凑'], ['comfortable', '舒适']])}</div>`
     + (state.mod === 'excel' ? `<div class="group-title">模块选项</div>
     <div class="shell-row"><span class="sr-l">可填格提示</span>${seg('xhint', state.xl.hint ? 'on' : 'off', [['off', '关'], ['on', '开']])}</div>
-    <div class="shell-row"><span class="sr-l">锁定格灰底</span>${seg('xlock', state.xl.lock, [['off', '关'], ['on', '开'], ['host', '宿主灰']])}</div>` : '');
+    <div class="shell-row"><span class="sr-l">锁定格灰底</span>${seg('xlock', state.xl.lock, [['off', '关'], ['on', '开'], ['host', '宿主灰']])}</div>` : '')
+    + (state.mod === 'treeno' ? `<div class="group-title">模块选项</div>
+    <div class="shell-row"><span class="sr-l">可编辑</span>${seg('tiEdit', state.ti.edit ? 'on' : 'off', [['off', '关'], ['on', '开']])}</div>` : '');
 };
 
 /* ---- 数据 ---- */
@@ -5500,6 +5535,7 @@ function pageHtml() {
   const pg = MCx().page;
   if (pg === 'drag') return dragPageHtml();
   if (pg === 'tree') return treePageHtml();
+  if (pg === 'treeno') return tiPageHtml();
   if (pg === 'ms') return msPageHtml();
   if (pg === 'embed') return embedPageHtml();
   return MCx().sf ? schemeAHtml() : schemeEHtml();
@@ -5847,6 +5883,178 @@ document.addEventListener('keydown', (e) => { const j = e.target.closest?.('[dat
 /* 进入模块 = 宿主重新挂载表格:展开 / 勾选 / 页码回到初始(未绑 expanded-row-keys 时库内部持有展开态,重挂载即重置) */
 const _enterBeforeTree = enterModule;
 enterModule = function (m) { if (m === 'tree') state.tree = ttFresh(); _enterBeforeTree(m); };
+/* ============================================================
+   模块 16:树形项次(设计 2.18,已定)—— 序号列 { type: 'index', tree: true }
+   库:src/treeIndex.ts(先序拍平 / 项次 / 几何)+ SmartTable.vue 的 renderTreeIndex,这里的拍平、项次、几何与它逐行对应:
+   根层方框左缘 8、中线 15、文字 32;下一层谁都没子级时不留方框位,接线 14px、文字在上一层中线右 21(两层的站位表 = 根 32、子 36)。
+   只读 = 官方画树:勾选按 cascade 级联,表头全选按根行;可编辑 = 库拍平:子级的格同样可编辑,勾选不级联、表头全选含子级。合计两种都只算根行。
+   点方框只切这一行;按住 Alt 点 = 按这一行要去的状态整表展开 / 收起;悬停任一行,同一个根的整组一起点亮。窄档是模块 15 的卡片树表(2.17)。
+   ============================================================ */
+const TI_ROWS = [
+  { id: 1, slot: '1-01', code: '3.01.01.0001', name: '贴片电阻', spec: '0402 10KΩ ±1%', qty: 4, remark: '', children: [
+    { id: 101, code: '3.01.01.0101', name: '贴片电阻', spec: '0402 10KΩ ±1% 风华', qty: 4, remark: '' },
+    { id: 102, code: '3.01.01.0207', name: '贴片电阻', spec: '0402 10KΩ ±1% 国巨', qty: 4, remark: '库存用完即停' } ] },
+  { id: 2, slot: '1-02', code: '3.02.01.0012', name: '贴片电容', spec: '0402 100nF 16V X7R', qty: 6, remark: '', children: [
+    { id: 201, code: '3.02.01.0118', name: '贴片电容', spec: '0402 100nF 16V X7R 三星', qty: 6, remark: '' } ] },
+  { id: 3, slot: '1-03', code: '3.02.02.0040', name: '贴片电容', spec: '0603 10uF 25V X5R', qty: 2, remark: '' },
+  { id: 4, slot: '2-01', code: '4.01.03.0021', name: 'LDO 稳压', spec: 'SOT-23-5 3.3V 300mA', qty: 1, remark: '', children: [
+    { id: 401, code: '4.01.03.0105', name: 'LDO 稳压', spec: 'SOT-23-5 3.3V 300mA 圣邦', qty: 1, remark: '' },
+    { id: 402, code: '4.01.03.0133', name: 'LDO 稳压', spec: 'SOT-23-5 3.3V 500mA 矽力杰', qty: 1, remark: '需工程确认' } ] },
+  { id: 5, slot: '2-02', code: '4.02.01.0008', name: 'MOS 管', spec: 'SOT-23 N 沟道 30V', qty: 2, remark: '' },
+  { id: 6, slot: '3-01', code: '4.10.01.0006', name: '主控 MCU', spec: 'QFN-48 7×7', qty: 1, remark: '烧录后上料' },
+];
+const tiKids = (n) => n.children ?? [];
+const tiNodes = (list) => list.flatMap((n) => [n, ...tiNodes(tiKids(n))]);
+const TI_PARENT = new Map();   // id → 父级 id(根 = null)
+(function tiIndex(list, p) { list.forEach((n) => { TI_PARENT.set(n.id, p); tiIndex(tiKids(n), n.id); }); })(TI_ROWS, null);
+/* 进入模块 = 重新挂载:数据、展开(default-expand-all)、勾选回到初始;「可编辑」是模块选项,保留 */
+const tiFresh = () => ({ rows: structuredClone(TI_ROWS), exp: new Set(tiNodes(TI_ROWS).filter((n) => tiKids(n).length).map((n) => n.id)), checked: new Set(), edit: state.ti?.edit ?? false, hot: null });
+state.ti = tiFresh();
+const tiNode = (id) => tiNodes(state.ti.rows).find((n) => n.id === id);
+/* 先序拍平(= flattenTreeRows):只进入展开的节点;lasts[k] = 第 k 层的祖先(lasts[depth] = 自己)是不是同级末位,决定竖线往下续不续 */
+function tiFlat() {
+  const t = state.ti, out = [];
+  const walk = (n, depth, lasts, group) => {
+    const kids = tiKids(n), open = kids.length > 0 && t.exp.has(n.id);
+    out.push({ n, depth, lasts, group, kids: kids.length, open });
+    if (open) kids.forEach((c, i) => walk(c, depth + 1, [...lasts, i === kids.length - 1], group));
+  };
+  t.rows.forEach((r, i) => walk(r, 0, [i === t.rows.length - 1], r.id));
+  return out;
+}
+/* boxDepths[d] = 第 d 层有没有带子级的节点(含折叠的):有才给这一层留方框位,展开 / 折叠时同层文字不左右跳 */
+function tiBoxDepths() {
+  const out = [], mark = (n, d) => { if (!tiKids(n).length) return; out[d] = true; tiKids(n).forEach((c) => mark(c, d + 1)); };
+  state.ti.rows.forEach((r) => mark(r, 0));
+  return out;
+}
+/* 项次(= treeNumbers):按显示顺序编 1 / 1.1 / 1.1.2 */
+function tiNumbers(flat) {
+  const c = [];
+  return flat.map(({ depth: d }) => { c.length = d + 1; c[d] = (c[d] ?? 0) + 1; return Array.from({ length: d + 1 }, (_, k) => c[k] ?? 1).join('.'); });
+}
+/* 各层位置(= treeGeometry):line = 方框中线,box = 方框左缘,text = 项次文字左缘 */
+function tiGeo(boxDepths, depth) {
+  const out = [{ line: 15, box: 8, text: 32 }];
+  for (let d = 1; d <= depth; d++) {
+    const up = out[d - 1].line;
+    out.push(boxDepths[d] ? { line: up + 16, box: up + 9, text: up + 33 } : { line: up + 16, box: null, text: up + 21 });
+  }
+  return out;
+}
+const I_TI_BOX = '<svg viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M1.5 5h7"/><path class="ti-box-v" d="M5 1.5v7"/></svg>';
+/* 项次格(= renderTreeIndex):祖先不是同级末位 → 它的竖线穿过本行;子级在半高处拐向文字;展开的行从方框下沿往下落一条 */
+function tiIndexCell({ n, depth, lasts, kids, open }, no, boxDepths) {
+  const lv = tiGeo(boxDepths, depth);
+  const line = (left, kind, w) => `<span class="ti-line ti-line--${kind}" style="left:${left}px${w == null ? '' : `;width:${w}px`}"></span>`;
+  let out = '';
+  for (let k = 1; k < depth; k++) if (!lasts[k]) out += line(lv[k - 1].line, 'pass');
+  if (depth > 0) {
+    if (!lasts[depth]) out += line(lv[depth - 1].line, 'pass');
+    out += line(lv[depth - 1].line, 'elbow', kids && lv[depth].box != null ? lv[depth].box - lv[depth - 1].line : 14);
+  }
+  if (open) out += line(lv[depth].line, 'down');
+  if (kids) out += `<button type="button" class="ti-box${open ? ' open' : ''}" style="left:${lv[depth].box ?? 0}px" data-act="tiTog" data-v="${n.id}" aria-expanded="${open}" aria-label="${open ? '收起' : '展开'}" title="按住 Alt 点击:全部展开 / 收起">${I_TI_BOX}</button>`;
+  return `<td class="ti-cell${depth ? ' ti-cell--child' : ''}" style="padding-left:${lv[depth].text}px">${out}<span class="ti-no">${no}</span></td>`;
+}
+/* 只读(以及窄档卡片)勾选照官方 cascade;可编辑时 NDataTable 拿到的是平铺行,勾选不级联 */
+const tiCascade = () => !state.ti.edit || state.tier === 'narrow';
+const tiCheckState = (n) => (state.ti.checked.has(n.id) ? 'on' : tiCascade() && tiNodes(tiKids(n)).some((d) => state.ti.checked.has(d.id)) ? 'half' : 'off');
+function tiCheck(id) {
+  const t = state.ti, n = tiNode(id), on = !t.checked.has(id);
+  if (!tiCascade()) { if (on) t.checked.add(id); else t.checked.delete(id); return; }
+  [n, ...tiNodes(tiKids(n))].forEach((d) => (on ? t.checked.add(d.id) : t.checked.delete(d.id)));   // 勾父 = 带上全部后代
+  for (let p = TI_PARENT.get(id); p != null; p = TI_PARENT.get(p)) {   // 子级全勾 → 父级勾上;否则父级不勾(部分勾 = 半选)
+    if (tiKids(tiNode(p)).every((c) => t.checked.has(c.id))) t.checked.add(p); else t.checked.delete(p);
+  }
+}
+/* 表头全选:只读按根行(官方 doCheckAll + cascade = 全部节点);可编辑按当前显示的平铺行(含展开的子级) */
+function tiHead(flat) {
+  const t = state.ti, ids = tiCascade() ? t.rows.map((r) => r.id) : flat.map((r) => r.n.id);
+  const all = ids.every((id) => t.checked.has(id)), half = !all && tiNodes(t.rows).some((n) => t.checked.has(n.id));
+  return { all, half, ids: tiCascade() ? tiNodes(t.rows).map((n) => n.id) : ids };
+}
+function tiPageHtml() {
+  const t = state.ti, narrow = state.tier === 'narrow', dens = state.compact ? 'compact' : 'normal';
+  const flat = tiFlat(), nos = tiNumbers(flat), boxDepths = tiBoxDepths();
+  const kind = (depth) => (depth ? '替代件' : '标准件');
+  let main;
+  if (narrow) {
+    main = `<div class="tbl-cards">${flat.map(({ n, depth, kids, open }, i) => {
+      const st = tiCheckState(n), arrow = kids
+        ? `<button type="button" class="rc-tg${open ? ' open' : ''}" data-act="tiTog" data-v="${n.id}" aria-expanded="${open}" aria-label="${open ? '收起' : '展开'}">${I_CHEVR}</button>`
+        : '<span class="rc-tg-ph"></span>';
+      return `<div class="rc${st === 'on' ? ' sel' : ''}" data-i="${i}" data-depth="${depth}">
+        <div class="rc-head tr-head"><span class="tr-lead" style="padding-left:${depth * TREE_INDENT}px">${arrow}</span><span class="rc-title">${esc(n.code)}</span>${checkHtml(st === 'on', st === 'half', 'tiCk', n.id)}</div>
+        <dl class="rc-desc"><div><dt>站位</dt><dd>${esc(n.slot ?? '')}</dd></div><div><dt>物料名称</dt><dd>${esc(n.name)}</dd></div><div><dt>规格</dt><dd>${esc(n.spec)}</dd></div><div><dt>物料类型</dt><dd>${kind(depth)}</dd></div><div><dt>用量</dt><dd>${n.qty}</dd></div></dl></div>`;
+    }).join('')}</div>`;
+  } else {
+    const ed = (n, f, cls) => {   // 可编辑:用量、备注两列点进去即改(子级同样可改)
+      const c = [cls, t.edit ? 'ti-ed' : ''].filter(Boolean).join(' ');
+      return `<td${c ? ` class="${c}"` : ''}${t.edit ? ` contenteditable="true" spellcheck="false" data-tied="${n.id}|${f}"` : ''}>${esc(String(n[f] ?? ''))}</td>`;
+    };
+    const rows = flat.map((r, i) => {
+      const { n, depth, group } = r, st = tiCheckState(n);
+      const cls = [depth ? 'ti-child' : '', String(group) === t.hot ? 'ti-hot' : ''].filter(Boolean).join(' ');
+      return `<tr data-tig="${group}"${cls ? ` class="${cls}"` : ''}><td class="ck">${checkHtml(st === 'on', st === 'half', 'tiCk', n.id)}</td>${tiIndexCell(r, nos[i], boxDepths)}
+        <td>${esc(n.slot ?? '')}</td><td>${esc(n.code)}</td><td>${esc(n.name)}</td><td>${esc(n.spec)}</td><td>${kind(depth)}</td>${ed(n, 'qty', 'num')}${ed(n, 'remark')}</tr>`;
+    }).join('');
+    const sum = t.rows.reduce((a, r) => a + (Number(r.qty) || 0), 0);   // 合计只算根行(同官方树表:summary 拿到的是根行)
+    const head = tiHead(flat);
+    main = `<div class="tbl-table"><div class="tbl-scroll"><table class="n-table" style="min-width:900px"><colgroup><col style="width:40px"><col style="width:80px"><col style="width:72px"><col style="width:130px"><col style="width:110px"><col><col style="width:90px"><col style="width:72px"><col style="width:150px"></colgroup>
+      <thead><tr><th class="ck">${checkHtml(head.all, head.half, 'tiAll')}</th><th>项次</th><th>站位</th><th>物料编码</th><th>物料名称</th><th>规格</th><th>物料类型</th><th class="num">用量</th><th>备注</th></tr></thead>
+      <tbody>${rows}<tr class="sum-row"><td></td><td></td><td>合计</td><td></td><td></td><td></td><td></td><td class="num">${sum}</td><td></td></tr></tbody></table></div></div>`;
+  }
+  return `<div class="smart-table" data-density="${dens}"><div class="n-card"><div class="dt">${main}</div></div></div>`;   // 没有工具栏(同模块 15)
+}
+let tiAlt = false;   // 点方框时按没按 Alt:捕获阶段先记下,动作分发拿不到事件
+document.addEventListener('click', (e) => { tiAlt = e.altKey; }, true);
+function tiAct(act, v) {
+  const t = state.ti, id = Number(v);
+  switch (act) {
+    case 'tiTog': {
+      const open = !t.exp.has(id);
+      if (tiAlt) t.exp = new Set(open ? tiNodes(t.rows).filter((n) => tiKids(n).length).map((n) => n.id) : []);
+      else if (open) t.exp.add(id); else t.exp.delete(id);
+      break;
+    }
+    case 'tiCk': tiCheck(id); break;
+    case 'tiAll': { const h = tiHead(tiFlat()); h.ids.forEach((k) => (h.all ? t.checked.delete(k) : t.checked.add(k))); break; }
+    case 'tiEdit': t.edit = v === 'on'; t.checked = new Set(); render(); return true;   // 两种勾选口径不同,切换时清空
+    default: return false;
+  }
+  renderPreview();
+  return true;
+}
+/* 整组悬停:同一个根的行一起点亮;直接改类名、不重绘(同库的 lightTreeGroup) */
+document.addEventListener('mouseover', (e) => {
+  if (state.mod !== 'treeno') return;
+  const g = e.target.closest?.('#preview tr[data-tig]')?.dataset.tig ?? null;
+  if (g === state.ti.hot) return;
+  state.ti.hot = g;
+  document.querySelectorAll('#preview tr[data-tig]').forEach((tr) => tr.classList.toggle('ti-hot', tr.dataset.tig === g));
+});
+/* 可编辑格:失焦提交(用量须是 ≥ 0 的数,否则退回原值),Enter 提交、Esc 放弃;提交后重绘(合计跟着变),焦点落到刚点的另一格 */
+document.addEventListener('focusout', (e) => {
+  const c = e.target.closest?.('[data-tied]');
+  if (!c) return;
+  if (!c.dataset.cancel) {
+    const [id, f] = c.dataset.tied.split('|'), n = tiNode(Number(id)), txt = c.textContent.trim();
+    if (f !== 'qty') n[f] = txt;
+    else if (txt !== '' && Number.isFinite(Number(txt)) && Number(txt) >= 0) n.qty = Number(txt);
+  }
+  const next = e.relatedTarget?.dataset?.tied;
+  renderPreview();
+  if (next) document.querySelector(`[data-tied="${next}"]`)?.focus();
+});
+document.addEventListener('keydown', (e) => {
+  const c = e.target.closest?.('[data-tied]');
+  if (!c || e.isComposing) return;
+  if (e.key === 'Enter') { e.preventDefault(); c.blur(); }
+  else if (e.key === 'Escape') { c.dataset.cancel = '1'; c.blur(); }
+});
+const _enterBeforeTi = enterModule;
+enterModule = function (m) { if (m === 'treeno') state.ti = tiFresh(); _enterBeforeTi(m); };
 
 /* ============================================================
    动作 / 事件接入
@@ -5861,6 +6069,7 @@ function b3Act(act, v) {
     case 'xhint': state.xl.hint = v === 'on'; render(); return true;
     case 'xlock': state.xl.lock = v; render(); return true;
     case 'ttTog': case 'ttCk': case 'ttAll': case 'ttPrev': case 'ttNext': return treeAct(act, v);
+    case 'tiTog': case 'tiCk': case 'tiAll': case 'tiEdit': return tiAct(act, v);
     case 'tnSel': state.ms.sel = v; state.activeRow = null; state.drawer = null; state.open = null; firstPage('ms'); renderPreview(); requery(); return true;
     case 'tnTog': state.ms.exp[v] = !state.ms.exp[v]; renderPreview(); return true;
     case 'drClose': state.drawer = null; renderPreview(); return true;
