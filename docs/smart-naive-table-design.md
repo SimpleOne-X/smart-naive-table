@@ -19,7 +19,7 @@
 
 - **原型** `smart-naive-table-design.html`(离线单文件,明暗两套,宽 1440 / 中 1100 / 窄 390 三档):模拟**远程**数据(带延迟的 mock 后端,搜索 / 过滤 / 排序 / 分页都在「后端」算,刷新 / 搜索 / 翻页有 loading);表格用官方 small / medium 行高与内边距、已排序列整列底色、官方 `NEmpty` 空状态(图标为线性托盘,见「空状态图标:线性托盘」);筛选图标是库的漏斗;控件是真控件(`NInputNumber` / `NDatePicker` 日历 / `NSwitch` / 多选 tag / `NPopconfirm`);列设置有拖动排序与固定到左右;有序号列与固定列、过滤面板键盘行为。各模块的场景见 10.8、第 11 / 12 节。
 - **侧栏**:「设计模块」是两级目录(查询 / 列 / 行 / 数据 / 布局 5 组,见「设计模块重新分类与命名」),状态徽标只在非「已定」时出现,窄档是顶部分组条 + 子页签。「全局设置」含明暗 / 语言(中文 / English)/ 页面底色(灰 / 白)/ 个人密度(紧凑 / 舒适),对全部模块生效、不出现在表格页面里。对照页 `playground/prototype/ProtoApp.vue` 与分类同表(注册表 `modules/registry.ts`),渲染全部模块。
-- **模块**:m1–m13 已定(m13 多语言与页面底色不在侧栏);m14 可编辑表格(键 `excel`)已定,见「可编辑表格」一节;m15 树形表格(键 `tree`)已定,见 2.17。各模块的列设置状态按模块各一份,m7 写入真实 `localStorage`。
+- **模块**:m1–m13 已定(m13 多语言与页面底色不在侧栏);m14 可编辑表格(键 `excel`)已定,见「可编辑表格」一节;m15 树形表格(键 `tree`)已定,见 2.17;m16 树形项次(键 `treeno`)已定,见 2.18。各模块的列设置状态按模块各一份,m7 写入真实 `localStorage`。
 - **排序**:点击循环是官方「降序 → 升序 → 取消」(D8);原型初始态不含排序点击(m4 默认按单据日期降序是初始排序态,不是点击产物)。
 - **原型已包含**:m1 搜索独立卡片页、m2 条件构造器页、**m3 列头过滤页、m4 排序页(均为真实可点的宿主页面,见 3.9 / 4.8)**、宽 / 中档工具栏并排或折行(放得下并排,放不下条件栏折到下一行,见 2.11)、2000 行数据、真实分页(库默认每页 100,可选项随 `fillHeight` 区分(见 2.11),含「共 N 条」)、官方 token 对齐、官方 `NLayout embedded` 灰底、页面占满视口(文档无滚动条)+ 表格纵向虚拟滚动。
 - **原型不含**:库层面「撑满父容器高度」`fillHeight` 的实现(库里已有,见 2.11、9.6 S4);原型页面本身是铺满一页 + 虚拟滚动。
@@ -30,7 +30,7 @@
 
 状态图例:**已定** = 定稿;**提议** = 已提出、待定;**待议** = 尚未讨论。
 
-下表按**本文章节(§N)**列状态,不是原型页。原型页统一写 `m1`–`m15`,按功能分为 查询 / 列 / 行 / 数据 / 布局 5 组,见「设计模块重新分类与命名」;§1–§4 的号恰好与 m1–m4 相同,§5 起两者不同(如 §5 表格密度 ≠ m5 多级表头与固定列)。
+下表按**本文章节(§N)**列状态,不是原型页。原型页统一写 `m1`–`m16`,按功能分为 查询 / 列 / 行 / 数据 / 布局 5 组,见「设计模块重新分类与命名」;§1–§4 的号恰好与 m1–m4 相同,§5 起两者不同(如 §5 表格密度 ≠ m5 多级表头与固定列)。
 
 | 章节 | 状态 |
 |---|---|
@@ -319,7 +319,7 @@
 
 1. **一级组名只用一个名词**,对齐业界顶层类目,不用「A 与 B」。
 2. **子页用功能名。** README 里有同名章节的,与 README 标题一致(表头过滤 / 列设置 / 字典、标签与格式化 / 增删改弹窗);英文名对齐 `README.en.md` 和业界措辞。这样在原型里看到的名字,可以直接到 README 里搜。
-3. **界面上不显示编号。** 内部模块键、`MODULES.no`、`enterModule('键')`、对照页 `?m=N`、`docs/baseline/mN` 文件名与界面显示无关、保持稳定。**本文统一写法**:原型页写 `m1`–`m15`(与基线文件名一致),本文章节写「§N」;正文里的「模块 N」都指原型页 mN(§1–§4 的标题号恰好与 m1–m4 相同;§5 起两者不同,以顶部状态表为准)。
+3. **界面上不显示编号。** 内部模块键、`MODULES.no`、`enterModule('键')`、对照页 `?m=N`、`docs/baseline/mN` 文件名与界面显示无关、保持稳定。**本文统一写法**:原型页写 `m1`–`m16`(与基线文件名一致),本文章节写「§N」;正文里的「模块 N」都指原型页 mN(§1–§4 的标题号恰好与 m1–m4 相同;§5 起两者不同,以顶部状态表为准)。
 4. **以后加功能,优先往已有的组里加子页**;只有新领域攒到 2 页以上、又放不进任何现有组时,才新开一组。
 
 **新分类**(侧栏 = 两级目录:组名是不可点的小标题,子页常显;★ = 亮点)
@@ -339,6 +339,7 @@
 | 数据 Data | 加载与错误处理 / Loading & errors | `states` · m8 |
 | | 增删改弹窗 / CRUD dialogs | `crud` · m9 |
 | | 可编辑表格 / Editable grid | `excel` · m14 |
+| | 树形项次 / Tree index column | `treeno` · m16 |
 | 布局 Layout | 上下布局 / Stacked layout | `embed` · m12 |
 | (不在侧栏) | 多语言与页面底色 / Language & background | `i18n` · m13 |
 
@@ -374,6 +375,7 @@
 | 行 | 展开行、合计行 | m5 | 官方 | 11.1 |
 | 行 | 行拖拽排序:手柄、键盘 ↑ / ↓、窄档卡片保留拖拽 | m10 | 本库(sortablejs) | 12.1 |
 | 行 | 主从联动:`params` 联动、行点击、当前行高亮、详情抽屉 | m11 | 本库 + 宿主 | 12.2 |
+| 行 | 序号列树形:`{ type: 'index', tree: true }`,项次格里的展开方框 + 树线、项次 1 / 1.1、Alt + 点击整表展开 / 收起、同组悬停点亮 | m16、`/playground.html`「树形序号」 | 本库 | §2.18 |
 | 行 | 树形表格:官方 `children-key` 树表(缩进 / 展开箭头 / 级联勾选 / 按根行分页);窄档卡片先序拍平、标题缩进、展开箭头 | m15 | 官方 + 本库(窄档卡片) | §2.17 |
 | 行 | 行勾选与批量栏:批量审核 / 删除 / 导出所选 | 每页(m5 为导出所选) | 官方勾选 + 本库批量栏 | 10.8、11.5 |
 | 数据 | 远程数据:`fetcher`、只认最新响应、空参数剔除 | 每页 | 本库 | 10.8 N4 |
@@ -868,6 +870,33 @@
 
 **原型**:设计稿第 15 页「树形表格」(侧栏「行」组):自带一份机构树(5 个根、每页 3 个根 → 2 页),默认展开「总部」「生产中心」。宽 / 中档是官方树形态的表格(缩进 16px、箭头 16×16、右间距 8px、展开转 90°,表头全选只针对当前页的根节点),窄档是本节的卡片(只缩进标题、箭头 44×44 热区、叶子留同宽空位);勾选带级联与半选,分页条「共 5 条」数的是根节点。真实浏览器(Chromium,容器宽 390)实测:卡片内容左缘 319px = 箭头图标左缘,标题与图标间距 8px,逐层缩进 16px,箭头热区 44×44,工具栏之外无横向溢出;宽档 9 行行高均为 39.4px、名称与其他列文字垂直对齐;勾父 → 后代全勾且祖先半选、取消一个子级 → 父与祖先半选、勾回恢复,折叠根节点后代全部消失,第 2 页只有 2 个根。亮 / 暗色与英文已看宽档,窄档只看了亮色。**对照页(`playground/prototype`)第 15 页**(`ProtoM15.vue`,真实库渲染),真实浏览器(容器宽 390)实测与设计稿逐项一致:卡片内容左缘 319px = 箭头图标左缘、标题与图标间距 8px、每层缩进 16px、箭头热区 44×44、叶子占位 24px、勾选级联 / 半选、折叠后代消失、分页「共 5 条 / 2」;对照页的分页关了每页条数选择器(设计稿的树表页没有它)。
 
+### 2.18 序号列树形:展开方框 + 树线,项次 1 / 1.1 —— 已定
+
+**要解决的问题**:官方树表的展开箭头挤在第一列文字前,层级只靠 16px 缩进;标准件 / 替代件这类「一个父级挂几个同级子级」的表,一屏几十行时看不出哪几行是一组,序号列也只是行号(子级与父级连号),说不出「第 3 项的第 1 个替代件」。
+
+**取值**
+
+| 项 | 取值 | 理由与代价 |
+|---|---|---|
+| 入口 | 序号特殊列写 `{ type: 'index', tree: true }`;数据照官方树表写(行里带 `children`,字段名取 `children-key`);展开态读官方 `expanded-row-keys`(受控)/ `default-expanded-row-keys` / `default-expand-all`,变化经 `onUpdate:expandedRowKeys(keys)` 通知,都没绑时由库持有(与 2.17 的卡片树表同一份) | 不另起属性,宿主从官方树表切过来只多写 `tree: true`;树挂在序号列上,是因为方框、树线、项次三样都画在这一格 |
+| 谁来画树 | **只读:官方画**。数据原样交给 NDataTable,按根分页 / 排序 / 过滤、勾选 `cascade`、`summary` 只拿根行都是官方的;项次列的官方列写 `tree: true` 当树触发列,官方的缩进占位与箭头落在这一格、用样式藏掉,展开键集由库作为受控 `expanded-row-keys` 交给 NDataTable。**可编辑:库拍平**。可编辑层只认一层行,所以本地数据先过滤、`orderLocalRows` 只排根行、`sliceRows` 按根行分页,再按展开态先序拍平;远程数据直接拍平当前页。拍平后的行交给可编辑层与 NDataTable,NDataTable 走 `remote`(页码与根行数由库给)、`children-key` 指向不存在的字段;宿主的 `summary` 包一层,只把根行(含新增行)交给它 | 只读是最常见的场景,交给官方就不必重写官方已有的语义;可编辑表格的逐格编辑、粘贴、方向键、校验都按一层行做,子级要进来只能拍平。两种情况的方框、树线、项次是同一套渲染,外观一致 |
+| 方框 | 15×15、圆角 4.5px,白→浅灰竖向渐变 + 0.5px 描边 + 1px 细阴影,内画 10×10 的「+」,展开时竖笔 `scaleY(0)` 收成「−」;只有带子级的行有;`aria-expanded` + `aria-label`(`treeExpand` / `treeCollapse`),`title` = `labels.treeToggleAll`;`:focus-visible` 主色描边 | 照 macOS 列表的展开钮:立体但克制;暗色把渐变换成白色 16% → 8% 的半透明 |
+| 树线 | 1px 实线,从父级方框下沿落到各子级;接线在子级行半高处拐向文字(最后一个子级的拐角 7px 圆角),带子级的子级接到自己方框的左缘;竖线 `bottom: -1px` 盖过行的下边框,逐行连成一条 | 不用 td 的伪元素(固定列的阴影占着 `::before` / `::after`),一律是项次格里绝对定位的 span;非固定列的格补 `position: relative`,固定列本身是 sticky |
+| 位置 | 根层:方框左缘 8、中线 15、文字 32。第 d 层有方框位时:中线 = 上层中线 + 16,方框 = 上层中线 + 9,文字 = 上层中线 + 33;这一层谁都没有子级时不留方框位,文字 = 上层中线 + 21(两层树就是根 32、子 36)。哪层留方框位按整棵树算(含折叠的节点) | 展开 / 折叠时同一层的文字不左右跳;两层树(最常见)子级只比根多缩 4px,项次列 80px 放得下 |
+| 项次 | 按显示顺序编 `1 / 1.1 / 1.1.2`;根序号跨页连续(远程 `(页 - 1) × 每页条数`,本地 `(页 - 1) × 每页根数`);新增行这类不在树里的行按根行计;子级 12px、`textColor3`,`tabular-nums` | 项次说清归属,「1.2」读出来就是「第 1 项的第 2 个」 |
+| 展开 / 收起 | 点方框只切这一行,不触发 `@row-click`(`button` 已在 `ROW_CLICK_IGNORE` 里,另 `stopPropagation`);按住 Alt 点击按这一行要去的状态整表展开或收起 | 与 macOS Finder 的 Option + 点击同一个习惯 |
+| 子级底色 | 子级行的 td 叠一层极淡的蓝灰(亮 `rgba(70, 90, 130, .035)`、暗 `rgba(130, 160, 255, .06)`),叠在 `background-image` 上 | 不改写 `background-color`,固定列的实底、斑马纹、悬停色照常 |
+| 整组悬停 | 悬停任一行,同一个根的整组行(`data-smart-tree-group`)叠主色 8%,树线、方框描边、子级项次换成主色;直接改 DOM 类 `smart-table-tree-row--hot`,不走响应式 | 一眼看出一组有几行;不走响应式是因为每次进出行都重渲整表太贵。当前行高亮写在后面,同时命中时它优先 |
+| 颜色 | 经根元素 `--smart-table-tree-line` / `-sub` / `-box-top` / `-box-bot` / `-box-ring` / `-box-shadow` / `-text` / `-sub-text` / `-accent` / `-hot` 下发,只在声明了 `tree` 时下发;方框与树线亮 / 暗两套固定值(暗色判断同可编辑表格:`baseColor` 为 `#000`),字色与悬停取主题变量 | 方框的立体灰没有对应的主题变量 |
+| 动效 | 只有方框竖笔的收放(0.2s)与悬停变色(0.15s),子级展开没有动效 | 库里的动效只做透明度与颜色;虚拟滚动下逐行淡入会闪 |
+| 不包含 | ① 可编辑时的勾选级联(NDataTable 拿到的是平铺行,勾父不带子、表头全选会选进子级;只读时照官方级联);② 逐层排序 / 过滤(只作用于根行,同官方);③ 懒加载(`on-load`);④ `row-draggable`(拖动会把子级拖出父级:声明了 `tree` 时关掉并警告一次);⑤ 窄档卡片(仍走 2.17 的卡片树表,共用展开态) | 都不在本设计范围内 |
+
+**退化**:一页里没有任何行带子级时与普通序号列一样(居中、不留方框位、不加类名);不写 `tree` 时序号列与官方树表的箭头、缩进一切照旧。
+
+**原型**:页 `treeno` · m16「树形项次 / Tree index column」,侧栏「数据」组「可编辑表格」之后,不带工具栏(同 m15)。示例是站位表:6 个站位,其中 3 个带替代件(两层树,根 32、子 36),默认全展开,整页直出不分页;拍平、项次、几何与库的 `treeIndex.ts` 逐行对应。侧栏「模块选项」的「可编辑」开关切两种画法:关 = 只读(勾选级联,勾父带子、子全勾父自动勾上;表头全选按根行);开 = 可编辑(用量、备注两列点进去即改,Enter 提交、Esc 放弃,子级同样可改;勾选不级联,表头全选含展开的子级;切换时清空勾选)。合计行两种都只算根行(16;连替代件一起加是 32),改替代件的用量合计不变。窄档(< 600)是 2.17 的卡片树表。原型不演示分页、固定列、三层树(库已实现,`/playground.html`「树形序号」有对应开关与数据)。
+
+**验收(实现期,`tests/SmartTable.treeIndex.test.ts` + `tests/treeIndex.test.ts`)**:只读与可编辑各跑一遍:默认全展开先序显示、项次 `1 / 1.1 / 1.2 / 2 / 3 / 3.1`、只有带子级的行有方框;子级 / 末位 / 展开的行类名与 `data-smart-tree-group`;点方框折叠 / 展开不触发 `row-click` 并通知 `onUpdate:expandedRowKeys`;Alt + 点击;受控 `expanded-row-keys`;本地分页按根行、第 2 页项次接着编;整组悬停;`summary` 只拿根行;没有子级时与普通序号列一致;`row-draggable` 关掉并警告一次。只读另验:官方展开钮只在项次格里、别的列不缩进,勾父带子级;可编辑另验:官方不画树、子级的格可编辑。真实浏览器(`/playground.html`「树形序号」,Chromium 1920 宽,放大 2–3 倍目视)看过亮 / 暗、固定列 / 非固定列、三层树、折叠后的「+」、只读勾父带子级、两种情况合计都只算根行、子级单元格进入编辑并提交,控制台除 favicon 404 外无报错。
+
 ---
 
 ## 3 过滤筛选 —— 设计已定(3.1–3.11;3.8 是官方对照审计)
@@ -1260,12 +1289,13 @@
 | 实例方法 | `sort(columnKey?, order = 'ascend')`(官方同名同签名,D7);`clearSorter()`(官方同名);都向宿主 `onUpdate:sorter` 转发 | 4.6 / 10 |
 | 触屏兜底 | `@media (hover: none)` 下图标淡显(与原型一致;不用 `any-pointer: coarse`,见 10.7 G1;拖宽热区 24px) | 3.9 / 10 |
 | 「更多」菜单 | `toolbar.more?: DropdownMixedOption[]`(官方 options 透传)+ 事件 `moreSelect`;不传不出现 | 7.3 |
-| labels 键 | 文案键扩展部分全部可选(D9),`defaultLabels` 给全部英文默认,另导出 `zhCNLabels`(完整中文)。主要键:`filterIsNull` / `filterIsNotNull` / `filterLike` / `filterStartsWith` / `filterEndsWith` / `filterIn` / `filterNotIn` / `filterNoValue`、`more`、`filterActiveCount`、`filterAddCondition`、`filterRemoveCondition`、`filterLogicAnd` / `filterLogicOr`、`filterAdvanced` / `filterSimple`、`filterClearAll` / `filterRestoreDefault`、`selectedCount` / `clearSelection`、`maximize` / `restore`、`operations`、`sort` 系列、`treeExpand` / `treeCollapse`、可编辑表格的 `edit*` / `pick*` 系列;**没有 `pageSizeSuffix`** | 3.3 / 2.12 / 7.2 / 7.3 / 10 |
+| labels 键 | 文案键扩展部分全部可选(D9),`defaultLabels` 给全部英文默认,另导出 `zhCNLabels`(完整中文)。主要键:`filterIsNull` / `filterIsNotNull` / `filterLike` / `filterStartsWith` / `filterEndsWith` / `filterIn` / `filterNotIn` / `filterNoValue`、`more`、`filterActiveCount`、`filterAddCondition`、`filterRemoveCondition`、`filterLogicAnd` / `filterLogicOr`、`filterAdvanced` / `filterSimple`、`filterClearAll` / `filterRestoreDefault`、`selectedCount` / `clearSelection`、`maximize` / `restore`、`operations`、`sort` 系列、`treeExpand` / `treeCollapse` / `treeToggleAll`、可编辑表格的 `edit*` / `pick*` 系列;**没有 `pageSizeSuffix`** | 3.3 / 2.12 / 7.2 / 7.3 / 10 |
 | 15 个操作符(纯逻辑) | `FilterAction` 15 个 + 无值算子常量;列头面板默认 8 个,新操作符需列上 `filter.actions` 显式开启(D1) | 1 / 3.5 / 10 |
 | 全局默认页大小 | `SmartTableDefaults.defaultPageSize?: number`(D4) | 10 |
 | 卡片透传 | `cardProps?: Partial<CardProps>`(D10;卡片内边距的覆盖入口) | 5.4 / 10 |
 | 可编辑表格 | `editable?: boolean \| EditableConfig` + 列的 `editor` / `readonly` / `rules` / `editorProps`;事件 `cellChange` / `save` / `discard` / `invalid`;实例方法 `save` / `discard` / `getChanges` / `setCell`,只读 ref `dirtyCount` / `isDirty` | 「可编辑表格」一节 |
 | 窄档卡片的树表 | **无新增属性**:读官方 `children-key` / `indent` / `expanded-row-keys` / `default-expanded-row-keys` / `default-expand-all` / `cascade` | 2.17 |
+| 序号列树形 | 序号特殊列的 `tree?: boolean`;展开态读官方 `children-key` / `expanded-row-keys` / `default-expanded-row-keys` / `default-expand-all`;labels 键 `treeToggleAll` | 2.18 |
 
 ### 8.2 默认值与默认外观(不传任何属性时的当前取值)
 
