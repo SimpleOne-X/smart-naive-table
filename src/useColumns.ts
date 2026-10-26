@@ -1,6 +1,7 @@
 import {
   computed,
   h,
+  mergeProps,
   ref,
   watch,
   type ComputedRef,
@@ -269,6 +270,11 @@ export interface UseColumnsOpts<T> {
   slots: Slots
   /** index 特殊列的序号偏移(远程分页 = (page-1)*pageSize)。 */
   indexOffset: () => number
+  /** index 列树形(tree: true)的单元格;返回 null = 这张表当前不走树形,序号照常。 */
+  treeIndex?: () => {
+    render: (row: T) => VNodeChild
+    cellProps: (row: T) => Record<string, unknown>
+  } | null
   /** 全局默认值(align/emptyText/tag/宽度兜底等),已含内置兜底。 */
   defaults: ResolvedSmartTableDefaults
   /** 当前受控排序态(sorter 列箭头回显,多列同时回显);getter 保证 computed 内追踪。 */
@@ -735,12 +741,30 @@ export function useColumns<T>(opts: UseColumnsOpts<T>): UseColumnsReturn<T> {
     // 钉住的宽度优先于声明宽度(freezeWidths 之后每一列都有确定宽度,富余量为 0)
     const width = specialWidth(col)
     if (type === 'index') {
+      const { tree, ...own } = rest
+      const treeCell = tree ? (opts.treeIndex?.() ?? null) : null
+      if (treeCell) {
+        const host = own.cellProps as ((row: T, i: number) => Record<string, unknown>) | undefined
+        return {
+          ...own,
+          key: '__index',
+          title: (title ?? '#') as DataTableBaseColumn<T>['title'],
+          width,
+          // 树线与方框按左缘定位,项次只能左对齐
+          align: 'left',
+          // 官方画树时(只读)让项次列当树触发列:官方的缩进与箭头落在这一格(样式里藏掉),别的列不缩进
+          tree: true,
+          cellProps: (row: T, i: number) =>
+            mergeProps(host?.(row, i) ?? {}, treeCell.cellProps(row)),
+          render: (row: T) => treeCell.render(row),
+        } as DataTableColumn<T>
+      }
       return {
-        ...rest,
+        ...own,
         key: '__index',
         title: (title ?? '#') as DataTableBaseColumn<T>['title'],
         width,
-        align: (rest.align as 'left' | 'center' | 'right' | undefined) ?? d.align,
+        align: (own.align as 'left' | 'center' | 'right' | undefined) ?? d.align,
         render: (_row: T, rowIndex: number) => opts.indexOffset() + rowIndex + 1,
       } as DataTableColumn<T>
     }

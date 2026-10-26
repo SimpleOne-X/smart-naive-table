@@ -8,15 +8,18 @@ import {
   mergeProps,
   nextTick,
   onBeforeUnmount,
+  onBeforeUpdate,
   onMounted,
   reactive,
   readonly,
+  shallowRef,
   toValue,
   useAttrs,
   useSlots,
   watch,
   type PropType,
   type Slots,
+  type VNodeChild,
 } from 'vue'
 import { NCard, NConfigProvider, NDataTable, NPagination, useThemeVars } from 'naive-ui'
 import type {
@@ -113,6 +116,14 @@ import {
   type CardTreeView,
   type RowKey,
 } from './cardTree'
+import {
+  elbowWidth,
+  flattenTreeRows,
+  treeGeometry,
+  treeNodes,
+  treeNumbers,
+  type TreeFlat,
+} from './treeIndex'
 import MaximizeLayer from './MaximizeLayer'
 import { ref } from 'vue'
 import { useRowDrag } from './useRowDrag'
@@ -392,6 +403,8 @@ const columnsApi = useColumns<T>({
   getOptions: options.getOptions,
   slots,
   indexOffset: () => (isRemote.value ? (pagination.page - 1) * pagination.pageSize : 0),
+  // treeView 在下面(tableData 之后)才声明,这里只在 naiveColumns 求值时才调用
+  treeIndex: () => (treeView.value ? treeIndexApi : null),
   defaults,
   sortState: () => sortState.value,
   filterDefs: () => headerFilterDefs.value,
@@ -775,6 +788,22 @@ const tableAttrs = computed(() => {
       }
     }
   }
+  if (treeFlatOn.value) {
+    // 序号列树形 + 可编辑:树已经拍平,children-key 指向不存在的字段,官方不再按 children 画树;
+    // 官方把当前页的行交给 summary,拍平后里面有子级,只把根行(含新增行)交给宿主,同官方树表的口径
+    delete host['children-key']
+    host.childrenKey = '__smart_table_no_children__'
+    const sum = host.summary as ((rows: Record<string, any>[]) => unknown) | undefined
+    if (typeof sum === 'function') {
+      const kids = treeChildKeys.value
+      host.summary = (pageData: Record<string, any>[]) =>
+        sum(pageData.filter((r) => !kids.has(rowKeyFn.value(r as T))))
+    }
+  } else if (treeOn.value) {
+    // 序号列树形(只读):官方画树,展开键集由库给(方框点的是库的 toggleTreeRow),官方的箭头与缩进在项次格里藏掉
+    delete host['expanded-row-keys']
+    host.expandedRowKeys = treeKeys.value
+  }
   return mergeProps(fillProps.value, host)
 })
 
@@ -828,6 +857,76 @@ const baseData = computed(() => {
   ) as Record<string, any>[]
 })
 
+/* ---- 树表的展开态(官方 children-key 树;窄档卡片 2.17 与序号列树形 2.18 共用) ----
+ * 读的都是透传给 NDataTable 的官方属性:children-key / expanded-row-keys / default-expanded-row-keys / default-expand-all。
+ * attrs 不是响应式的:每次渲染前(onBeforeUpdate)抄进 treeAttrs,变了才换对象,下游的 computed 才跟得上宿主改键集。 */
+interface TreeAttrs {
+  childrenKey: string
+  expanded: RowKey[] | null
+  defaultAll: boolean
+  defaultKeys: RowKey[] | null
+}
+function readTreeAttrs(): TreeAttrs {
+  const pick = (camel: string, kebab: string): unknown => attrs[camel] ?? attrs[kebab]
+  const expanded = pick('expandedRowKeys', 'expanded-row-keys')
+  const defaultKeys = pick('defaultExpandedRowKeys', 'default-expanded-row-keys')
+  const all = pick('defaultExpandAll', 'default-expand-all')
+  return {
+    childrenKey: (pick('childrenKey', 'children-key') as string | undefined) ?? 'children',
+    expanded: Array.isArray(expanded) ? (expanded as RowKey[]) : null,
+    // 模板里写 `default-expand-all`(不带值)时 attrs 里是空串,按真处理
+    defaultAll: all === true || all === '',
+    defaultKeys: Array.isArray(defaultKeys) ? (defaultKeys as RowKey[]) : null,
+  }
+}
+const treeAttrs = shallowRef(readTreeAttrs())
+onBeforeUpdate(() => {
+  const next = readTreeAttrs()
+  const cur = treeAttrs.value
+  if ((Object.keys(next) as Array<keyof TreeAttrs>).some((k) => next[k] !== cur[k]))
+    treeAttrs.value = next
+})
+/** 未绑 expanded-row-keys 时库内部持有展开键集(卡片与表格共用,切档不丢);null = 还没人点过,用默认值。 */
+const localExpanded = ref<RowKey[] | null>(null)
+const treeKeys = computed<RowKey[]>(() => {
+  const a = treeAttrs.value
+  if (a.expanded) return a.expanded
+  if (localExpanded.value) return localExpanded.value
+  if (a.defaultAll)
+    return nonLeafKeys(baseData.value as T[], {
+      childrenKey: a.childrenKey,
+      rowKey: rowKeyFn.value,
+    })
+  return a.defaultKeys ?? []
+})
+/** 展开 / 折叠一行;all = 整表(按这一行要去的状态)。受控只通知宿主,否则库内部持有并通知,载荷同官方 `(keys)`。 */
+function toggleTreeRow(row: T, all = false) {
+  const key = rowKeyFn.value(row)
+  const cur = treeKeys.value
+  const open = !cur.includes(key)
+  const opt = { childrenKey: treeAttrs.value.childrenKey, rowKey: rowKeyFn.value }
+  const next = all
+    ? open
+      ? nonLeafKeys(baseData.value as T[], opt)
+      : []
+    : open
+      ? [...cur, key]
+      : cur.filter((k) => k !== key)
+  if (!treeAttrs.value.expanded) localExpanded.value = next
+  for (const name of ['onUpdate:expandedRowKeys', 'onUpdateExpandedRowKeys'])
+    callAll(attrs[name], next)
+}
+/** 声明了序号列树形(index 列 tree: true)。 */
+const treeIndexDeclared = computed(() =>
+  props.columns.some((c) => isSpecialColumn(c) && c.type === 'index' && c.tree === true),
+)
+// 可编辑层登记「见过的行」与推断编辑器都要看到子级(折叠起来的也算)
+const editBaseRows = computed(() =>
+  treeIndexDeclared.value
+    ? (treeNodes(baseData.value, treeAttrs.value.childrenKey) as Record<string, any>[])
+    : baseData.value,
+)
+
 /* ---- 可编辑表格(editable;状态机 / 单元格渲染都在 useEditable.ts,这里只做接线) ----
  * 草稿叠在数据上(overlay),宿主的行对象不被改;关掉 editable 时 tableData 就是 baseData,行为与没有这个能力时完全一致。 */
 const editCfg = computed<EditableConfig<Record<string, any>>>(() =>
@@ -842,7 +941,7 @@ const editor: UseEditableReturn<Record<string, any>> = useEditable<Record<string
   rowKey: (row) => rowKeyFn.value(row as T),
   rowKeyField: () => (typeof props.rowKey === 'string' ? props.rowKey : undefined),
   columns: () => props.columns as unknown as SmartTableColumn<Record<string, any>>[],
-  baseRows: () => baseData.value,
+  baseRows: () => editBaseRows.value,
   labels: () => mergedLabels.value,
   getOptions: options.getOptions,
   hasCellSlot: (key) => !!slots[`cell-${key}`],
@@ -857,7 +956,11 @@ const editor: UseEditableReturn<Record<string, any>> = useEditable<Record<string
   goEdgePage: async (position) => {
     // 新增行在顶部 → 第 1 页;在底部 → 最后一页(不分页时无事可做)
     const size = isRemote.value ? pagination.pageSize : localPageSize.value
-    const total = isRemote.value ? pagination.itemCount : tableData.value.length
+    const total = isRemote.value
+      ? pagination.itemCount
+      : treeFlatOn.value
+        ? treeRootCount.value
+        : tableData.value.length
     const target = position === 'top' ? 1 : Math.max(1, Math.ceil(total / (size || 1)))
     if (isRemote.value) {
       if (pagination.page !== target) await table.onPage(target)
@@ -905,21 +1008,176 @@ function editToolbarState() {
   }
 }
 
+/* ---- 序号列树形(index 列 tree: true,设计 2.18) ----
+ * 只读:树照官方 NDataTable 画(按根分页 / 排序、勾选级联、合计只算根行都是官方的),库只给展开键集,并在项次格里画方框、树线、项次。
+ * 可编辑:可编辑层只认一层行,树由库自己拍平 —— 当前页的根行(本地 = 过滤 → 排序 → 按根分页;远程 = 请求回来的那页)按展开态先序拍平,
+ * 再交给可编辑层与 NDataTable;NDataTable 此时走 remote(不再自己排序 / 切页),children-key 指向不存在的字段(官方不画树)。
+ * 两种情况都要按当前页算一份拍平信息(层级、同级末位、项次);窄档卡片不走这里,仍是卡片自己的树表(2.17)。 */
+const treeOn = computed(() => treeIndexDeclared.value && !cardMode.value)
+const treeFlatOn = computed(() => treeOn.value && editor.enabled.value)
+const treePageSize = computed(() => pagerUser.value.pageSize ?? localPageSize.value)
+/** 本地分页的根行总数(含待保存的新增行,它们按根行算)。 */
+const treeRootCount = computed(
+  () => baseData.value.length + (editor.enabled.value ? editor.store.news.length : 0),
+)
+/** 本地按根分页的当前页:夹到合法范围(NDataTable 走 remote 时不替我们夹)。 */
+const treePage = computed(() =>
+  Math.min(
+    Math.max(1, pagerUser.value.page ?? localPage.value),
+    Math.max(1, Math.ceil(treeRootCount.value / (treePageSize.value || 1))),
+  ),
+)
+const treeFlat = computed<TreeFlat<T> | null>(() => {
+  if (!treeOn.value) return null
+  let roots = baseData.value as T[]
+  if (!isRemote.value) {
+    roots = orderLocalRows(roots, sortState.value, sorterInfo.value)
+    if (props.pagination !== false) roots = sliceRows(roots, treePage.value, treePageSize.value)
+  }
+  return flattenTreeRows(roots, new Set(treeKeys.value), {
+    childrenKey: treeAttrs.value.childrenKey,
+    rowKey: rowKeyFn.value,
+  })
+})
+
+/** 拍平后当前页的子级行键(summary 只给根行用)。 */
+const treeChildKeys = computed(
+  () =>
+    new Set(
+      (treeFlat.value?.rows ?? []).filter((r) => r.depth > 0).map((r) => rowKeyFn.value(r.row)),
+    ),
+)
+
 const tableData = computed(() => {
-  const base = baseData.value
+  const flat = treeFlatOn.value ? treeFlat.value : null
+  const base = flat ? (flat.rows.map((r) => r.row) as Record<string, any>[]) : baseData.value
   if (!editor.enabled.value) return base
-  // 远程:新增行只在它所在的那一页(顶部 = 第 1 页,底部 = 最后一页)出现、顶部时不撑大页长(与原型一致);本地:分页由 NDataTable 切,新增行天然在头 / 尾
+  // 远程:新增行只在它所在的那一页(顶部 = 第 1 页,底部 = 最后一页)出现、顶部时不撑大页长(与原型一致);本地:分页由 NDataTable 切,新增行天然在头 / 尾。
+  // 序号列树形:一页的行数是拍平后的,不按每页条数截断(size 0);本地按根分页时新增行同样只在头 / 尾那一页
   return editor.overlay(
     base,
     isRemote.value
       ? {
           first: pagination.page === 1,
           last: pagination.page >= Math.ceil(pagination.itemCount / (pagination.pageSize || 1)),
-          size: pagination.pageSize,
+          size: flat ? 0 : pagination.pageSize,
         }
-      : undefined,
+      : flat && props.pagination !== false
+        ? {
+            first: treePage.value === 1,
+            last: treePage.value * treePageSize.value >= treeRootCount.value,
+            size: 0,
+          }
+        : undefined,
   )
 })
+
+/** 表格形态的树形视图(按行键):拍平信息 + 按显示顺序编好的项次。这一页没有任何带子级的行 → null,序号列照常。 */
+const treeView = computed(() => {
+  const flat = treeFlat.value
+  if (!flat || !flat.boxDepths[0]) return null
+  const keyOf = rowKeyFn.value
+  const byKey = new Map(flat.rows.map((r) => [keyOf(r.row), r]))
+  // 显示顺序:拍平时是 tableData(含新增行);官方画树时就是拍平信息本身的顺序(先序、只进展开的节点)
+  const rows = treeFlatOn.value ? (tableData.value as T[]) : flat.rows.map((r) => r.row)
+  const offset = isRemote.value
+    ? (pagination.page - 1) * pagination.pageSize
+    : props.pagination === false
+      ? 0
+      : (treePage.value - 1) * treePageSize.value
+  const nos = treeNumbers(
+    rows.map((r) => byKey.get(keyOf(r))?.depth ?? 0),
+    offset,
+  )
+  return {
+    byKey,
+    boxDepths: flat.boxDepths,
+    numbers: new Map(rows.map((r, i) => [keyOf(r), nos[i]!])),
+  }
+})
+
+/** 项次格:树线(span,绝对定位在单元格里)+ 方框 + 项次。树线不用 td 的伪元素:官方固定列的阴影占着 ::before / ::after。 */
+function renderTreeIndex(row: T): VNodeChild {
+  const view = treeView.value!
+  const key = rowKeyFn.value(row)
+  const info = view.byKey.get(key)
+  const no = h('span', { class: 'smart-table-tree-no' }, view.numbers.get(key) ?? '')
+  if (!info) return no
+  const { depth } = info
+  const levels = treeGeometry(view.boxDepths, depth)
+  const line = (left: number, kind: string, width?: number) =>
+    h('span', {
+      class: `smart-table-tree-line smart-table-tree-line--${kind}`,
+      style:
+        width === undefined ? { left: `${left}px` } : { left: `${left}px`, width: `${width}px` },
+    })
+  const out: VNodeChild[] = []
+  // 祖先不是同级末位 → 它父级的竖线穿过本行
+  for (let k = 1; k < depth; k++) if (!info.lasts[k]) out.push(line(levels[k - 1]!.line, 'pass'))
+  if (depth > 0) {
+    if (!info.lasts[depth]) out.push(line(levels[depth - 1]!.line, 'pass'))
+    out.push(line(levels[depth - 1]!.line, 'elbow', elbowWidth(levels, depth, info.hasChildren)))
+  }
+  if (info.expanded) out.push(line(levels[depth]!.line, 'down'))
+  if (info.hasChildren) out.push(renderTreeBox(row, info.expanded, levels[depth]!.box ?? 0))
+  out.push(no)
+  return out
+}
+function renderTreeBox(row: T, open: boolean, left: number): VNodeChild {
+  const labels = mergedLabels.value
+  return h(
+    'button',
+    {
+      type: 'button',
+      class: ['smart-table-tree-box', open && 'smart-table-tree-box--open'],
+      style: { left: `${left}px` },
+      'aria-expanded': open ? 'true' : 'false',
+      'aria-label': open ? labels.treeCollapse : labels.treeExpand,
+      title: labels.treeToggleAll,
+      onClick: (e: MouseEvent) => {
+        e.stopPropagation()
+        toggleTreeRow(row, e.altKey)
+      },
+    },
+    h(
+      'svg',
+      {
+        viewBox: '0 0 10 10',
+        width: 9,
+        height: 9,
+        fill: 'none',
+        stroke: 'currentColor',
+        'stroke-width': 1.6,
+        'stroke-linecap': 'round',
+        'aria-hidden': 'true',
+      },
+      [h('path', { d: 'M1.5 5h7' }), h('path', { class: 'smart-table-tree-box-v', d: 'M5 1.5v7' })],
+    ),
+  )
+}
+function treeIndexCellProps(row: T): Record<string, unknown> {
+  const view = treeView.value!
+  const depth = view.byKey.get(rowKeyFn.value(row))?.depth ?? 0
+  return {
+    class:
+      depth > 0 ? 'smart-table-tree-cell smart-table-tree-cell--child' : 'smart-table-tree-cell',
+    style: { paddingLeft: `${treeGeometry(view.boxDepths, depth)[depth]!.text}px` },
+  }
+}
+const treeIndexApi = { render: renderTreeIndex, cellProps: treeIndexCellProps }
+
+/** 整组悬停:同一个根的行一起点亮。直接改 DOM 的类、不走响应式:悬停一次让整张表重渲染太贵;重渲染改写了行的 class 时,下次进入行再点亮。 */
+function lightTreeGroup(e: MouseEvent, on: boolean) {
+  const tr = e.currentTarget as HTMLElement | null
+  const body = tr?.parentElement
+  if (!tr || !body) return
+  const group = tr.getAttribute('data-smart-tree-group')
+  for (const el of Array.from(body.children))
+    el.classList.toggle(
+      'smart-table-tree-row--hot',
+      on && el.getAttribute('data-smart-tree-group') === group,
+    )
+}
 
 const searchConfig = computed<SearchFormConfig>(() => {
   const user = typeof props.search === 'object' ? props.search : {}
@@ -958,7 +1216,8 @@ function hostCheckedKeys(): Array<string | number> | null {
 /** 当前页的行(批量栏的「本页全选」用):远程 = 当前页;本地 = 过滤后的数据按 localPage / 每页条数切一页;pagination: false = 全部。 */
 const pageRows = computed<Record<string, any>[]>(() => {
   const all = tableData.value
-  if (isRemote.value || props.pagination === false) return all
+  // 序号列树形 + 可编辑:tableData 已经是切好的一页(拍平后的)
+  if (isRemote.value || props.pagination === false || treeFlatOn.value) return all
   const size =
     (typeof props.pagination === 'object' && props.pagination.pageSize) || localPageSize.value
   const page = Math.min(localPage.value, Math.max(1, Math.ceil(all.length / size)))
@@ -1038,7 +1297,13 @@ const pagerShown = computed(() => {
   if (single === undefined || (single !== false && single !== 'false')) return true // 官方 paginateSinglePage 默认 true:只有 1 页也画分页
   if (user.pageCount !== undefined) return user.pageCount > 1
   const size = user.pageSize ?? (isRemote.value ? pagination.pageSize : localPageSize.value)
-  const count = user.itemCount ?? (isRemote.value ? pagination.itemCount : tableData.value.length)
+  const count =
+    user.itemCount ??
+    (isRemote.value
+      ? pagination.itemCount
+      : treeFlatOn.value
+        ? treeRootCount.value
+        : tableData.value.length)
   return !!(count && size && count > size)
 })
 const chipsInPager = computed(
@@ -1199,6 +1464,8 @@ const mergedPagination = computed<false | PaginationProps>(() => {
     ...base,
     pageSize: localPageSize.value,
     defaultPage: localPage.value,
+    // 序号列树形 + 可编辑:库自己按根切页,NDataTable 走 remote,页码与总数(根行数)要交给它
+    ...(treeFlatOn.value ? { page: treePage.value, itemCount: treeRootCount.value } : {}),
     ...user,
     ...tail,
     onUpdatePage: (p: number) => {
@@ -1341,32 +1608,16 @@ function hostExpandedKeys(): Array<string | number> {
 /* ---- 窄档卡片的树表(children-key,设计 2.17) ----
  * 读的都是透传给 NDataTable 的官方属性,没有新增:children-key / indent / expanded-row-keys / default-expanded-row-keys / default-expand-all / cascade。
  * 语义对齐官方:分页 / 排序只作用于根行(上面的 cardRows 本来就是根行),卡片只负责把根行按先序拍平。
- * attrs 不是响应式的,所以下面都写成函数,渲染期取(同 hostCheckedKeys)。没有行带 children 的表格一路走原来的分支,卡片与此前逐字节一致。 */
-const treeAttr = (camel: string, kebab: string): unknown => attrs[camel] ?? attrs[kebab]
-/** 模板里写 `default-expand-all`(不带值)时 attrs 里是空串,按真处理。 */
-const treeFlag = (v: unknown): boolean => v === true || v === ''
-const treeChildrenKey = (): string =>
-  (treeAttr('childrenKey', 'children-key') as string | undefined) ?? 'children'
+ * 展开态与「树表的展开态」一节共用(treeAttrs / treeKeys / toggleTreeRow);indent / cascade 只有卡片用,写成函数渲染期取(同 hostCheckedKeys)。
+ * 没有行带 children 的表格一路走原来的分支,卡片与此前逐字节一致。卡片模式下 NDataTable 被藏起来,拿不到它内部的展开态,所以由库持有。 */
+const treeChildrenKey = (): string => treeAttrs.value.childrenKey
 const treeIndent = (): number => {
   const v = attrs.indent
   return typeof v === 'number' ? v : 16
 }
 const treeCascade = (): boolean => attrs.cascade !== false
-function hostExpandedOrNull(): RowKey[] | null {
-  const v = treeAttr('expandedRowKeys', 'expanded-row-keys')
-  return Array.isArray(v) ? (v as RowKey[]) : null
-}
-/** 未绑 expanded-row-keys 时库内部持有展开键集;null = 还没人点过,用默认值。卡片模式下 NDataTable 被藏起来,拿不到它内部的展开态,只能自己持有。 */
-const localExpanded = ref<RowKey[] | null>(null)
 function expandedKeysNow(): RowKey[] {
-  const host = hostExpandedOrNull()
-  if (host) return host
-  if (localExpanded.value) return localExpanded.value
-  const opt = { childrenKey: treeChildrenKey(), rowKey: rowKeyFn.value }
-  if (treeFlag(treeAttr('defaultExpandAll', 'default-expand-all')))
-    return nonLeafKeys(tableData.value as T[], opt)
-  const d = treeAttr('defaultExpandedRowKeys', 'default-expanded-row-keys')
-  return Array.isArray(d) ? (d as RowKey[]) : []
+  return treeKeys.value
 }
 /** 勾选级联要看到整份数据的树(本地模式 = 全部行,远程 = 当前页),不能只看当前页的卡片行。 */
 const cardIndex = computed(() =>
@@ -1423,14 +1674,9 @@ function cardTreeData(): CardTreeData | null {
   treeMemo = { rows, sig, data }
   return data
 }
-/** 卡片点箭头:展开 / 折叠。受控(绑了 expanded-row-keys)只通知宿主;否则库内部持有并通知,载荷同官方 `(keys)`。 */
+/** 卡片点箭头:展开 / 折叠(受控只通知宿主,见 toggleTreeRow)。 */
 function onCardToggle(row: T) {
-  const key = rowKeyFn.value(row)
-  const cur = expandedKeysNow()
-  const next = cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key]
-  if (!hostExpandedOrNull()) localExpanded.value = next
-  for (const name of ['onUpdate:expandedRowKeys', 'onUpdateExpandedRowKeys'])
-    callAll(attrs[name], next)
+  toggleTreeRow(row)
 }
 /** 勾选态:树表按 cascade 归一化(宿主只给了父也算后代勾上),并给出半选键;没有树 = 原样。 */
 function cardCheckState(): { checked: RowKey[]; indeterminate: RowKey[] } {
@@ -1467,6 +1713,30 @@ function onCardCheck(row: T, checked: boolean) {
   }
 }
 
+/**
+ * 序号列树形的颜色(只在声明了 tree 时下发):方框是亮 / 暗两套固定的立体灰(白→浅灰渐变 + 0.5px 描边 + 细阴影,对照 macOS 的展开钮),
+ * 树线与子级淡底是低对比的蓝灰;悬停点亮用主题主色。暗色判断同可编辑表格(baseColor 为 #000)。
+ */
+const treeStyleVars = computed((): Record<string, string> => {
+  if (!treeIndexDeclared.value) return {}
+  const v = themeVars.value
+  const dark = v.baseColor.toLowerCase() === '#000'
+  return {
+    '--smart-table-tree-line': dark ? 'rgba(152, 166, 196, 0.4)' : 'rgba(88, 100, 121, 0.38)',
+    '--smart-table-tree-sub': dark ? 'rgba(130, 160, 255, 0.06)' : 'rgba(70, 90, 130, 0.035)',
+    '--smart-table-tree-box-top': dark ? 'rgba(255, 255, 255, 0.16)' : '#fff',
+    '--smart-table-tree-box-bot': dark ? 'rgba(255, 255, 255, 0.08)' : '#eef1f6',
+    '--smart-table-tree-box-ring': dark ? 'rgba(255, 255, 255, 0.22)' : 'rgba(16, 24, 40, 0.2)',
+    '--smart-table-tree-box-shadow': dark
+      ? '0 1px 2px rgba(0, 0, 0, 0.5)'
+      : '0 1px 1.5px rgba(16, 24, 40, 0.14)',
+    '--smart-table-tree-text': v.textColor2,
+    '--smart-table-tree-sub-text': v.textColor3,
+    '--smart-table-tree-accent': v.primaryColor,
+    '--smart-table-tree-hot': `color-mix(in srgb, ${v.primaryColor} 8%, transparent)`,
+  }
+})
+
 /** 表格总宽下限 = 各列宽度之和(含吸收列的下限)+ 拖拽中的临时增量。scroll-x 与 CSS 变量共用。 */
 const colsWidth = computed(() => columnsApi.scrollX.value + dragDelta.value)
 
@@ -1479,6 +1749,7 @@ const rootStyle = computed(() => ({
   // 行拖拽:拖影的阴影 = 主题的浮层阴影(明 / 暗各自的值);占位行 = 主题主色 12% 的淡底。同样是库自己的元素,取不到 --n-*
   '--smart-table-drag-shadow': themeVars.value.boxShadow2,
   '--smart-table-drag-tint': `color-mix(in srgb, ${themeVars.value.primaryColor} 12%, transparent)`,
+  ...treeStyleVars.value,
   ...editor.styleVars.value,
 }))
 
@@ -1523,16 +1794,36 @@ const mergedRowProps = computed<RowPropsFn>(() => {
   return (row: T, index: number) => {
     const base = host ? { ...host(row, index) } : {}
     const isActive = active !== undefined && active !== null && rowKeyFn.value(row) === active
+    // 序号列树形:子级 / 最后一个子级 / 展开的父级打类名(淡底与树线的悬停色用),同组同一个 data-smart-tree-group(整组悬停)
+    const tree = treeView.value?.byKey.get(rowKeyFn.value(row))
     const cls = [
       base.class,
       isActive ? 'smart-table-row--active' : '',
       editor.rowClass(row as Record<string, any>),
+      tree ? 'smart-table-tree-row' : '',
+      tree && tree.depth > 0 ? 'smart-table-tree-row--child' : '',
+      tree && tree.depth > 0 && tree.lasts[tree.depth] ? 'smart-table-tree-row--last' : '',
+      tree?.expanded ? 'smart-table-tree-row--open' : '',
     ]
       .filter(Boolean)
       .join(' ')
     const hostClick = base.onClick as ((e: MouseEvent) => void) | undefined
+    const treeHover = tree
+      ? {
+          'data-smart-tree-group': String(tree.group),
+          onMouseenter: (e: MouseEvent) => {
+            ;(base.onMouseenter as ((e: MouseEvent) => void) | undefined)?.(e)
+            lightTreeGroup(e, true)
+          },
+          onMouseleave: (e: MouseEvent) => {
+            ;(base.onMouseleave as ((e: MouseEvent) => void) | undefined)?.(e)
+            lightTreeGroup(e, false)
+          },
+        }
+      : {}
     return {
       ...base,
+      ...treeHover,
       ...(cls ? { class: cls } : {}),
       onClick: (e: MouseEvent) => {
         hostClick?.(e) // 宿主自己的 onClick 不受忽略规则影响
@@ -1737,8 +2028,20 @@ onBeforeUnmount(() => {
 // 列增删/显隐与表格重建会换掉滚动容器,ResizeObserver 收不到,这里补一次测量
 watch([() => columnsApi.naiveColumns.value.length, tableKey], () => void nextTick(measureHost))
 
+// 序号列树形不支持行拖拽(拖动会把子级拖出父级):关掉并警告一次
+let warnedTreeDrag = false
 const rowDrag = useRowDrag<T>({
-  enabled: () => props.rowDraggable,
+  enabled: () => {
+    if (!props.rowDraggable) return false
+    if (!treeIndexDeclared.value) return true
+    if (!warnedTreeDrag) {
+      warnedTreeDrag = true
+      console.warn(
+        '[smart-naive-table] 序号列树形(index 列 tree: true)不支持 row-draggable,已关闭行拖拽。',
+      )
+    }
+    return false
+  },
   // 窄档卡片模式下可拖的是卡片列表(每张卡片一个子元素,等价于表体里的一行)
   getTbody: () =>
     scopeEl()?.querySelector<HTMLElement>(
@@ -1937,7 +2240,7 @@ defineExpose({
             :key="tableKey"
             ref="tableRef"
             :class="{ 'smart-table-table--cards': cardMode }"
-            :remote="isRemote"
+            :remote="isRemote || treeFlatOn"
             :columns="columnsApi.naiveColumns.value"
             :data="tableData"
             :loading="isRemote ? loading : false"
@@ -2216,6 +2519,103 @@ defineExpose({
       > :is(.n-ellipsis, .n-data-table-td__ellipsis)
   ) {
   max-width: calc(100% - 24px - var(--smart-table-tree-level, 0) * var(--smart-table-indent, 16px));
+}
+/* 序号列树形(index 列 tree: true,设计 2.18)。方框与树线都绝对定位在项次格里:非固定列的格补 position: relative 当定位容器,
+   固定列的格本身是 sticky(同样是定位容器),不能改。树线 bottom: -1px 盖过行的下边框,竖线逐行连成一条。
+   子级淡底、整组悬停都叠在 background-image 上(同下面的当前行高亮,固定列的不透明实底不丢);写在当前行高亮之前,同时命中时当前行高亮优先。 */
+.smart-table :deep(.smart-table-tree-cell) {
+  font-variant-numeric: tabular-nums;
+}
+/* 只读时官方照常画树,项次列是它的树触发列(列上 tree: true):官方的缩进占位与箭头藏掉,换成库画的方框与树线 */
+.smart-table :deep(.smart-table-tree-cell > .n-data-table-indent),
+.smart-table :deep(.smart-table-tree-cell > .n-data-table-expand-trigger),
+.smart-table :deep(.smart-table-tree-cell > .n-data-table-expand-placeholder) {
+  display: none;
+}
+.smart-table
+  :deep(
+    .smart-table-tree-cell:not(.n-data-table-td--fixed-left):not(.n-data-table-td--fixed-right)
+  ) {
+  position: relative;
+}
+.smart-table :deep(.smart-table-tree-cell--child) {
+  font-size: 12px;
+  color: var(--smart-table-tree-sub-text);
+  transition: color 0.15s;
+}
+.smart-table :deep(.smart-table-tree-line) {
+  position: absolute;
+  top: 0;
+  bottom: -1px;
+  width: 0;
+  border-left: 1px solid var(--smart-table-tree-line);
+  pointer-events: none;
+  transition: border-color 0.15s;
+}
+.smart-table :deep(.smart-table-tree-line--elbow) {
+  bottom: auto;
+  height: 50%;
+  border-bottom: 1px solid var(--smart-table-tree-line);
+  border-bottom-left-radius: 7px;
+}
+.smart-table :deep(.smart-table-tree-line--down) {
+  top: calc(50% + 7.5px);
+}
+.smart-table :deep(.smart-table-tree-box) {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 0;
+  border-radius: 4.5px;
+  background: linear-gradient(var(--smart-table-tree-box-top), var(--smart-table-tree-box-bot));
+  box-shadow:
+    0 0 0 0.5px var(--smart-table-tree-box-ring),
+    var(--smart-table-tree-box-shadow);
+  color: var(--smart-table-tree-text);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition:
+    color 0.15s,
+    box-shadow 0.15s;
+}
+.smart-table :deep(.smart-table-tree-box:focus-visible) {
+  outline: 2px solid var(--smart-table-tree-accent);
+  outline-offset: 1px;
+}
+.smart-table :deep(.smart-table-tree-box svg) {
+  overflow: visible;
+}
+/* 「+」的竖笔画收成 0 = 「−」 */
+.smart-table :deep(.smart-table-tree-box-v) {
+  transform-origin: 5px 5px;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.smart-table :deep(.smart-table-tree-box--open .smart-table-tree-box-v) {
+  transform: scaleY(0);
+}
+.smart-table :deep(.smart-table-tree-row--child > td) {
+  background-image: linear-gradient(var(--smart-table-tree-sub), var(--smart-table-tree-sub));
+}
+.smart-table :deep(.smart-table-tree-row--hot > td) {
+  background-image: linear-gradient(var(--smart-table-tree-hot), var(--smart-table-tree-hot));
+}
+.smart-table :deep(.smart-table-tree-row--hot .smart-table-tree-line) {
+  border-color: var(--smart-table-tree-accent);
+}
+.smart-table :deep(.smart-table-tree-row--hot .smart-table-tree-box) {
+  color: var(--smart-table-tree-accent);
+  box-shadow:
+    0 0 0 0.5px var(--smart-table-tree-accent),
+    var(--smart-table-tree-box-shadow);
+}
+.smart-table :deep(.smart-table-tree-row--hot > .smart-table-tree-cell--child) {
+  color: var(--smart-table-tree-accent);
 }
 /* activeRowKey 命中行高亮:色走 --smart-table-active-row-bg(宿主 / 全局 activeRowBg 覆盖),没给时取 -auto(主题主色 9%,rootStyle 按亮 / 暗主题写入)。
    叠在 background-image 上、不碰 background-color:官方固定列的 td 是 position: sticky + 不透明的 --n-merged-td-color,靠这层不透明底遮住横向滚过的内容;

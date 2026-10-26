@@ -22,6 +22,7 @@ import DemoMode2 from './DemoMode2.vue'
 import DemoEditable from './DemoEditable.vue'
 import DemoEditableTheme from './DemoEditableTheme.vue'
 import DemoSelectTable from './DemoSelectTable.vue'
+import DemoTree from './DemoTree.vue'
 import { locale, tt } from './locale'
 import { mockState } from './mock'
 
@@ -68,6 +69,7 @@ const naiveDateLocale = computed(() => (isZh.value ? dateZhCN : null))
             ><DemoEditableTheme
           /></n-tab-pane>
           <n-tab-pane name="select-table" tab="下拉表格选择"><DemoSelectTable /></n-tab-pane>
+          <n-tab-pane name="tree" tab="树形序号"><DemoTree /></n-tab-pane>
         </n-tabs>
       </div>
     </n-message-provider>

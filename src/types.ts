@@ -443,6 +443,13 @@ export interface SmartTableSpecialColumn<T = any> {
   fixed?: 'left' | 'right'
   /** index 列表头,默认 '#'。 */
   title?: string | (() => VNodeChild)
+  /**
+   * index 列:树形(设计 2.18)。数据带 children 时,项次编成「1 / 1.1」,展开钮是项次格里的方框,子级用树线连到父级;
+   * 树由库按根行排序 / 分页、按展开态拍平后交给表格(可编辑表格的子级同样可编辑)。展开键集读官方同名属性
+   * `expanded-row-keys` / `default-expanded-row-keys` / `default-expand-all` / `children-key`;Alt + 点方框 = 整表展开 / 收起。
+   * 勾选不级联。窄档卡片仍走卡片自己的树表(2.17)。
+   */
+  tree?: boolean
   /** type='expand' 的展开内容。 */
   renderExpand?: (row: T, rowIndex: number) => VNodeChild
   /** 其余 Naive 同名属性透传(如 selection 的 multiple)。 */
@@ -735,6 +742,8 @@ export interface SmartTableLabels {
   /** 窄档卡片的树表(cardOnNarrow + children-key):卡片标题前展开 / 折叠箭头的无障碍名。 */
   treeExpand?: string
   treeCollapse?: string
+  /** 序号列树形(index 列 tree: true)方框的悬停提示:Alt + 点击整表展开 / 收起。 */
+  treeToggleAll?: string
   /** 漏斗 aria-label 的后缀,含 {n} 占位(有效条件数)。 */
   filterActiveCount?: string
   filterAddCondition?: string
