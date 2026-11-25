@@ -451,19 +451,19 @@ describe('fetcher 数据源(远程)', () => {
 })
 
 describe('视口放不下气泡 → 底部面板(抽屉),面板里的点击仍属于编辑控件', () => {
-  /** 触发格在视口中间、视口高 600:上下都放不下 454 高的面板 → 底部面板。 */
+  /** 视口高 300、触发格在中间:上下连收矮到下限(表格区 216)的面板都放不下 → 底部面板。 */
   async function withSheet(run: () => Promise<void>): Promise<void> {
     Object.defineProperty(document.documentElement, 'clientHeight', {
       configurable: true,
-      get: () => 600,
+      get: () => 300,
     })
     const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
       left: 100,
       right: 520,
       x: 100,
-      top: 300,
-      bottom: 334,
-      y: 300,
+      top: 120,
+      bottom: 154,
+      y: 120,
       width: 420,
       height: 34,
     } as DOMRect)

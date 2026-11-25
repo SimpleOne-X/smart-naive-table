@@ -29,6 +29,10 @@ const props = defineProps<{
   pageSizes?: number[]
   /** 窄屏底部面板:不显示「每页条数」下拉、「共 N 条」放在左下角。 */
   compact?: boolean
+  /** 表格区高度(px);不传 = CSS 里的标准高度。视口上下都放不下整个面板时由外面收矮。 */
+  bodyHeight?: number
+  /** 值 → 显示文字(与触发器标签一致),多选底栏据此列出已选项。 */
+  labelOf: (key: unknown) => string
   placeholder: string
   defaultKeyword?: string
   labels: Required<SmartTableLabels>
@@ -168,6 +172,8 @@ function onChecked(keys: Array<string | number>, rows: any[]) {
 function confirm() {
   emit('confirm', [...draft.value])
 }
+/** 翻页、换搜索词后勾过的行不在眼前,底栏照样看得到选了谁。 */
+const pickedText = computed(() => draft.value.map(props.labelOf).join(props.labels.pickSep))
 const rowProps = (_row: any, index: number) =>
   index === hi.value ? { class: 'smart-table-xpick-hi' } : {}
 function setHi(i: number) {
@@ -252,7 +258,10 @@ defineExpose({ clearKeyword, focusInput })
         </template>
       </n-input>
     </div>
-    <div class="smart-table-xpick-body">
+    <div
+      class="smart-table-xpick-body"
+      :style="bodyHeight === undefined ? undefined : { height: bodyHeight + 'px' }"
+    >
       <SmartTable
         ref="table"
         fill-height
@@ -294,7 +303,12 @@ defineExpose({ clearKeyword, focusInput })
       <span class="smart-table-xpick-count" :style="{ color: themeVars.textColor3 }">{{
         fmt(labels.pickSelected, { n: draft.length })
       }}</span>
-      <span class="smart-table-xpick-gap" />
+      <span
+        class="smart-table-xpick-picked"
+        :style="{ color: themeVars.textColor2 }"
+        :title="pickedText || undefined"
+        >{{ pickedText }}</span
+      >
       <n-button size="small" secondary :disabled="!draft.length" @click="draft = []">{{
         labels.pickClearSel
       }}</n-button>
@@ -344,14 +358,21 @@ defineExpose({ clearKeyword, focusInput })
   display: inline-flex;
   align-items: center;
 }
-/* 多选的「已选 N 项 / 清空 / 确定」:页脚下面一行,无边框 */
+/* 多选的「已选 N 项 · 已选项文字 / 清空 / 确定」:页脚下面一行,无边框;已选项文字吃掉中间的空白、单行省略,悬停 title 看全 */
 .smart-table-xpick-foot {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.smart-table-xpick-gap {
+.smart-table-xpick-count {
+  flex: none;
+}
+.smart-table-xpick-picked {
   flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .smart-table-xpick-total {
   position: absolute;
