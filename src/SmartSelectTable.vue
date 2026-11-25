@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 下拉表格选择(独立组件,像 Blazor 的 SelectTable):触发器长得像 NSelect,点开是浮层(窄屏 = 底部抽屉)——
+// 下拉表格选择(独立组件,像 Blazor 的 SelectTable):触发器长得像 NSelect,点开是浮层(窄屏 = 底部抽屉;宽屏上下都放不下时浮层开在空间大的一侧、表格区收矮)——
 // 一个搜索框 + 嵌套的 SmartTable(分页);单选点一行即选中并关闭,多选勾选 + 「确定」。可单独用在表单里,可编辑表格的 select-table 编辑器也是它。
 // 数据:本地 data(实时模糊过滤)或远程 fetcher({ page, pageSize, keyword } → { items, total });选过的行缓存在组件里,多选跨页 / 跨搜索保留。
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
@@ -132,16 +132,26 @@ const POP_H = 454
 const POP_H_MULTI = 36
 const POP_GAP = 10
 const VIEW_EDGE = 8
-/** 本次是否用底部面板:窄屏,或视口放不下气泡就不硬塞。水平:触发器左对齐、右对齐都会伸出视口;纵向:触发器下方、上方都放不下整个面板(气泡只会在这两侧翻,没有夹取)。 */
+/** 表格区(表格盒 + 分页)的标准高度,与 SelectTablePanel 的 CSS 一致;收缩下限 = 表头 + 4 行 + 分页,再矮就不像一张表了。 */
+const BODY_H = 396
+const BODY_MIN_H = 216
+/** 本次是否用底部面板:窄屏;水平方向触发器左对齐、右对齐都会伸出视口;或纵向两侧连收缩到下限的面板都放不下。 */
 const asSheet = ref(false)
+/** 上下两侧都放不下整个面板时,气泡开在空间大的一侧、表格区缩到放得下的高度;放得下时为 undefined(标准高度,气泡照常按官方规则上下翻)。 */
+const bodyH = ref<number | undefined>()
+const placement = ref<'bottom-start' | 'top-start'>('bottom-start')
 function open() {
   if (props.disabled || show.value) return
   const r = root.value?.getBoundingClientRect()
   const vh = document.documentElement.clientHeight
   const need = POP_H + (props.multiple ? POP_H_MULTI : 0) + POP_GAP + VIEW_EDGE
   const fitsX = !r || r.left + panelW.value <= viewport.value - 8 || r.right - panelW.value >= 8
-  const fitsY = !r || !(vh > 0) || vh - r.bottom >= need || r.top >= need
-  asSheet.value = narrow.value || !fitsX || !fitsY
+  const below = r && vh > 0 ? vh - r.bottom : Infinity
+  const above = r && vh > 0 ? r.top : Infinity
+  const room = Math.max(below, above)
+  bodyH.value = room >= need ? undefined : Math.floor(BODY_H - (need - room))
+  placement.value = bodyH.value !== undefined && above > below ? 'top-start' : 'bottom-start'
+  asSheet.value = narrow.value || !fitsX || (bodyH.value !== undefined && bodyH.value < BODY_MIN_H)
   seq.value++
   show.value = true
 }
@@ -197,7 +207,7 @@ defineExpose({ open, close, focus, clearKeyword })
     <n-popover
       :show="show && !asSheet"
       trigger="manual"
-      placement="bottom-start"
+      :placement="placement"
       show-arrow
       class="smart-table-xpick-pop"
       :theme-overrides="{ padding: '8px' }"
@@ -246,6 +256,8 @@ defineExpose({ open, close, focus, clearKeyword })
           :cache="cache"
           :page-size="pageSize"
           :page-sizes="pageSizes"
+          :body-height="bodyH"
+          :label-of="textOf"
           :placeholder="phText"
           :default-keyword="defaultKeyword"
           :labels="labels"
@@ -285,6 +297,7 @@ defineExpose({ open, close, focus, clearKeyword })
           :page-size="pageSize"
           :page-sizes="pageSizes"
           compact
+          :label-of="textOf"
           :placeholder="phText"
           :default-keyword="defaultKeyword"
           :labels="labels"

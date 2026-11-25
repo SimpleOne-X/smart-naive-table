@@ -155,7 +155,7 @@
 - **工具栏折叠**：业务按钮（`#toolbar-right` + 「更多」）收成「操作 ▾」，点开在原位多出一行。宿主传了 `#toolbar` 时，头部（标题 + `#toolbar`）独占第一行、放不下就换行，「操作 ▾」靠左、内置图标靠右落到第二行（不传 `#toolbar` 时是单行）。
 - **搜索收成「输入框 + 筛选」**：用条件构造器（`search: { container: 'table' }`）时，窄档只留一个输入框和「筛选」按钮，点「筛选」从底部抽屉展开同一份多条件面板。
 - **排序抽屉**：有可排序列时，工具栏最下面多一行「排序」按钮，点开底部抽屉，每列「无 / 升序 / 降序」（只能启停，不改优先级）。
-- **底部面板**：可编辑表格（`editable`）在窄档点卡片 = 底部抽屉表单（整行即时保存，其中的 `select-table` 字段点开贴底选择面板）；`SmartSelectTable` 在视口 < 600 或放不下浮层时也改用底部面板。
+- **底部面板**：可编辑表格（`editable`）在窄档点卡片 = 底部抽屉表单（整行即时保存，其中的 `select-table` 字段点开贴底选择面板）；`SmartSelectTable` 在视口 < 600 时也改用底部面板（宽屏上下都放不下浮层时先把浮层收矮，开在空间大的一侧，收到不足表头 + 4 行或左右都会伸出视口才用底部面板）。
 - **行拖拽**：卡片保留拖拽，手柄列写 `card: 'handle'`，放在标题行最左；开了 `row-draggable` 的卡片在标题行末尾显示行号。
 - **合计卡**：宿主给了 naive 的 `summary`（合计行）时，窄档卡片列表末尾多一张「合计」卡。
 - **树表**：行里带 `children`（字段名取 `children-key`，默认 `children`）的树表在卡片里按先序拍平，标题按层级缩进（每层 `indent`，默认 16px），有子级的卡片标题前有展开 / 折叠箭头。读的都是 `NDataTable` 的官方属性（`children-key`、`indent`、`expanded-row-keys`、`default-expanded-row-keys`、`default-expand-all`、`cascade`），**不需要库自己的额外属性**；分页 / 排序只作用于根行（同官方），勾选按 `cascade` 级联、父卡片半选。没绑 `expanded-row-keys` 时展开态由库持有（表格 ↔ 卡片切档不互通，绑上就互通）。不支持：懒加载（`on-load`）、`check-strategy`、`row-draggable` / `editable` 与树同用。
@@ -537,7 +537,7 @@ async function onSave({ changes, done, fail }: EditSavePayload<Row>) {
 <SmartSelectTable v-model:value="ids" multiple :columns="cols" :fetcher="fetchMaterials" @pick="(rows) => ..." />
 ```
 
-- **属性**：`columns`（SmartTable 的列）· `data`（本地）/ `fetcher`（远程，同 `SmartTableFetcher`，多一个原样的 `keyword`）· `valueKey`（默认 `'id'`，`v-model:value` 的值）· `labelKey`（触发器显示，默认第一列）· `renderLabel(row)` · `multiple`（值是数组；面板带勾选列与「已选 N 项 / 清空 / 确定」，跨页跨搜索保留）· `maxTagCount`（默认 2，其余 +N）· `placeholder` / `clearable` / `disabled` / `size` / `title`（窄屏面板标题）· `panelWidth`（默认 640，受视口限制）· `pageSize`（默认 100）/ `pageSizes`（不传 = 库内置 `[100, 1000, 10000]`）· `searchKeys` / `searchPlaceholder` · `label`（远程且有初始值时触发器显示的文字）· `labels`。事件：`update:value`、`pick`（单选 = 行，多选 = 点「确定」时的行数组）、`close`（面板关闭）。实例：`open()` / `close()` / `focus()`。
+- **属性**：`columns`（SmartTable 的列）· `data`（本地）/ `fetcher`（远程，同 `SmartTableFetcher`，多一个原样的 `keyword`）· `valueKey`（默认 `'id'`，`v-model:value` 的值）· `labelKey`（触发器显示，默认第一列）· `renderLabel(row)` · `multiple`（值是数组；面板带勾选列与「已选 N 项 · 已选项 / 清空 / 确定」，跨页跨搜索保留，底栏单行列出已选项、放不下省略，悬停看全）· `maxTagCount`（默认 2，其余 +N）· `placeholder` / `clearable` / `disabled` / `size` / `title`（窄屏面板标题）· `panelWidth`（默认 640，受视口限制）· `pageSize`（默认 100）/ `pageSizes`（不传 = 库内置 `[100, 1000, 10000]`）· `searchKeys` / `searchPlaceholder` · `label`（远程且有初始值时触发器显示的文字）· `labels`。事件：`update:value`、`pick`（单选 = 行，多选 = 点「确定」时的行数组）、`close`（面板关闭）。实例：`open()` / `close()` / `focus()`。
 - **搜索**：面板顶部只有一个搜索框（自动聚焦、带放大镜与清除 ×），占位符由搜索列的标题自动拼（如「物料编号/物料名称/规格」）。本地 `data` 实时模糊过滤（大于 2000 行防抖 120ms）：忽略大小写与全半角，空白切词、所有词都要命中，每个词可命中任一搜索字段（默认 = 有 key、不是序号 / 勾选、没有自定义 `render` 的列，`searchKeys` 可限定），不做拼音；远程 `fetcher` 回车或停手 300ms 后请求。改搜索词回第 1 页、表体回顶部。
 - **键盘**：Esc 先清空搜索再关闭；↓ ↑ 在行间移动高亮（滚进视口，虚拟列表里没渲染的行也行）；Enter 选中高亮行（搜索框里只剩一行时直接选它；多选 = 确定）；多选下 Space 勾选高亮行。单选再次打开时已选行高亮并滚进视口（本地数据会翻到它所在的页，远程数据不翻页）。
 - **限制**：可编辑表格的单元格里只支持单选；`SearchForm`（搜索表单）里没有下拉表格控件。
@@ -831,7 +831,7 @@ import { NConfigProvider, zhCN, dateZhCN } from 'naive-ui'
 | 窄档 | `operations`、`sort`、`sortNone`、`sortAscend`、`sortDescend`、`treeExpand`、`treeCollapse` |
 | 序号列树形 | `treeExpand`、`treeCollapse`（方框的无障碍名，与窄档卡片的箭头共用）、`treeToggleAll`（方框的悬停提示） |
 | 可编辑表格 | `editSave`（含 `{n}`）、`editDiscard`、`editDiscardConfirm`（含 `{n}`，放弃确认气泡的正文）、`editDiscardOk`、`editHiddenDirty`（含 `{n}`，「含 M 条当前不可见」）、`editAddRow`、`editDeleteSelected`、`editNewTitle`、`editEditTitle` 等（完整列表见 `SmartTableLabels`） |
-| 下拉表格选择 | `pickTotal`、`pickSelected`、`pickClearSel`、`pickOk` |
+| 下拉表格选择 | `pickTotal`、`pickSelected`、`pickClearSel`、`pickOk`、`pickSep`（多选底栏已选项之间的分隔符） |
 
 ## 行为说明
 

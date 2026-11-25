@@ -813,6 +813,8 @@ export interface SmartTableLabels {
   pickSelected?: string
   pickClearSel?: string
   pickOk?: string
+  /** 多选底栏里已选项之间的分隔符(中文「、」,英文「, 」)。 */
+  pickSep?: string
   editMinLength?: string
   editMaxLength?: string
   /** 批量栏:恢复所选里的待删除行。 */

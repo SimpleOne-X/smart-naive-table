@@ -6300,7 +6300,7 @@ function xlEnter(no, key, how) {   // how: 'mouse' | 'key' | { ch }(直接打字
   x.edit = { no, key, kind: inf.kind, val, sel: how === 'mouse' ? 'all' : 'end', hl: inf.kind === 'select' ? Math.max(0, xlOptions(c).indexOf(val)) : null, focused: false };
   x.err = null; state.open = null; x.focusSel = false;
   x.st = null;
-  if (inf.kind === 'select-table') { x.st = xlStInit(val); x.st.sheet = !xlStFits(no, key); if (how && typeof how === 'object') x.st.q = how.ch; }
+  if (inf.kind === 'select-table') { x.st = xlStInit(val); Object.assign(x.st, xlStFit(no, key)); if (how && typeof how === 'object') x.st.q = how.ch; }
   if (inf.kind === 'date' || inf.kind === 'datetime') dpOpen(`x:${no}:${key}`, false); else state.dp = null;
   renderPreview();
   return true;
@@ -6479,15 +6479,17 @@ function xlStInit(cur) {
   return { q: '', page: 1, size: PAGER_CFG.defaultPageSize, sizeOpen: false, hl: -1 };   // 每页 100(可选 100 / 1000 / 10000 = PAGER_CFG,即开了 fillHeight 的档):36 行一页放完;打开时滚到当前值所在行(xlStScroll),选中行高亮
 }
 const xlSt = () => state.xl.form?.st ?? (state.xl.edit?.kind === 'select-table' ? state.xl.st : null);
-/* 打开时判断气泡放不放得下:横向(触发格起始对齐、末端对齐都会伸出视口)或纵向(触发格上方、下方都没有一个面板高度的空间)放不下,就改用底部面板,与窄档同一块面板、不画箭头。官方 NPopover 只会在 -start / -end、top / bottom 之间翻转,不会夹进视口 */
+/* 打开时判断气泡放不放得下:横向(触发格起始对齐、末端对齐都会伸出视口)放不下就改用底部面板;纵向(触发格上方、下方都没有一个面板高度的空间)放不下时,气泡开在空间大的一侧、表格盒收矮到放得下,收到不足表头 + 4 行才改用底部面板。底部面板与窄档同一块、不画箭头。官方 NPopover 只会在 -start / -end、top / bottom 之间翻转,不会夹进视口 */
 const XL_ST_H = 454;   // 面板实测高度(单选);库里 SmartSelectTable 的 POP_H 同值
-function xlStFits(no, key) {
+const XL_ST_BOX = 360, XL_ST_BOX_MIN = 180;   // 表格盒标准最大高度 / 收矮下限(表头 + 4 行);库里表格区(盒 + 分页)是 396 / 216
+function xlStFit(no, key) {   // → { sheet, box }:box = 收矮后的表格盒最大高度,不收为 null
   const cell = document.querySelector(`td[data-xc="${no}|${key}"]`);
-  if (!cell) return true;
+  if (!cell) return { sheet: false, box: null };
   const r = cell.getBoundingClientRect(), vw = document.documentElement.clientWidth, w = Math.max(280, Math.min(640, vw - 16));
   const vh = document.documentElement.clientHeight, gap = 10 + 8;   // 官方 space-arrow 10px + 距视口边 8px
-  const fitX = r.left + w <= vw - 8 || r.right - w >= 8, fitY = r.bottom + gap + XL_ST_H <= vh || r.top - gap - XL_ST_H >= 0;
-  return fitX && fitY;
+  const fitX = r.left + w <= vw - 8 || r.right - w >= 8, room = Math.max(vh - r.bottom, r.top) - gap;
+  const box = room >= XL_ST_H ? null : Math.floor(XL_ST_BOX - (XL_ST_H - room));
+  return { sheet: !fitX || (box !== null && box < XL_ST_BOX_MIN), box };
 }
 /* 实时模糊匹配:不分大小写的子串;空白分隔的多个词 AND;每个词可以命中任一展示列(编码 / 名称 / 工作中心 / 类型) */
 function xlStRows(st) {
@@ -6512,7 +6514,7 @@ function xlStPanel(st, cur, touch) {
   const size = touch ? '' : `<div class="pg-size"><div class="n-select${st.sizeOpen ? ' open' : ''}" data-xst="size" role="combobox" aria-expanded="${!!st.sizeOpen}"><span class="val">${st.size} / ${suf}</span><span class="caret">${I_CHEVD}</span></div>${
     st.sizeOpen ? `<div class="dd">${PAGER_CFG.pageSizes.map((n) => `<div class="it${n === st.size ? ' on' : ''}" data-xst="sizepick" data-n="${n}">${n} / ${suf}</div>`).join('')}</div>` : ''}</div>`;
   const pager = `<div class="n-pagination simple"><div class="n-pagination-prefix">共 ${rows.length} 条</div>${btn(st.page <= 1, 'prev', PG_ICO.prev)}<div class="n-pagination-quick-jumper"><div class="n-input"><input type="text" inputmode="numeric" value="${st.page}" data-xstj aria-label="当前页" /></div></div><span class="pg-total"> / ${count}</span>${btn(st.page >= count, 'next', PG_ICO.next)}${size}</div>`;
-  return `<div class="st-panel"><div class="st-bar"><div class="n-input"><span class="ico-l">${I_SEARCH}</span><input type="text" ${touch ? '' : 'data-xed '}data-stq value="${esc(st.q)}" placeholder="${XL_ST_PH}" autocomplete="off" spellcheck="false" /><span class="ico-r clr" data-xst="clear" tabindex="-1" aria-label="清除">${I_CLEAR}</span></div></div><div class="st-body">${table}</div><div class="st-foot">${pager}</div></div>`;
+  return `<div class="st-panel"><div class="st-bar"><div class="n-input"><span class="ico-l">${I_SEARCH}</span><input type="text" ${touch ? '' : 'data-xed '}data-stq value="${esc(st.q)}" placeholder="${XL_ST_PH}" autocomplete="off" spellcheck="false" /><span class="ico-r clr" data-xst="clear" tabindex="-1" aria-label="清除">${I_CLEAR}</span></div></div><div class="st-body"${st.box && !touch ? ` style="max-height: ${st.box}px"` : ''}>${table}</div><div class="st-foot">${pager}</div></div>`;
 }
 const xlStWrap = (st, cur, touch) => (touch
   ? `<div class="xl-pop xl-stf touch" data-stop data-k="stf"><div class="st-mask" data-xst="fclose"></div><div class="st-sheet"><div class="st-head"><b>选择工序</b><button class="n-btn icon" data-xst="fclose" aria-label="关闭">${I_X}</button></div>${xlStPanel(st, cur, true)}</div></div>`
@@ -6607,12 +6609,12 @@ function placeXlPop() {
   if (top + h > window.innerHeight - 8) {
     if (k === 'ta') top = Math.max(8, window.innerHeight - h - 8);
     else if (r.top - h - gap > 8) { top = r.top - h - gap; side = 'above'; }
-    else { top = Math.max(8, window.innerHeight - h - 8); side = 'none'; }   // 上下都放不下:夹进视口,盖住触发格,不画箭头(select-table 打开时已用 xlStFits 判断,放不下走底部面板;这里只兜住打开之后视口变小的情形)
+    else { top = Math.max(8, window.innerHeight - h - 8); side = 'none'; }   // 上下都放不下:夹进视口,盖住触发格,不画箭头(select-table 打开时已用 xlStFit 判断,上下都放不下时已收矮表格盒或改用底部面板;这里只兜住打开之后视口变小的情形)
   }
   if (k === 'st') {   // 箭头 = 官方 NPopover 原生箭头:固定在面板起始侧,不跟触发格走(arrowOffset 10px + 方块半宽 4.242 = 距面板边 14.242px)
     const AR = 14.242;
     let ax = AR;
-    if (r.left + w > window.innerWidth - 8) { left = r.right - w; ax = w - AR; }   // 起始对齐放不下:官方 placement bottom-start ↔ bottom-end 翻转,面板右缘对齐触发格右缘,箭头跟到右侧(横向、纵向放不下的情况打开时已改用底部面板,见 xlStFits)
+    if (r.left + w > window.innerWidth - 8) { left = r.right - w; ax = w - AR; }   // 起始对齐放不下:官方 placement bottom-start ↔ bottom-end 翻转,面板右缘对齐触发格右缘,箭头跟到右侧(横向放不下的情况打开时已改用底部面板,纵向已收矮,见 xlStFit)
     pop.dataset.side = side;
     pop.style.setProperty('--arrow-x', ax + 'px');
   }

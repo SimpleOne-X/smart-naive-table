@@ -23,6 +23,7 @@ vi.hoisted(() => {
 })
 import { nextTick } from 'vue'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { NPopover } from 'naive-ui'
 import SmartSelectTable from '../src/SmartSelectTable.vue'
 import { matchKeyword, normalizeText } from '../src/selectTable'
 import { zhCNLabels } from '../src/labels'
@@ -293,13 +294,14 @@ describe('面板外观结构:气泡 + 尖角 + 内边距 + 表格盒', () => {
     }
   })
 
-  describe('纵向放不下 → 底部面板(气泡只会在触发器上 / 下两侧翻,没有夹取)', () => {
+  describe('纵向:放得下用标准气泡;两侧都放不下时气泡开在空间大的一侧、表格区收矮;连下限都放不下才用底部面板', () => {
+    type Opened = { sheet: boolean; bodyH: string; side: string | null }
     // 触发器矩形 + 视口高;水平一律放得下(宽 1440、触发器左 100)
     async function openAt(
       viewportH: number,
       top: number,
       props: Record<string, unknown> = {},
-    ): Promise<boolean> {
+    ): Promise<Opened> {
       Object.defineProperty(document.documentElement, 'clientWidth', {
         configurable: true,
         get: () => 1440,
@@ -325,10 +327,16 @@ describe('面板外观结构:气泡 + 尖角 + 内边距 + 表格盒', () => {
         const sheet =
           document.body.querySelector('.smart-table-xpick-sheet .smart-table-xpick') !== null
         expect(bubble).not.toBe(sheet)
+        const opened: Opened = {
+          sheet,
+          bodyH: panel()!.querySelector<HTMLElement>('.smart-table-xpick-body')!.style.height,
+          // jsdom 不跑 vueuc 的定位(不写 v-placement),读交给官方 NPopover 的 placement
+          side: bubble ? (w.findComponent(NPopover).props('placement') as string) : null,
+        }
         w.unmount()
         wrapper = null
         document.body.innerHTML = ''
-        return sheet
+        return opened
       } finally {
         rect.mockRestore()
         delete (document.documentElement as { clientWidth?: number }).clientWidth
@@ -336,22 +344,40 @@ describe('面板外观结构:气泡 + 尖角 + 内边距 + 表格盒', () => {
       }
     }
 
-    it('上、下两侧都放不下整个面板(视口 600、触发器在中间)→ 底部面板', async () => {
-      expect(await openAt(600, 300)).toBe(true)
+    it('下方放得下(视口 900、触发器靠上)→ 向下的标准气泡,表格区不收', async () => {
+      expect(await openAt(900, 300)).toEqual({ sheet: false, bodyH: '', side: 'bottom-start' })
     })
-    it('视口很矮(420)→ 底部面板', async () => {
-      expect(await openAt(420, 300)).toBe(true)
+    it('下方放不下、上方放得下(视口 900、触发器靠下)→ 仍是标准气泡(由官方翻到上方)', async () => {
+      const o = await openAt(900, 680)
+      expect(o.sheet).toBe(false)
+      expect(o.bodyH).toBe('')
     })
-    it('下方放得下(视口 900、触发器靠上)→ 向下的气泡', async () => {
-      expect(await openAt(900, 300)).toBe(false)
+    it('上、下两侧都放不下整个面板(视口 975、触发器在中间,多选)→ 气泡开在下方,表格区收矮', async () => {
+      // 多选需要 508;下方 975 − 489 = 486,上方 455 → 开在下方,表格区 396 − (508 − 486) = 374
+      expect(await openAt(975, 455, { multiple: true, value: [] })).toEqual({
+        sheet: false,
+        bodyH: '374px',
+        side: 'bottom-start',
+      })
     })
-    it('下方放不下、上方放得下(视口 900、触发器靠下,气泡翻到上方)→ 仍是气泡', async () => {
-      expect(await openAt(900, 680)).toBe(false)
+    it('两侧都放不下、上方空间更大 → 气泡开在上方', async () => {
+      // 单选需要 472;上方 300,下方 600 − 334 = 266 → 开在上方,表格区 396 − (472 − 300) = 224
+      expect(await openAt(600, 300)).toEqual({ sheet: false, bodyH: '224px', side: 'top-start' })
     })
-    it('多选多一行页脚:单选刚好放得下的位置,多选放不下 → 底部面板', async () => {
+    it('多选多一行页脚:同一位置单选是标准气泡,多选要收矮', async () => {
       // 单选需要 454 + 10 + 8 = 472,多选 508;下方可用 = 视口 − 触发器底
-      expect(await openAt(520, 10)).toBe(false) // 520 − 44 = 476 ≥ 472
-      expect(await openAt(520, 10, { multiple: true, value: [] })).toBe(true) // 476 < 508
+      expect((await openAt(520, 10)).bodyH).toBe('') // 520 − 44 = 476 ≥ 472
+      expect((await openAt(520, 10, { multiple: true, value: [] })).bodyH).toBe('364px') // 476 < 508
+    })
+    it('收矮后表格区不到下限(表头 + 4 行 + 分页,216)→ 底部面板', async () => {
+      // 上方 120、下方 300 − 154 = 146 → 表格区 396 − (472 − 146) = 70 < 216
+      expect((await openAt(300, 120)).sheet).toBe(true)
+      // 恰好到下限仍是气泡:下方 = 472 − (396 − 216) = 292
+      expect(await openAt(292 + 44, 10)).toEqual({
+        sheet: false,
+        bodyH: '216px',
+        side: 'bottom-start',
+      })
     })
   })
 
@@ -629,6 +655,28 @@ describe('多选 multiple', () => {
     ok.click()
     await settle()
     expect(w.props('value')).toEqual([])
+  })
+
+  it('底栏列出已选项(与触发器标签同一套文字),换搜索后照样看得到;分隔符取 labels.pickSep', async () => {
+    const picked = () => panel()!.querySelector<HTMLElement>('.smart-table-xpick-picked')!
+    const w = mountSel({ multiple: true, value: [2] })
+    await open(w)
+    expect(picked().textContent).toBe('零件2')
+    pRows()[0].click()
+    await type('六角')
+    pRows()[0].click()
+    await settle()
+    expect(picked().textContent).toBe('零件2、零件1、六角螺栓')
+    expect(picked().title).toBe('零件2、零件1、六角螺栓')
+    await w.setProps({ labels: { ...zhCNLabels, pickSep: ' / ' } })
+    expect(picked().textContent).toBe('零件2 / 零件1 / 六角螺栓')
+    const clear = [...panel()!.querySelectorAll('button')].find(
+      (b) => b.textContent?.trim() === '清空',
+    )!
+    clear.click()
+    await settle()
+    expect(picked().textContent).toBe('')
+    expect(picked().hasAttribute('title')).toBe(false)
   })
 
   it('Esc / 点外面 = 放弃这次勾选', async () => {
